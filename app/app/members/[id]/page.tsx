@@ -59,11 +59,11 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
   const paidConts = memberContributions.reduce((sum, c) => sum + c.paid, 0)
   const sharesVal = member.shares * 5000
   const outstandingLoansVal = memberLoans.filter(l => l.status === 'DISBURSED').reduce((sum, l) => sum + l.remainingBalance, 0)
-  const outstandingFinesVal = memberFines.filter(f => f.status === 'UNPAID').reduce((sum, f) => sum + f.outstanding, 0)
+  const outstandingFinesVal = memberFines.filter(f => f.status === 'UNPAID').reduce((sum, f) => sum + (f.outstanding ?? 0), 0)
 
   // Statement download simulator
   const handleDownloadStatement = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + "Date,Type,Amount,Status,Ref\n"
       + memberPayments.map(p => `"${p.date}","${p.type}",${p.amount},"${p.status}","${p.reference}"`).join("\n")
     const encodedUri = encodeURI(csvContent)
@@ -102,14 +102,14 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
         </div>
 
         <div className="flex gap-2 w-full md:w-auto">
-          <button 
+          <button
             onClick={handleDownloadStatement}
             className="flex-1 md:flex-none px-4 py-2.5 border border-[#dfe8e2] hover:bg-neutral-50 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
           >
             <FileDown size={14} /> Download Statement
           </button>
-          <Link 
-            href="/app/payments" 
+          <Link
+            href="/app/payments"
             className="flex-1 md:flex-none px-4 py-2.5 bg-[#087f5b] hover:bg-[#066b4c] text-white rounded-lg text-xs font-bold text-center transition flex items-center justify-center gap-1.5 shadow-sm"
           >
             Record Payment
@@ -147,7 +147,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
           { id: 'payments', label: 'Ledger Payments' },
           { id: 'attendance', label: 'Attendance' }
         ].map(t => (
-          <button 
+          <button
             key={t.id}
             onClick={() => setActiveTab(t.id as any)}
             className={`pb-3 hover:text-neutral-700 transition relative shrink-0 ${activeTab === t.id ? 'text-[#087f5b] border-b-2 border-[#087f5b]' : ''}`}
@@ -186,7 +186,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
             <div className="flex flex-col gap-4">
               <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Membership Summary</h3>
               <p className="text-xs text-neutral-500 leading-relaxed">
-                {member.name} joined Umoja VIKOBA on {member.joinDate}. Currently possesses a contribution rate of 100%, holding {member.shares} share tokens. 
+                {member.name} joined Umoja VIKOBA on {member.joinDate}. Currently possesses a contribution rate of 100%, holding {member.shares} share tokens.
                 {outstandingLoansVal > 0 ? ` Outstanding loan balances currently stand at ${fmt(outstandingLoansVal)}.` : " No active loan liabilities outstanding."}
               </p>
             </div>
@@ -215,11 +215,10 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
                     <td className="py-3 font-bold text-red-500 text-right">{fmt(c.balance)}</td>
                     <td className="py-3 text-neutral-500 font-semibold">{c.lastPaymentDate || '—'}</td>
                     <td className="py-3 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${
-                        c.status === 'PAID' ? 'bg-emerald-50 text-emerald-700' :
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${c.status === 'PAID' ? 'bg-emerald-50 text-emerald-700' :
                         c.status === 'PARTIALLY PAID' ? 'bg-amber-50 text-amber-800' :
-                        'bg-red-50 text-red-600'
-                      }`}>
+                          'bg-red-50 text-red-600'
+                        }`}>
                         {c.status}
                       </span>
                     </td>
@@ -298,12 +297,11 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
                       <td className="py-3 font-black text-red-500 text-right">{l.status === 'DISBURSED' ? fmt(l.remainingBalance) : '—'}</td>
                       <td className="py-3 text-neutral-500 font-semibold">{l.maturityDate || '—'}</td>
                       <td className="py-3 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${
-                          l.status === 'DISBURSED' ? 'bg-blue-50 text-blue-700' :
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${l.status === 'DISBURSED' ? 'bg-blue-50 text-blue-700' :
                           l.status === 'PENDING' ? 'bg-amber-50 text-amber-800' :
-                          l.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' :
-                          'bg-neutral-50 text-neutral-500'
-                        }`}>
+                            l.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' :
+                              'bg-neutral-50 text-neutral-500'
+                          }`}>
                           {l.status}
                         </span>
                       </td>
@@ -345,13 +343,12 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
                     <td className="py-3 text-neutral-500 font-medium">{f.date}</td>
                     <td className="py-3 font-semibold text-neutral-700">{f.fineType}</td>
                     <td className="py-3 font-bold text-neutral-800 text-right">{fmt(f.amount)}</td>
-                    <td className="py-3 font-black text-red-500 text-right">{fmt(f.outstanding)}</td>
+                    <td className="py-3 font-black text-red-500 text-right">{fmt(f.outstanding ?? 0)}</td>
                     <td className="py-3 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${
-                        f.status === 'PAID' ? 'bg-emerald-50 text-emerald-700' :
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${f.status === 'PAID' ? 'bg-emerald-50 text-emerald-700' :
                         f.status === 'UNPAID' ? 'bg-red-50 text-red-600' :
-                        'bg-neutral-50 text-neutral-500'
-                      }`}>
+                          'bg-neutral-50 text-neutral-500'
+                        }`}>
                         {f.status}
                       </span>
                     </td>
@@ -413,12 +410,12 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
             <div className="bg-[#fcfdfc] border border-neutral-100 rounded-xl p-4 text-center">
               <span className="text-[10px] text-neutral-400 font-bold uppercase block">Attendance Rate</span>
               <span className="text-2xl font-black text-neutral-800 mt-2 block">
-                {memberAttendance.length > 0 
+                {memberAttendance.length > 0
                   ? `${Math.round((memberAttendance.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length / memberAttendance.length) * 100)}%`
                   : '100%'}
               </span>
             </div>
-            
+
             <div className="bg-[#fcfdfc] border border-neutral-100 rounded-xl p-4 text-center">
               <span className="text-[10px] text-neutral-400 font-bold uppercase block">Excused Absences</span>
               <span className="text-2xl font-black text-neutral-800 mt-2 block">

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useVikobaStore } from '@/lib/mockStore'
+import { reportService, type DashboardSummary } from '@/lib/api/services'
 import {
   Users, WalletCards, BarChart3, HandCoins, Landmark, CircleDollarSign,
   AlertCircle, ArrowRight, ArrowUpRight, CalendarDays, CheckCircle2,
@@ -36,6 +37,9 @@ export default function DashboardPage() {
     role: 'Administrator',
   })
 
+  const [serverStats, setServerStats] = useState<DashboardSummary | null>(null)
+  const [loadingStats, setLoadingStats] = useState(false)
+
   useEffect(() => {
     if (typeof window === 'undefined') return
 
@@ -56,6 +60,68 @@ export default function DashboardPage() {
     }
   }, [])
 
+  useEffect(() => {
+    // Resolve numeric group id: try v360_currentGroup JSON, fallback to v360_currentGroupId, then currentGroup.id
+    if (typeof window === 'undefined') return
+
+    const currentGroupRaw = window.localStorage.getItem('v360_currentGroup')
+    const fallbackGroupId = window.localStorage.getItem('v360_currentGroupId')
+
+    let resolvedId: number | null = null
+
+    if (currentGroupRaw) {
+      try {
+        const parsed = JSON.parse(currentGroupRaw)
+        const candidate = parsed?.id ?? parsed?.groupId ?? parsed?.id
+        if (candidate !== undefined && candidate !== null) {
+          const asNum = Number(candidate)
+          if (!Number.isNaN(asNum)) resolvedId = asNum
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (resolvedId === null && fallbackGroupId) {
+      const asNum = Number(fallbackGroupId)
+      if (!Number.isNaN(asNum)) resolvedId = asNum
+    }
+
+    if (resolvedId === null && currentGroup?.id !== undefined && currentGroup?.id !== null) {
+      const asNum = Number(currentGroup.id)
+      if (!Number.isNaN(asNum)) resolvedId = asNum
+    }
+
+    if (resolvedId === null) {
+      console.log('No numeric group id available; skipping server stats fetch.')
+      return
+    }
+
+    console.log('Fetching ======>>>> numeric group ID:', resolvedId)
+    setLoadingStats(true)
+    reportService
+      .getSummary(String(resolvedId))
+      .then((res) => {
+        const payload = (res as any)
+        const data = payload?.data ?? res
+
+        const normalized: DashboardSummary = {
+          totalMembers: (data?.totalGroupMembers ?? data?.totalMembers ?? 0) as number,
+          totalSaved: (data?.totalGroupContributionAmount ?? data?.totalSaved ?? 0) as number,
+          totalOutstanding: (data?.totalGroupOutStandingLoan ?? data?.totalOutstanding ?? 0) as number,
+          // backend may return totalShares (count) or not; fall back to outstanding loan amount
+          totalLoans: (data?.totalShares ?? data?.totalLoans ?? data?.totalGroupOutStandingLoan ?? 0) as number,
+        }
+
+        setServerStats(normalized)
+      })
+      .catch((err) => {
+        console.error('Failed to load dashboard stats', err)
+        setServerStats(null)
+      })
+      .finally(() => setLoadingStats(false))
+  }, [currentGroup?.id])
+
   if (!isHydrated) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -72,19 +138,19 @@ export default function DashboardPage() {
     year: 'numeric',
   })
 
-  const totalMembers = members.filter(m => m.groupId === currentGroup.id).length
-  const groupContributions = members
+  const totalMembers = serverStats?.totalMembers ?? members.filter(m => m.groupId === currentGroup.id).length
+  const groupContributions = serverStats?.totalSaved ?? members
     .filter(m => m.groupId === currentGroup.id)
     .reduce((sum, m) => sum + m.contributions, 0)
-  const groupSharesVal = members
+  const groupSharesVal = serverStats?.totalSaved ? serverStats.totalSaved : (members
     .filter(m => m.groupId === currentGroup.id)
-    .reduce((sum, m) => sum + m.shares, 0) * 5000
+    .reduce((sum, m) => sum + m.shares, 0) * 5000)
 
   const activeLoans = loans.filter(l => l.groupId === currentGroup.id && l.status === 'DISBURSED')
-  const totalOutstandingLoans = activeLoans.reduce((sum, l) => sum + l.remainingBalance, 0)
+  const totalOutstandingLoans = serverStats?.totalOutstanding ?? activeLoans.reduce((sum, l) => sum + l.remainingBalance, 0)
 
   const unpaidFines = fines.filter(f => f.groupId === currentGroup.id && f.status === 'UNPAID')
-  const totalOutstandingFines = unpaidFines.reduce((sum, f) => sum + f.outstanding, 0)
+  const totalOutstandingFines = unpaidFines.reduce((sum, f) => sum + (f.outstanding ?? 0), 0)
 
   const upcomingMeeting = meetings.find(m => m.groupId === currentGroup.id && m.status === 'UPCOMING')
   const pendingLoans = loans.filter(l => l.groupId === currentGroup.id && l.status === 'PENDING').length

@@ -374,5 +374,10 @@ export const socialFundService = {
 
 export const reportService = {
   list: () => apiGet<unknown[]>(API_ENDPOINTS.reports),
-  getSummary: () => apiGet<DashboardSummary>(`${API_ENDPOINTS.dashboard}`),
+  getSummary: (groupId?: string) =>
+    apiGet<DashboardSummary>(
+      `${API_ENDPOINTS.dashboard}`,
+      groupId ? { groupId } : undefined,
+      { auth: true },
+    ),
 };

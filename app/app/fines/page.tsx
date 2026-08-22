@@ -5,13 +5,13 @@ import { useVikobaStore, Fine } from '@/lib/mockStore'
 import { PlusCircle, Search, X, Check, Eye } from 'lucide-react'
 
 export default function FinesPage() {
-  const { 
-    fines, 
-    members, 
-    currentGroup, 
-    issueFine, 
-    waiveFine, 
-    payFine 
+  const {
+    fines,
+    members,
+    currentGroup,
+    issueFine,
+    waiveFine,
+    payFine
   } = useVikobaStore()
 
   // Search state
@@ -38,14 +38,14 @@ export default function FinesPage() {
   // Calculations
   const groupFines = fines.filter(f => f.groupId === currentGroup.id)
   const totalFinesCount = groupFines.length
-  
+
   const paidFines = groupFines
     .filter(f => f.status === 'PAID')
     .reduce((sum, f) => sum + f.amount, 0)
-    
+
   const outstandingFines = groupFines
     .filter(f => f.status === 'UNPAID')
-    .reduce((sum, f) => sum + f.outstanding, 0)
+    .reduce((sum, f) => sum + (f.outstanding ?? 0), 0)
 
   const waivedFines = groupFines
     .filter(f => f.status === 'WAIVED')
@@ -78,7 +78,7 @@ export default function FinesPage() {
           <h1 className="text-2xl font-black text-neutral-900 mt-2">Penalties & Fines</h1>
           <p className="text-xs text-neutral-400">Issue attendance, meeting arrival, or late payment fines.</p>
         </div>
-        <button 
+        <button
           onClick={() => setModalOpen(true)}
           className="px-4 py-2.5 bg-[#087f5b] hover:bg-[#066b4c] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm self-stretch sm:self-auto"
         >
@@ -104,9 +104,9 @@ export default function FinesPage() {
       {/* Filters search */}
       <div className="bg-white border border-[#dfe8e2] rounded-xl p-4 mb-6 flex justify-between items-center">
         <div className="relative w-64">
-          <input 
-            type="text" 
-            placeholder="Search by member..." 
+          <input
+            type="text"
+            placeholder="Search by member..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full border border-[#dfe8e2] rounded-lg p-2 pl-8 text-xs outline-none focus:border-[#087f5b]"
@@ -148,27 +148,26 @@ export default function FinesPage() {
                     </td>
                     <td className="p-4 font-semibold text-neutral-700">{f.fineType}</td>
                     <td className="p-4 font-bold text-neutral-800 text-right">{fmt(f.amount)}</td>
-                    <td className="p-4 font-black text-red-500 text-right">{fmt(f.outstanding)}</td>
+                    <td className="p-4 font-black text-red-500 text-right">{fmt(f.outstanding ?? 0)}</td>
                     <td className="p-4 text-neutral-500 font-semibold">{f.date}</td>
                     <td className="p-4 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${
-                        f.status === 'PAID' ? 'bg-emerald-50 text-emerald-700' :
-                        f.status === 'UNPAID' ? 'bg-red-50 text-red-600' :
-                        'bg-neutral-100 text-neutral-400'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${f.status === 'PAID' ? 'bg-emerald-50 text-emerald-700' :
+                          f.status === 'UNPAID' ? 'bg-red-50 text-red-600' :
+                            'bg-neutral-100 text-neutral-400'
+                        }`}>
                         {f.status}
                       </span>
                     </td>
                     <td className="p-4 text-center">
                       {f.status === 'UNPAID' ? (
                         <div className="flex gap-1.5 justify-center">
-                          <button 
+                          <button
                             onClick={() => payFine(f.id)}
                             className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-[#087f5b] hover:text-white rounded text-[10px] font-bold transition"
                           >
                             Pay
                           </button>
-                          <button 
+                          <button
                             onClick={() => waiveFine(f.id)}
                             className="px-2 py-1 border border-neutral-200 hover:bg-neutral-50 rounded text-[10px] font-bold transition"
                           >
@@ -236,7 +235,7 @@ export default function FinesPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 mb-1.5">Amount ({currentGroup.currency}) *</label>
-                  <input 
+                  <input
                     type="number"
                     required
                     min={1}
@@ -248,15 +247,15 @@ export default function FinesPage() {
               </div>
 
               <div className="flex gap-3 justify-end pt-3 border-t border-neutral-100">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setModalOpen(false)}
                   className="px-4 py-2 border border-[#dfe8e2] rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-50"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold"
                 >
                   Confirm Penalty Issue

@@ -864,7 +864,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     const updatedFines = fines.map(f => {
       if (f.id === fineId) {
-        waivedAmt = f.outstanding
+        waivedAmt = f.outstanding ?? 0
         memberId = f.memberId
         return { ...f, outstanding: 0, status: 'WAIVED' as const }
       }
@@ -899,7 +899,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (fineRecord) {
       recordPayment({
         memberId: fineRecord.memberId,
-        amount: fineRecord.outstanding,
+        amount: fineRecord.outstanding ?? 0,
         type: 'Fine Payment',
         method: 'Cash'
       })

@@ -20,10 +20,10 @@ export default function ReportsPage() {
   // Pre-generate report views from store data
   const reportPayments = payments.filter(p => {
     if (p.groupId !== currentGroup.id) return false
-    
+
     // date filter
     if (p.date < dateRange.start || p.date > dateRange.end) return false
-    
+
     // member filter
     if (filterMember !== 'ALL' && p.memberId !== filterMember) return false
 
@@ -104,13 +104,13 @@ export default function ReportsPage() {
                 <Calendar size={12} /> Date Range
               </label>
               <div className="grid grid-cols-2 gap-2">
-                <input 
+                <input
                   type="date"
                   value={dateRange.start}
                   onChange={e => setDateRange({ ...dateRange, start: e.target.value })}
                   className="w-full border border-[#dfe8e2] rounded-lg p-2 text-xs outline-none text-neutral-600 font-semibold"
                 />
-                <input 
+                <input
                   type="date"
                   value={dateRange.end}
                   onChange={e => setDateRange({ ...dateRange, end: e.target.value })}
@@ -126,7 +126,7 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between border-b border-neutral-100 pb-4 print:hidden">
             <span className="text-xs font-bold text-[#087f5b] bg-[#eaf6ef] px-2 py-1 rounded">Statement Sheet View</span>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={handlePrint}
                 className="px-3 py-1.5 border border-[#dfe8e2] hover:bg-neutral-50 rounded-lg text-xs font-bold transition flex items-center gap-1"
               >
@@ -250,7 +250,7 @@ export default function ReportsPage() {
                       <span className="font-bold text-[#087f5b]">{fmt(fines.filter(f => f.groupId === currentGroup.id && f.status === 'PAID').reduce((sum, f) => sum + f.amount, 0))}</span>
                     </div>
                   </div>
-                  
+
                   <div className="bg-neutral-50 px-4 py-2 font-bold text-neutral-800 border-t border-b border-neutral-150">Outbound Expenditures</div>
                   <div className="p-4 flex flex-col gap-2">
                     <div className="flex justify-between">
@@ -281,7 +281,7 @@ export default function ReportsPage() {
                         <td className="py-3 font-bold text-neutral-800">{members.find(m => m.id === f.memberId)?.name}</td>
                         <td className="py-3 font-semibold text-neutral-600">{f.fineType}</td>
                         <td className="py-3 font-bold text-neutral-800 text-right">{fmt(f.amount)}</td>
-                        <td className="py-3 font-black text-red-500 text-right">{fmt(f.outstanding)}</td>
+                        <td className="py-3 font-black text-red-500 text-right">{fmt(f.outstanding ?? 0)}</td>
                         <td className="py-3 text-center">
                           <span className={`text-[9px] font-extrabold uppercase ${f.status === 'PAID' ? 'text-emerald-700' : 'text-red-600'}`}>{f.status}</span>
                         </td>
