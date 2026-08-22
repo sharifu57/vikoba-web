@@ -38,12 +38,22 @@ export function setAuthTokens(
   }
 }
 
+export function clearVikobaLocalState() {
+  if (typeof window === "undefined") return;
+
+  localStorage.removeItem(AUTH_STORAGE_KEYS.accessToken);
+  localStorage.removeItem(AUTH_STORAGE_KEYS.refreshToken);
+  localStorage.removeItem(AUTH_STORAGE_KEYS.user);
+  localStorage.removeItem(AUTH_STORAGE_KEYS.session);
+  localStorage.removeItem("v360_currentGroup");
+  localStorage.removeItem("v360_currentGroupId");
+  localStorage.removeItem("v360_group_setup_complete");
+  localStorage.removeItem("v360_group_setup_done");
+}
+
 export function clearAuthTokens() {
   setAuthTokens(null, null);
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(AUTH_STORAGE_KEYS.user);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.session);
-  }
+  clearVikobaLocalState();
 }
 
 export function setAuthenticatedUser(user: Record<string, unknown> | null) {
@@ -95,6 +105,7 @@ export async function apiRequest<T>(
 
   if (auth) {
     const token = getAccessToken();
+    console.log("=====>>>>>API Request with auth token:", token);
     if (token) {
       requestHeaders.set("Authorization", `Bearer ${token}`);
     }

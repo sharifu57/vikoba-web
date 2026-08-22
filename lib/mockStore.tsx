@@ -14,6 +14,8 @@ export interface Group {
   bankBalance: number
   jamiiFund: number
   outstandingFines: number
+  startDate?: string
+  endDate?: string
 }
 
 export interface Member {
@@ -191,10 +193,10 @@ export interface Notification {
 
 // Initial Mock Data Sets
 const initialGroups: Group[] = [
-  { id: 'umoja', name: 'Umoja VIKOBA', currency: 'TZS', membersCount: 52, totalContributions: 18450000, totalShares: 7500000, outstandingLoans: 9250000, availableCash: 3250000, bankBalance: 8450000, jamiiFund: 1250000, outstandingFines: 180000 },
-  { id: 'mshikamano', name: 'Mshikamano VIKOBA', currency: 'TZS', membersCount: 38, totalContributions: 12100000, totalShares: 5200000, outstandingLoans: 5800000, availableCash: 1950000, bankBalance: 6150000, jamiiFund: 850000, outstandingFines: 60000 },
-  { id: 'tumaini', name: 'Tumaini VIKOBA', currency: 'TZS', membersCount: 45, totalContributions: 15300000, totalShares: 6100000, outstandingLoans: 7200000, availableCash: 2100000, bankBalance: 7100000, jamiiFund: 1100000, outstandingFines: 90000 },
-  { id: 'maendeleo', name: 'Maendeleo VIKOBA', currency: 'TZS', membersCount: 30, totalContributions: 9800000, totalShares: 4100000, outstandingLoans: 3100000, availableCash: 1200000, bankBalance: 5100000, jamiiFund: 600000, outstandingFines: 20000 }
+  { id: 'umoja', name: 'Umoja VIKOBA', currency: 'TZS', membersCount: 52, totalContributions: 18450000, totalShares: 7500000, outstandingLoans: 9250000, availableCash: 3250000, bankBalance: 8450000, jamiiFund: 1250000, outstandingFines: 180000, startDate: '2024-01-15', endDate: '2030-01-15' },
+  { id: 'mshikamano', name: 'Mshikamano VIKOBA', currency: 'TZS', membersCount: 38, totalContributions: 12100000, totalShares: 5200000, outstandingLoans: 5800000, availableCash: 1950000, bankBalance: 6150000, jamiiFund: 850000, outstandingFines: 60000, startDate: '2023-08-10', endDate: '2029-08-10' },
+  { id: 'tumaini', name: 'Tumaini VIKOBA', currency: 'TZS', membersCount: 45, totalContributions: 15300000, totalShares: 6100000, outstandingLoans: 7200000, availableCash: 2100000, bankBalance: 7100000, jamiiFund: 1100000, outstandingFines: 90000, startDate: '2024-03-20', endDate: '2030-03-20' },
+  { id: 'maendeleo', name: 'Maendeleo VIKOBA', currency: 'TZS', membersCount: 30, totalContributions: 9800000, totalShares: 4100000, outstandingLoans: 3100000, availableCash: 1200000, bankBalance: 5100000, jamiiFund: 600000, outstandingFines: 20000, startDate: '2023-11-12', endDate: '2029-11-12' }
 ]
 
 const initialMembers: Member[] = [
@@ -237,7 +239,7 @@ const initialRepayments: RepaymentScheduleItem[] = [
   { id: 'r1_2', loanId: 'l1', installmentNumber: 2, dueDate: '2026-07-10', principal: 500000, interest: 50000, penalty: 0, totalDue: 550000, paid: 550000, balance: 0, status: 'PAID' },
   { id: 'r1_3', loanId: 'l1', installmentNumber: 3, dueDate: '2026-08-10', principal: 500000, interest: 50000, penalty: 0, totalDue: 550000, paid: 0, balance: 550000, status: 'OVERDUE' },
   { id: 'r1_4', loanId: 'l1', installmentNumber: 4, dueDate: '2026-09-10', principal: 500000, interest: 50000, penalty: 0, totalDue: 550000, paid: 0, balance: 550000, status: 'PENDING' },
-  
+
   { id: 'r2_1', loanId: 'l2', installmentNumber: 1, dueDate: '2026-08-01', principal: 1000000, interest: 100000, penalty: 0, totalDue: 1100000, paid: 1100000, balance: 0, status: 'PAID' },
   { id: 'r2_2', loanId: 'l2', installmentNumber: 2, dueDate: '2026-08-25', principal: 1000000, interest: 100000, penalty: 0, totalDue: 1100000, paid: 0, balance: 1100000, status: 'PENDING' }
 ]
@@ -310,6 +312,7 @@ const initialNotifications: Notification[] = [
 ]
 
 interface VikobaStoreType {
+  isHydrated: boolean
   groups: Group[]
   currentGroupId: string
   setCurrentGroupId: (id: string) => void
@@ -328,7 +331,7 @@ interface VikobaStoreType {
   ledger: LedgerTransaction[]
   auditLogs: AuditLog[]
   notifications: Notification[]
-  
+
   // Mutator operations
   addMember: (member: Omit<Member, 'id' | 'groupId' | 'shares' | 'contributions' | 'loanBalance' | 'fines' | 'joinDate'>) => void
   recordPayment: (payment: Omit<Payment, 'groupId' | 'reference' | 'date'>) => void
@@ -354,6 +357,37 @@ interface VikobaStoreType {
 const VikobaStoreContext = createContext<VikobaStoreType | undefined>(undefined)
 
 export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const getPersistedGroup = (): Group | null => {
+    if (typeof window === 'undefined') return null
+
+    const storedGroup = localStorage.getItem('v360_currentGroup')
+    if (!storedGroup) return null
+
+    try {
+      const parsed = JSON.parse(storedGroup)
+      if (!parsed?.id) return null
+
+      return {
+        id: String(parsed.id),
+        name: parsed.name || 'My Group',
+        currency: parsed.currency || 'TZS',
+        membersCount: 0,
+        totalContributions: 0,
+        totalShares: 0,
+        outstandingLoans: 0,
+        availableCash: 0,
+        bankBalance: 0,
+        jamiiFund: 0,
+        outstandingFines: 0,
+        startDate: parsed.startDate || parsed.startedAt || '',
+        endDate: parsed.endDate || parsed.endsAt || '',
+      }
+    } catch {
+      return null
+    }
+  }
+
+  const [isHydrated, setIsHydrated] = useState(false)
   const [groups, setGroups] = useState<Group[]>(initialGroups)
   const [currentGroupId, setCurrentGroupId] = useState<string>('umoja')
   const [members, setMembers] = useState<Member[]>(initialMembers)
@@ -374,9 +408,35 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Load from local storage if available
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedGroup = localStorage.getItem('v360_currentGroupId')
-      if (storedGroup) setCurrentGroupId(storedGroup)
-      
+      const storedGroup = localStorage.getItem('v360_currentGroup')
+      const parsedStoredGroup = storedGroup ? JSON.parse(storedGroup) : null
+      const persistedGroup = parsedStoredGroup && (parsedStoredGroup.id || parsedStoredGroup.groupId) ? {
+        id: String(parsedStoredGroup.id ?? parsedStoredGroup.groupId),
+        name: parsedStoredGroup.groupName || parsedStoredGroup.name || 'My Group',
+        currency: parsedStoredGroup.currency || 'TZS',
+        membersCount: 0,
+        totalContributions: 0,
+        totalShares: 0,
+        outstandingLoans: 0,
+        availableCash: 0,
+        bankBalance: 0,
+        jamiiFund: 0,
+        outstandingFines: 0,
+        startDate: parsedStoredGroup.startDate || parsedStoredGroup.startedAt || '',
+        endDate: parsedStoredGroup.endDate || parsedStoredGroup.endsAt || '',
+      } : null
+
+      if (persistedGroup) {
+        setGroups((prev) => {
+          const filtered = prev.filter(g => g.id !== persistedGroup.id)
+          return [persistedGroup, ...filtered]
+        })
+        setCurrentGroupId(persistedGroup.id)
+      }
+
+      const storedGroupId = localStorage.getItem('v360_currentGroupId')
+      if (storedGroupId) setCurrentGroupId(storedGroupId)
+
       const storedMembers = localStorage.getItem('v360_members')
       if (storedMembers) setMembers(JSON.parse(storedMembers))
 
@@ -409,6 +469,8 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       const storedNotifications = localStorage.getItem('v360_notifications')
       if (storedNotifications) setNotifications(JSON.parse(storedNotifications))
+
+      setIsHydrated(true)
     }
   }, [])
 
@@ -433,7 +495,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const id = 'm_' + Math.random().toString(36).substr(2, 9)
     const memberNo = `VIKOBA-${String(members.length + 1).padStart(5, '0')}`
     const joinDate = new Date().toISOString().split('T')[0]
-    
+
     const added: Member = {
       ...newMem,
       id,
@@ -444,10 +506,10 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       fines: 0,
       joinDate
     }
-    
+
     const updated = [added, ...members]
     saveAndSync('v360_members', updated, setMembers)
-    
+
     // Add default expected contribution for current period
     const defaultCont: Contribution = {
       id: 'c_' + Math.random().toString(36).substr(2, 9),
@@ -626,7 +688,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const applyLoan = (newLoan: Omit<Loan, 'id' | 'groupId' | 'principal' | 'interest' | 'totalPaid' | 'remainingBalance' | 'status' | 'nextPaymentDate' | 'maturityDate' | 'progress'>) => {
     const id = 'l_' + Math.random().toString(36).substr(2, 9)
     const requestedDate = new Date().toISOString().split('T')[0]
-    
+
     const addedLoan: Loan = {
       ...newLoan,
       id,
@@ -763,7 +825,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const issueFine = (newFine: Omit<Fine, 'id' | 'groupId' | 'date' | 'status' | 'paid'>) => {
     const id = 'f_' + Math.random().toString(36).substr(2, 9)
     const date = new Date().toISOString().split('T')[0]
-    
+
     const addedFine: Fine = {
       ...newFine,
       id,
@@ -989,7 +1051,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const recordExpense = (newExp: Omit<Expense, 'id' | 'groupId' | 'date' | 'status'>) => {
     const id = 'exp_' + Math.random().toString(36).substr(2, 9)
     const date = new Date().toISOString().split('T')[0]
-    
+
     const added: Expense = {
       ...newExp,
       id,
@@ -1086,6 +1148,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   return (
     <VikobaStoreContext.Provider value={{
+      isHydrated,
       groups,
       currentGroupId,
       setCurrentGroupId,
@@ -1104,7 +1167,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       ledger,
       auditLogs,
       notifications,
-      
+
       addMember,
       recordPayment,
       applyLoan,

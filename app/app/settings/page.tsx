@@ -11,6 +11,8 @@ const emptyForm = {
   phone: '',
   email: '',
   currency: 'TZS',
+  startDate: '',
+  endDate: '',
   minimumContribution: 25000,
   maximumContribution: 500000,
   sharePrice: 5000,
@@ -33,24 +35,55 @@ export default function GroupSettingsPage() {
       const parsed = JSON.parse(storedGroup)
       setForm((current) => ({
         ...current,
-        name: parsed.name || '',
+        name: parsed.name || parsed.groupName || '',
         phone: parsed.phone || '',
         email: parsed.email || '',
         currency: parsed.currency || 'TZS',
+        startDate: parsed.startDate || parsed.startedAt || '',
+        endDate: parsed.endDate || parsed.endsAt || '',
       }))
     }
   }, [])
 
+  const validateCycleDates = (startDate: string, endDate: string) => {
+    if (!startDate || !endDate) {
+      return 'Please choose the Kikoba start date and end date before continuing.'
+    }
+
+    const trimmedStart = startDate.trim()
+    const trimmedEnd = endDate.trim()
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedStart) || !/^\d{4}-\d{2}-\d{2}$/.test(trimmedEnd)) {
+      return 'Please enter valid Kikoba dates in YYYY-MM-DD format.'
+    }
+
+    if (trimmedStart >= trimmedEnd) {
+      return 'The Kikoba end date must be after the start date. Please choose a valid date range.'
+    }
+
+    return null
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const groupId = localStorage.getItem('v360_currentGroupId')
+    if (loading) {
+      return
+    }
+
+    const dateValidationError = validateCycleDates(form.startDate, form.endDate)
+    if (dateValidationError) {
+      toast.error(dateValidationError)
+      return
+    }
 
     const payload: GroupProfileSettingsPayload = {
       name: form.name,
       phone: form.phone,
       email: form.email,
       currency: form.currency,
+      startDate: form.startDate.trim(),
+      endDate: form.endDate.trim(),
       settings: {
         minimumContribution: Number(form.minimumContribution),
         maximumContribution: Number(form.maximumContribution),
@@ -63,40 +96,62 @@ export default function GroupSettingsPage() {
       },
     }
 
+    console.log('=====>>>>>Saving group settings with payload:', payload)
+
     try {
       setLoading(true)
       const result = await groupService.saveProfileAndSettings(payload)
 
-      const responseStatus = Boolean((result as any)?.status)
-      const responseData = (result as any)?.data ?? result
+      console.log('=====>>>>>Group settings save result:', result)
 
-      if (!responseStatus) {
-        toast.error((result as any)?.message || 'Unable to save group settings.')
+      const apiResponse = result as any
+      const isSuccess = apiResponse?.status === true || apiResponse?.status === 'success'
+      const responseData = apiResponse?.data ?? result
+
+      if (!isSuccess) {
+        toast.error(apiResponse?.message || 'Unable to save group settings.')
         return
       }
 
+      const existingSavedGroup = JSON.parse(localStorage.getItem('v360_currentGroup') || '{}')
+      const groupId = (responseData as any)?.groupId ?? (responseData as any)?.id ?? localStorage.getItem('v360_currentGroupId') ?? 'new-group'
+      const groupName = (responseData as any)?.groupName || (responseData as any)?.name || form.name
+      const groupCode = (responseData as any)?.groupCode || (responseData as any)?.code || existingSavedGroup.groupCode || ''
+      const organizationId = (responseData as any)?.organizationId ?? existingSavedGroup.organizationId ?? null
+      const organizationName = (responseData as any)?.organizationName ?? existingSavedGroup.organizationName ?? null
+      const currency = (responseData as any)?.currency || form.currency || 'TZS'
+      const startDate = (responseData as any)?.startDate ?? (responseData as any)?.startedAt ?? (form.startDate || existingSavedGroup.startDate || '')
+      const endDate = (responseData as any)?.endDate ?? (responseData as any)?.endsAt ?? (form.endDate || existingSavedGroup.endDate || '')
+
       const savedGroup = {
-        ...(JSON.parse(localStorage.getItem('v360_currentGroup') || '{}')),
-        id: (responseData as any)?.id ?? (responseData as any)?.groupId ?? localStorage.getItem('v360_currentGroupId') ?? 'new-group',
-        name: form.name,
+        ...existingSavedGroup,
+        id: groupId,
+        groupId: groupId,
+        organizationId,
+        organizationName,
+        groupCode,
+        name: groupName,
+        groupName: groupName,
         phone: form.phone,
         email: form.email,
-        currency: form.currency,
+        currency,
+        startDate,
+        endDate,
       }
 
-      if ((responseData as any)?.id || (responseData as any)?.groupId) {
-        localStorage.setItem('v360_currentGroupId', String((responseData as any)?.id ?? (responseData as any)?.groupId))
-      }
-
+      localStorage.setItem('v360_currentGroupId', String(groupId))
       localStorage.setItem('v360_currentGroup', JSON.stringify(savedGroup))
       localStorage.setItem('v360_group_setup_complete', 'true')
+      localStorage.setItem('v360_group_setup_done', 'true')
 
       setSuccess(true)
-      toast.success((result as any)?.message || 'Group profile and settings saved successfully.')
+      toast.success(apiResponse?.message || 'Group profile and settings saved successfully.')
+
       window.setTimeout(() => {
         setSuccess(false)
         router.push('/app/dashboard')
-      }, 1200)
+        window.location.reload()
+      }, 700)
     } catch (error) {
       console.error(error)
       toast.error(error instanceof Error ? error.message : 'Unable to save group settings.')
@@ -116,7 +171,7 @@ export default function GroupSettingsPage() {
         <h1 className="text-2xl font-black text-neutral-900 mt-2">Group Settings</h1>
         <p className="text-xs text-neutral-400">Configure the cooperative rules, contribution bands, share values, and default finance settings.</p>
         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">
-          Complete your VIKOBA group setup to continue.
+          A Kikoba group cycle lasts about one year. Please set the start date and the end date for the current cycle before continuing.
         </div>
       </div>
 
@@ -152,6 +207,26 @@ export default function GroupSettingsPage() {
                 <option value="KES">KES (Kenyan Shilling)</option>
                 <option value="USD">USD (US Dollar)</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Kikoba Start Date</label>
+              <input
+                type="date"
+                required
+                value={form.startDate}
+                onChange={e => setForm({ ...form, startDate: e.target.value })}
+                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Kikoba End Date</label>
+              <input
+                type="date"
+                required
+                value={form.endDate}
+                onChange={e => setForm({ ...form, endDate: e.target.value })}
+                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-neutral-700 mb-1.5">Group Phone</label>

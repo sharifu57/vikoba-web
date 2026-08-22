@@ -45,9 +45,44 @@ export const authService = {
       auth: false,
     }),
   saveSession: (response: ApiResponse<unknown>) => {
-    const user = (response as ApiResponse<UserSession>)?.data ?? null;
-    if (response?.token) {
-      setAuthTokens(response.token, response.refreshToken || null);
+    const payload = response as Record<string, unknown> & {
+      data?: UserSession;
+      token?: string | null;
+      accessToken?: string | null;
+      refreshToken?: string | null;
+      expired?: string | null;
+    };
+
+    const user = payload?.data ?? null;
+    const dataRecord = (payload?.data ?? null) as Record<
+      string,
+      unknown
+    > | null;
+    const tokenValue =
+      typeof payload?.token === "string"
+        ? payload.token
+        : typeof dataRecord?.token === "string"
+          ? dataRecord.token
+          : typeof payload?.accessToken === "string"
+            ? payload.accessToken
+            : typeof dataRecord?.accessToken === "string"
+              ? dataRecord.accessToken
+              : null;
+    const refreshTokenValue =
+      typeof payload?.refreshToken === "string"
+        ? payload.refreshToken
+        : typeof dataRecord?.refreshToken === "string"
+          ? dataRecord.refreshToken
+          : null;
+    const expiredValue =
+      typeof payload?.expired === "string"
+        ? payload.expired
+        : typeof dataRecord?.expired === "string"
+          ? dataRecord.expired
+          : null;
+
+    if (tokenValue) {
+      setAuthTokens(tokenValue, refreshTokenValue || null);
       if (user) {
         const normalizedUser = {
           id: user.id ?? null,
@@ -66,9 +101,9 @@ export const authService = {
             "v360_session",
             JSON.stringify({
               user: normalizedUser,
-              accessToken: response.token,
-              refreshToken: response.refreshToken || null,
-              expired: response.expired || null,
+              accessToken: tokenValue,
+              refreshToken: refreshTokenValue || null,
+              expired: expiredValue || null,
             }),
           );
         }
@@ -104,6 +139,8 @@ export type GroupProfileSettingsPayload = {
   phone?: string | null;
   email?: string | null;
   currency?: string;
+  startDate?: string | null;
+  endDate?: string | null;
   settings?: GroupSettingsPayload;
 };
 

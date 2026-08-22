@@ -10,7 +10,7 @@ export default function AppPage() {
     if (typeof window === 'undefined') return
 
     const token = localStorage.getItem('v360_access_token')
-    const setupComplete = localStorage.getItem('v360_group_setup_complete') === 'true'
+    const setupComplete = localStorage.getItem('v360_group_setup_complete') === 'true' || localStorage.getItem('v360_group_setup_done') === 'true'
 
     if (token && !setupComplete) {
       router.replace('/app/settings')

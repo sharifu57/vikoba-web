@@ -8,8 +8,19 @@ import { useLanguage, type Locale } from '@/lib/i18n'
 import {
   LayoutDashboard, Users, CalendarDays, WalletCards, BarChart3,
   CreditCard, HandCoins, BookOpen, CircleDollarSign, AlertCircle,
-  FileText, ShieldCheck, Settings, LogOut, Search, Bell, ChevronDown, Menu, X, MoreHorizontal
+  FileText, ShieldCheck, Settings, LogOut, Search, Bell, ChevronDown, Menu, X, MoreHorizontal,
+  TriangleAlert
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { clearVikobaLocalState } from '@/lib/api/client'
 
 // Main Layout component wrapped inside Provider
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -27,10 +38,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [groupDropdownOpen, setGroupDropdownOpen] = useState(false)
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [user, setUser] = useState({
     id: null,
-    name: 'Juma Majid',
-    username: 'Juma Majid',
+    name: 'User',
+    username: 'User',
     email: '',
     phone: '',
     role: 'Administrator',
@@ -66,15 +78,41 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           status: currentUser.status || 'ACTIVE'
         })
       }
+
+      const storedGroup = localStorage.getItem('v360_currentGroup')
+      if (storedGroup) {
+        try {
+          const parsedGroup = JSON.parse(storedGroup)
+          const groupId = String(parsedGroup?.id ?? parsedGroup?.groupId ?? currentGroupId)
+          const groupName = parsedGroup?.groupName || parsedGroup?.name || 'My Group'
+
+          if (groupId) {
+            setCurrentGroupId(groupId)
+            localStorage.setItem('v360_currentGroupId', String(groupId))
+          }
+
+          if (groupName && currentGroup?.name !== groupName) {
+            localStorage.setItem('v360_currentGroup', JSON.stringify({
+              ...parsedGroup,
+              id: groupId,
+              name: groupName,
+              groupName,
+              currency: parsedGroup?.currency || 'TZS',
+            }))
+          }
+        } catch {
+          // ignore malformed stored group data
+        }
+      }
     }
-  }, [])
+  }, [currentGroupId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const protectedRoutes = ['/app/dashboard', '/app/members', '/app/meetings', '/app/contributions', '/app/shares', '/app/payments', '/app/expenses', '/app/finance', '/app/loans', '/app/loans/applications', '/app/social-fund', '/app/fines', '/app/reports', '/app/users', '/app/roles', '/app/settings']
     const token = localStorage.getItem('v360_access_token')
-    const setupComplete = localStorage.getItem('v360_group_setup_complete') === 'true'
+    const setupComplete = localStorage.getItem('v360_group_setup_complete') === 'true' || localStorage.getItem('v360_group_setup_done') === 'true'
     const isProtectedRoute = protectedRoutes.some(route => pathname === route || pathname.startsWith(route))
 
     if (token && !setupComplete && isProtectedRoute && pathname !== '/app/settings') {
@@ -88,15 +126,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   }
 
   const handleSignOut = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('v360_user')
-      localStorage.removeItem('v360_session')
-      localStorage.removeItem('v360_access_token')
-      localStorage.removeItem('v360_refresh_token')
-      localStorage.removeItem('v360_group_setup_complete')
-      localStorage.removeItem('v360_currentGroup')
-      localStorage.removeItem('v360_currentGroupId')
-    }
+    if (typeof window === 'undefined') return
+
+    clearVikobaLocalState()
+
+    setShowSignOutDialog(false)
     router.push('/')
   }
 
@@ -265,12 +299,30 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             <span>Settings</span>
           </Link>
           <button
-            onClick={handleSignOut}
+            type="button"
+            onClick={() => setShowSignOutDialog(true)}
             className="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 text-left w-full transition"
           >
             <LogOut size={16} />
             <span>Sign Out</span>
           </button>
+          <Dialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+            <DialogContent>
+              <DialogHeader className="space-y-3">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600">
+                  <TriangleAlert size={20} />
+                </div>
+                <DialogTitle className="text-center text-xl font-black text-neutral-900">Sign out?</DialogTitle>
+                <DialogDescription className="text-center text-sm text-neutral-500">
+                  You will be signed out of VIKOBA360. Your saved session and group setup state will remain protected until you sign in again.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-6 sm:justify-between">
+                <Button variant="outline" type="button" onClick={() => setShowSignOutDialog(false)} className="flex-1 sm:flex-none">Cancel</Button>
+                <Button type="button" onClick={handleSignOut} className="flex-1 bg-red-600 text-white hover:bg-red-700 sm:flex-none">Sign out</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </aside>
 
@@ -355,12 +407,29 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             <div className="profile flex items-center gap-3">
               <button
                 type="button"
-                onClick={handleSignOut}
+                onClick={() => setShowSignOutDialog(true)}
                 className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#dfe8e2] bg-[#f8faf8] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-neutral-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
               >
                 <LogOut size={14} />
                 Logout
               </button>
+              <Dialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+                <DialogContent>
+                  <DialogHeader className="space-y-3">
+                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600">
+                      <TriangleAlert size={20} />
+                    </div>
+                    <DialogTitle className="text-center text-xl font-black text-neutral-900">Sign out?</DialogTitle>
+                    <DialogDescription className="text-center text-sm text-neutral-500">
+                      This will end your current VIKOBA360 session. You can sign back in any time.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="mt-6 sm:justify-between">
+                    <Button variant="outline" type="button" onClick={() => setShowSignOutDialog(false)} className="flex-1 sm:flex-none">Cancel</Button>
+                    <Button type="button" onClick={handleSignOut} className="flex-1 bg-red-600 text-white hover:bg-red-700 sm:flex-none">Confirm</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <div className="profile-avatar w-8 h-8 rounded-full bg-[#eaf6ef] text-[#087f5b] font-bold text-xs flex items-center justify-center">
                 {user.name.split(' ').map(n => n[0]).join('')}
               </div>

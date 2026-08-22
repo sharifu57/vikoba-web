@@ -8,6 +8,7 @@ import { ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { clearVikobaLocalState } from '@/lib/api/client'
 import { authService } from '@/lib/api/services'
 
 function Logo({ light = false }: { light?: boolean }) {
@@ -57,6 +58,10 @@ export default function RegisterPage() {
       toast.success(message)
 
       if (typeof window !== 'undefined') {
+        const hasExistingState = Boolean(localStorage.getItem('v360_access_token') || localStorage.getItem('v360_group_setup_complete') || localStorage.getItem('v360_group_setup_done'))
+        if (hasExistingState) {
+          clearVikobaLocalState()
+        }
         localStorage.setItem('v360_user', JSON.stringify({
           name: payload.fullName,
           role: 'Administrator',

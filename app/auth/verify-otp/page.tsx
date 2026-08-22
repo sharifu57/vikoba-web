@@ -7,6 +7,7 @@ import { ArrowRight, ShieldCheck, TimerReset } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { clearVikobaLocalState } from '@/lib/api/client'
 import { authService } from '@/lib/api/services'
 
 export default function VerifyOtpPage() {
@@ -91,7 +92,7 @@ function VerifyOtpContent() {
 
       toast.success(result?.message || 'OTP verified successfully.')
 
-      const setupComplete = typeof window !== 'undefined' && localStorage.getItem('v360_group_setup_complete') === 'true'
+      const setupComplete = typeof window !== 'undefined' && (localStorage.getItem('v360_group_setup_complete') === 'true' || localStorage.getItem('v360_group_setup_done') === 'true')
 
       if (action === 'register') {
         router.push(setupComplete ? '/app/dashboard' : '/app/settings')
