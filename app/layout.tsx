@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Raleway } from "next/font/google";
 import './globals.css';
 import { QueryProvider } from '@/components/query-provider';
+import { LanguageProvider } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   title: 'VIKOBA360 — Manage Your VIKOBA. Grow Together.',
@@ -25,12 +26,14 @@ export const viewport: Viewport = {
 
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className="bg-background">
+  return <html lang="sw" className="bg-background">
     <body className={inter.className}>
-      <QueryProvider>
-        {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
-      </QueryProvider>
+      <LanguageProvider>
+        <QueryProvider>
+          {children}
+          {process.env.NODE_ENV === 'production' && <Analytics />}
+        </QueryProvider>
+      </LanguageProvider>
     </body>
   </html>
 }

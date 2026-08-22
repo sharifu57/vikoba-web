@@ -2,14 +2,22 @@
 
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useRef } from 'react'
+import { useState, useRef, Suspense } from 'react'
 import { ArrowRight, ShieldAlert } from 'lucide-react'
 
 export default function VerifyOtpPage() {
+  return (
+    <Suspense fallback={<div className="auth-page min-h-screen bg-[#f7f9f7] flex items-center justify-center p-6"><div className="bg-white border border-[#dfe8e2] rounded-2xl p-6 md:p-10 shadow-sm max-w-md w-full text-center text-sm font-semibold text-neutral-500">Loading...</div></div>}>
+      <VerifyOtpContent />
+    </Suspense>
+  )
+}
+
+function VerifyOtpContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const action = searchParams.get('action')
-  
+
   const [otp, setOtp] = useState(['', '', '', ''])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,7 +28,7 @@ export default function VerifyOtpPage() {
     const newOtp = [...otp]
     newOtp[index] = val.substring(val.length - 1)
     setOtp(newOtp)
-    
+
     // Focus next input
     if (val && index < 3) {
       refs[index + 1].current?.focus()
@@ -40,10 +48,10 @@ export default function VerifyOtpPage() {
       setError('Please enter the full 4-digit code.')
       return
     }
-    
+
     setLoading(true)
     setError('')
-    
+
     setTimeout(() => {
       setLoading(false)
       // Standard demo verification
@@ -77,7 +85,7 @@ export default function VerifyOtpPage() {
         <form onSubmit={handleVerify} className="flex flex-col gap-5">
           <div className="flex justify-center gap-3">
             {otp.map((digit, idx) => (
-              <input 
+              <input
                 key={idx}
                 ref={refs[idx]}
                 type="text"
@@ -93,7 +101,7 @@ export default function VerifyOtpPage() {
             ))}
           </div>
 
-          <button 
+          <button
             type="submit"
             disabled={loading}
             className="w-full py-3 bg-[#087f5b] hover:bg-[#066b4c] text-white font-extrabold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 transition disabled:opacity-50"

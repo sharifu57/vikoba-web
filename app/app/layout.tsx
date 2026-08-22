@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { VikobaStoreProvider, useVikobaStore } from '@/lib/mockStore'
+import { useLanguage, type Locale } from '@/lib/i18n'
 import {
   LayoutDashboard, Users, CalendarDays, WalletCards, BarChart3,
   CreditCard, HandCoins, BookOpen, CircleDollarSign, AlertCircle,
@@ -22,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { locale, setLocale, t } = useLanguage()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [groupDropdownOpen, setGroupDropdownOpen] = useState(false)
@@ -63,11 +65,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const navItems = [
     { label: 'Overview', isHeader: true },
     { label: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard },
-    
+
     { label: 'VIKOBA Group', isHeader: true },
     { label: 'Members', path: '/app/members', icon: Users },
     { label: 'Meetings', path: '/app/meetings', icon: CalendarDays },
-    
+
     { label: 'Finance Management', isHeader: true },
     { label: 'Contributions', path: '/app/contributions', icon: WalletCards },
     { label: 'Shares (Hisa)', path: '/app/shares', icon: BarChart3 },
@@ -121,7 +123,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
           {/* Group Switcher dropdown */}
           <div className="relative mt-4 px-1">
-            <button 
+            <button
               onClick={() => setGroupDropdownOpen(!groupDropdownOpen)}
               className="group-switch w-full flex items-center justify-between bg-[#f2f8f3] border border-[#dfece1] hover:border-[#8bc6a7] rounded-xl p-3 text-left transition select-none cursor-pointer"
             >
@@ -138,7 +140,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             {groupDropdownOpen && (
               <div className="absolute left-1 right-1 top-[56px] bg-white border border-[#dfe8e2] rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5">
                 {groups.map(g => (
-                  <button 
+                  <button
                     key={g.id}
                     onClick={() => handleGroupSelect(g.id)}
                     className={`w-full text-left p-2.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-[#f3f8f4] ${g.id === currentGroupId ? 'bg-[#eaf6ef] text-[#087f5b]' : 'text-neutral-600'}`}
@@ -165,7 +167,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               const ItemIcon = item.icon!
 
               return (
-                <Link 
+                <Link
                   key={idx}
                   href={item.path!}
                   onClick={() => setMobileOpen(false)}
@@ -195,7 +197,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                   const ItemIcon = item.icon!
 
                   return (
-                    <Link 
+                    <Link
                       key={idx}
                       href={item.path!}
                       onClick={() => setMobileOpen(false)}
@@ -213,7 +215,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
         {/* Sidebar Footer settings / logout */}
         <div className="side-footer pt-3 border-t border-[#dfe8e2]/60 flex flex-col gap-1">
-          <Link 
+          <Link
             href="/app/settings"
             onClick={() => setMobileOpen(false)}
             className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold ${pathname === '/app/settings' ? 'bg-[#e6f5eb] text-[#087f5b]' : 'text-[#697a71] hover:bg-[#f3f8f4]'}`}
@@ -221,7 +223,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             <Settings size={16} />
             <span>Settings</span>
           </Link>
-          <button 
+          <button
             onClick={handleSignOut}
             className="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 text-left w-full transition"
           >
@@ -233,7 +235,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
       {/* Backdrop for mobile drawer */}
       {mobileOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-[#122b1c]/30 backdrop-blur-[2px] z-40 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
@@ -248,17 +250,30 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             </button>
             <div className="search-box hidden sm:flex items-center gap-2 px-3 py-1.5 border border-[#dfe8e2] rounded-lg bg-[#fcfdfc] w-64">
               <Search size={14} className="text-neutral-400" />
-              <input 
-                type="text" 
-                placeholder="Search code, member, transaction..." 
+              <input
+                type="text"
+                placeholder="Search code, member, transaction..."
                 className="bg-transparent border-0 outline-none text-xs w-full text-neutral-700"
               />
             </div>
           </div>
 
           <div className="header-right flex items-center gap-5 relative">
+            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#dfe8e2] bg-[#fcfdfc] px-2 py-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{t('common.language')}</span>
+              <select
+                value={locale}
+                onChange={(e) => setLocale(e.target.value as Locale)}
+                className="bg-transparent text-xs font-semibold text-neutral-700 outline-none cursor-pointer"
+                aria-label="Language switcher"
+              >
+                <option value="sw">{t('common.swahili')}</option>
+                <option value="en">{t('common.english')}</option>
+              </select>
+            </div>
+
             {/* Notifications Hub */}
-            <button 
+            <button
               onClick={() => {
                 setNotificationsOpen(!notificationsOpen)
                 if (!notificationsOpen && unreadNotifications.length > 0) {
@@ -331,7 +346,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             <HandCoins size={18} />
             <span>Loans</span>
           </Link>
-          <button 
+          <button
             onClick={() => setMobileOpen(true)}
             className="flex flex-col items-center justify-center gap-1 text-[9px] font-bold text-neutral-400"
           >

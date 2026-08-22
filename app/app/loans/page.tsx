@@ -3,14 +3,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useVikobaStore } from '@/lib/mockStore'
-import { PlusCircle, Search, Landmark, Coins, HeartHandshake, Eye, BookOpen, X } from 'lucide-react'
+import { PlusCircle, Search, Landmark, Coins, HeartHandshake, Eye, BookOpen, X, ArrowRight } from 'lucide-react'
 
 export default function LoansDashboard() {
-  const { 
-    loans, 
-    members, 
-    currentGroup, 
-    applyLoan 
+  const {
+    loans,
+    members,
+    currentGroup,
+    applyLoan
   } = useVikobaStore()
 
   // Modal State
@@ -36,7 +36,7 @@ export default function LoansDashboard() {
   const activeLoans = loans.filter(l => {
     if (l.groupId !== currentGroup.id) return false
     if (l.status !== 'DISBURSED') return false
-    
+
     const memberName = members.find(m => m.id === l.memberId)?.name || ''
     return memberName.toLowerCase().includes(search.toLowerCase())
   })
@@ -97,13 +97,13 @@ export default function LoansDashboard() {
           <p className="text-xs text-neutral-400">Review disbursed credit loans, principal collections, and defaults.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Link 
+          <Link
             href="/app/loans/applications"
             className="flex-1 sm:flex-none px-4 py-2.5 border border-[#dfe8e2] hover:bg-neutral-50 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
           >
             <BookOpen size={14} /> Review Applications ({pendingAppsCount})
           </Link>
-          <button 
+          <button
             onClick={() => setModalOpen(true)}
             className="flex-1 sm:flex-none px-4 py-2.5 bg-[#087f5b] hover:bg-[#066b4c] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
           >
@@ -145,9 +145,9 @@ export default function LoansDashboard() {
         <div className="p-4 border-b border-neutral-100 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <h3 className="font-extrabold text-neutral-800 text-sm">Disbursed Active Loans</h3>
           <div className="relative w-full sm:w-64">
-            <input 
-              type="text" 
-              placeholder="Search by name..." 
+            <input
+              type="text"
+              placeholder="Search by name..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full border border-[#dfe8e2] rounded-lg p-2 pl-8 text-xs outline-none focus:border-[#087f5b]"
@@ -264,7 +264,7 @@ export default function LoansDashboard() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 mb-1.5">Requested Amount *</label>
-                  <input 
+                  <input
                     type="number"
                     required
                     min={10000}
@@ -277,7 +277,7 @@ export default function LoansDashboard() {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 mb-1.5">Loan Purpose / Remarks *</label>
-                <input 
+                <input
                   type="text"
                   required
                   placeholder="e.g. Constructing poultry coop"
@@ -318,15 +318,15 @@ export default function LoansDashboard() {
               </div>
 
               <div className="flex gap-3 justify-end pt-3 border-t border-neutral-100">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setModalOpen(false)}
                   className="px-4 py-2 border border-[#dfe8e2] rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-50"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="px-4 py-2 bg-[#087f5b] hover:bg-[#066b4c] text-white rounded-lg text-xs font-bold"
                 >
                   Submit Application
