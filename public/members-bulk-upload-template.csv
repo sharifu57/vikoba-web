@@ -1,0 +1,4 @@
+firstName,lastName,phone,email,role
+Juma,Majid,255712345678,juma.majid@example.com,MEMBER
+Neema,Mashauri,255713456789,neema.mashauri@example.com,TREASURER
+Baraka,Mwinyi,255714567890,baraka.mwinyi@example.com,LOAN_OFFICER

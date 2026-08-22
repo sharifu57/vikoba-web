@@ -146,12 +146,25 @@ export type GroupProfileSettingsPayload = {
 
 export type Member = {
   id: string;
-  name: string;
+  name?: string;
   memberNo?: string;
-  groupId: string;
+  groupId?: string;
   phone?: string;
   status?: string;
   role?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  membershipNumber?: string;
+  membershipType?: string;
+  joinedDate?: string;
+  fullName?: string;
+};
+
+export type MemberRoleOption = {
+  value: string;
+  label: string;
+  description?: string;
 };
 
 export type Contribution = {
@@ -247,14 +260,33 @@ export const groupService = {
 };
 
 export const memberService = {
-  list: (groupId?: string) =>
-    apiGet<Member[]>(API_ENDPOINTS.members, groupId ? { groupId } : undefined),
-  getById: (id: string) => apiGet<Member>(`${API_ENDPOINTS.members}/${id}`),
-  create: (payload: Partial<Member>) =>
-    apiPost<Member>(API_ENDPOINTS.members, payload),
+  list: (groupId?: string) => {
+    if (!groupId) {
+      return apiGet<Member[]>(API_ENDPOINTS.members, undefined, { auth: true });
+    }
+
+    return apiGet<Member[]>(
+      `${API_ENDPOINTS.members}/group/${groupId}`,
+      undefined,
+      {
+        auth: true,
+      },
+    );
+  },
+  getRoles: () =>
+    apiGet<MemberRoleOption[]>(`${API_ENDPOINTS.members}/roles`, undefined, {
+      auth: true,
+    }),
+  getById: (id: string) =>
+    apiGet<Member>(`${API_ENDPOINTS.members}/${id}`, undefined, { auth: true }),
+  create: (payload: Record<string, unknown>) =>
+    apiPost<Record<string, unknown>>(`${API_ENDPOINTS.members}`, payload, {
+      auth: true,
+    }),
   update: (id: string, payload: Partial<Member>) =>
-    apiPut<Member>(`${API_ENDPOINTS.members}/${id}`, payload),
-  remove: (id: string) => apiDelete(`${API_ENDPOINTS.members}/${id}`),
+    apiPut<Member>(`${API_ENDPOINTS.members}/${id}`, payload, { auth: true }),
+  remove: (id: string) =>
+    apiDelete(`${API_ENDPOINTS.members}/${id}`, { auth: true }),
 };
 
 export const contributionService = {

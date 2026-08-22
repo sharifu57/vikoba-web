@@ -22,7 +22,7 @@ export interface Member {
   id: string
   groupId: string
   name: string
-  memberNo: string
+  memberNo?: string
   phone: string
   email: string
   role: 'Administrator' | 'Treasurer' | 'Loan Officer' | 'Member'
@@ -62,12 +62,12 @@ export interface Loan {
   memberId: string
   loanProduct: string
   amount: number
-  interestRate: number // e.g. 10%
+  interestRate?: number // e.g. 10%
   principal: number
   interest: number
   totalPaid: number
   remainingBalance: number
-  requestedDate: string
+  requestedDate?: string
   guarantors: string[]
   status: 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'DISBURSED'
   purpose: string
@@ -97,7 +97,7 @@ export interface Fine {
   fineType: 'Late Meeting' | 'Absence' | 'Late Contribution' | 'Late Loan Payment' | 'Other'
   amount: number
   paid: number
-  outstanding: number
+  outstanding?: number
   date: string
   status: 'PAID' | 'UNPAID' | 'WAIVED'
 }
@@ -144,7 +144,7 @@ export interface Payment {
   type: 'Contribution' | 'Loan Repayment' | 'Share Purchase' | 'Fine Payment' | 'Jamii Contribution' | 'Expense'
   method: 'Cash' | 'Bank' | 'Mobile Money' | 'Control Number'
   date: string
-  status: 'COMPLETED' | 'PENDING' | 'FAILED' | 'REVERSED'
+  status?: 'COMPLETED' | 'PENDING' | 'FAILED' | 'REVERSED'
 }
 
 export interface Expense {

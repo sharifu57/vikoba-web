@@ -17,7 +17,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
   } = useVikobaStore()
 
   const meeting = meetings.find(m => m.id === id && m.groupId === currentGroup.id)
-  
+
   // State to hold temporary register list
   const [register, setRegister] = useState<Omit<Attendance, 'id'>[]>([])
 
@@ -114,13 +114,13 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
         </div>
 
         <div className="flex gap-2 w-full md:w-auto">
-          <button 
+          <button
             onClick={handleMarkAllPresent}
             className="flex-1 md:flex-none px-4 py-2.5 border border-[#dfe8e2] hover:bg-neutral-50 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
           >
             <CheckSquare size={14} /> Mark All Present
           </button>
-          <button 
+          <button
             onClick={handleSave}
             className="flex-1 md:flex-none px-4 py-2.5 bg-[#087f5b] hover:bg-[#066b4c] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
           >
@@ -159,9 +159,9 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                       </div>
                     </td>
                     <td className="p-4">
-                      <input 
-                        type="text" 
-                        placeholder="e.g. 09:55 AM" 
+                      <input
+                        type="text"
+                        placeholder="e.g. 09:55 AM"
                         disabled={item.status === 'ABSENT' || item.status === 'EXCUSED'}
                         value={item.arrivalTime}
                         onChange={e => {
@@ -180,13 +180,12 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                               key={st}
                               type="button"
                               onClick={() => handleStatusChange(item.memberId, st)}
-                              className={`px-2 py-1 rounded text-[9px] font-bold transition ${
-                                active && st === 'PRESENT' ? 'bg-[#087f5b] text-white' :
-                                active && st === 'LATE' ? 'bg-[#d99521] text-white' :
-                                active && st === 'ABSENT' ? 'bg-red-600 text-white' :
-                                active && st === 'EXCUSED' ? 'bg-blue-600 text-white' :
-                                'text-neutral-400 hover:text-neutral-700'
-                              }`}
+                              className={`px-2 py-1 rounded text-[9px] font-bold transition ${active && st === 'PRESENT' ? 'bg-[#087f5b] text-white' :
+                                  active && st === 'LATE' ? 'bg-[#d99521] text-white' :
+                                    active && st === 'ABSENT' ? 'bg-red-600 text-white' :
+                                      active && st === 'EXCUSED' ? 'bg-blue-600 text-white' :
+                                        'text-neutral-400 hover:text-neutral-700'
+                                }`}
                             >
                               {st}
                             </button>
@@ -195,7 +194,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                       </div>
                     </td>
                     <td className="p-4">
-                      <input 
+                      <input
                         type="text"
                         placeholder="e.g. Funeral excuse"
                         value={item.reason}
@@ -204,8 +203,8 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                       />
                     </td>
                     <td className="p-4 font-black text-right text-neutral-800">
-                      {item.fineAmount > 0 ? (
-                        <span className="text-red-500">+{currentGroup.currency} {item.fineAmount.toLocaleString()}</span>
+                      {(Number(item.fineAmount ?? 0) > 0) ? (
+                        <span className="text-red-500">+{currentGroup.currency} {Number(item.fineAmount ?? 0).toLocaleString()}</span>
                       ) : (
                         <span className="text-neutral-300">—</span>
                       )}
