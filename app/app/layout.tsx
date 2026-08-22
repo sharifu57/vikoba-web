@@ -27,7 +27,15 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [groupDropdownOpen, setGroupDropdownOpen] = useState(false)
-  const [user, setUser] = useState({ name: 'Juma Majid', role: 'Administrator' })
+  const [user, setUser] = useState({
+    id: null,
+    name: 'Juma Majid',
+    username: 'Juma Majid',
+    email: '',
+    phone: '',
+    role: 'Administrator',
+    status: 'ACTIVE'
+  })
 
   const {
     groups,
@@ -40,12 +48,39 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('v360_user')
-      if (stored) {
-        setUser(JSON.parse(stored))
+      const sessionStorage = localStorage.getItem('v360_session')
+      const userStorage = localStorage.getItem('v360_user')
+
+      const parsedSession = sessionStorage ? JSON.parse(sessionStorage) : null
+      const parsedUser = userStorage ? JSON.parse(userStorage) : null
+      const currentUser = parsedSession?.user || parsedUser || null
+
+      if (currentUser) {
+        setUser({
+          id: currentUser.id ?? null,
+          name: currentUser.name || currentUser.username || 'User',
+          username: currentUser.username || currentUser.name || 'User',
+          email: currentUser.email || '',
+          phone: currentUser.phone || '',
+          role: currentUser.role || 'Administrator',
+          status: currentUser.status || 'ACTIVE'
+        })
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const protectedRoutes = ['/app/dashboard', '/app/members', '/app/meetings', '/app/contributions', '/app/shares', '/app/payments', '/app/expenses', '/app/finance', '/app/loans', '/app/loans/applications', '/app/social-fund', '/app/fines', '/app/reports', '/app/users', '/app/roles', '/app/settings']
+    const token = localStorage.getItem('v360_access_token')
+    const setupComplete = localStorage.getItem('v360_group_setup_complete') === 'true'
+    const isProtectedRoute = protectedRoutes.some(route => pathname === route || pathname.startsWith(route))
+
+    if (token && !setupComplete && isProtectedRoute && pathname !== '/app/settings') {
+      router.replace('/app/settings')
+    }
+  }, [pathname, router])
 
   const handleGroupSelect = (id: string) => {
     setCurrentGroupId(id)
@@ -55,6 +90,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const handleSignOut = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('v360_user')
+      localStorage.removeItem('v360_session')
+      localStorage.removeItem('v360_access_token')
+      localStorage.removeItem('v360_refresh_token')
+      localStorage.removeItem('v360_group_setup_complete')
+      localStorage.removeItem('v360_currentGroup')
+      localStorage.removeItem('v360_currentGroupId')
     }
     router.push('/')
   }
@@ -312,6 +353,14 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
             {/* Profile widget */}
             <div className="profile flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#dfe8e2] bg-[#f8faf8] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-neutral-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+              >
+                <LogOut size={14} />
+                Logout
+              </button>
               <div className="profile-avatar w-8 h-8 rounded-full bg-[#eaf6ef] text-[#087f5b] font-bold text-xs flex items-center justify-center">
                 {user.name.split(' ').map(n => n[0]).join('')}
               </div>

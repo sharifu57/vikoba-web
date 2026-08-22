@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Raleway } from "next/font/google";
+import { Toaster } from 'sonner';
 import './globals.css';
 import { QueryProvider } from '@/components/query-provider';
 import { LanguageProvider } from '@/lib/i18n';
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <LanguageProvider>
         <QueryProvider>
           {children}
+          <Toaster position="top-right" richColors closeButton expand />
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </QueryProvider>
       </LanguageProvider>

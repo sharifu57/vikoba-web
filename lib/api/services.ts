@@ -1,12 +1,110 @@
 import { API_ENDPOINTS } from "./endpoints";
-import { apiDelete, apiGet, apiPost, apiPut } from "./client";
+import { apiDelete, apiGet, apiPost, apiPut, setAuthTokens } from "./client";
+
+export type UserSession = {
+  id?: string | number | null;
+  username?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  status?: string | null;
+  lastLoginAt?: string | null;
+};
+
+export type ApiResponse<T> = {
+  status?: boolean;
+  message?: string;
+  token?: string | null;
+  refreshToken?: string | null;
+  expired?: string | null;
+  data?: T;
+};
+
+export const authService = {
+  login: (payload: { phone: string }) =>
+    apiPost<ApiResponse<{ status: string | null }>>(
+      API_ENDPOINTS.auth.login,
+      payload,
+      {
+        auth: false,
+      },
+    ),
+  register: (payload: { fullName: string; email: string; phone: string }) =>
+    apiPost<ApiResponse<{ status: string | null }>>(
+      API_ENDPOINTS.auth.register,
+      payload,
+      {
+        auth: false,
+      },
+    ),
+  verifyOtp: (payload: { phone: string; code: string; purpose?: string }) =>
+    apiPost<ApiResponse<UserSession>>(API_ENDPOINTS.auth.verifyOtp, payload, {
+      auth: false,
+    }),
+  resendOtp: (payload: { phone: string; purpose?: string }) =>
+    apiPost<ApiResponse<null>>(API_ENDPOINTS.auth.resendOtp, payload, {
+      auth: false,
+    }),
+  saveSession: (response: ApiResponse<unknown>) => {
+    const user = (response as ApiResponse<UserSession>)?.data ?? null;
+    if (response?.token) {
+      setAuthTokens(response.token, response.refreshToken || null);
+      if (user) {
+        const normalizedUser = {
+          id: user.id ?? null,
+          name: user.username || user.email || user.phone || "User",
+          username: user.username || user.email || user.phone || "User",
+          email: user.email || "",
+          phone: user.phone || "",
+          role: "Administrator",
+          status: user.status || "ACTIVE",
+          lastLoginAt: user.lastLoginAt || null,
+        };
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem("v360_user", JSON.stringify(normalizedUser));
+          localStorage.setItem(
+            "v360_session",
+            JSON.stringify({
+              user: normalizedUser,
+              accessToken: response.token,
+              refreshToken: response.refreshToken || null,
+              expired: response.expired || null,
+            }),
+          );
+        }
+      }
+    }
+    return response;
+  },
+};
 
 export type Group = {
   id: string;
   name: string;
   currency: string;
+  phone?: string | null;
+  email?: string | null;
   region?: string;
   createdAt?: string;
+};
+
+export type GroupSettingsPayload = {
+  minimumContribution?: number;
+  maximumContribution?: number;
+  sharePrice?: number;
+  maximumSharesPerMember?: number;
+  loanMultiplier?: number;
+  defaultInterestRate?: number;
+  defaultLoanDurationMonths?: number;
+  latePaymentFine?: number;
+};
+
+export type GroupProfileSettingsPayload = {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  currency?: string;
+  settings?: GroupSettingsPayload;
 };
 
 export type Member = {
@@ -103,8 +201,11 @@ export const groupService = {
   getById: (id: string) => apiGet<Group>(`${API_ENDPOINTS.groups}/${id}`),
   create: (payload: Partial<Group>) =>
     apiPost<Group>(API_ENDPOINTS.groups, payload),
-  update: (id: string, payload: Partial<Group>) =>
-    apiPut<Group>(`${API_ENDPOINTS.groups}/${id}`, payload),
+  saveProfileAndSettings: (payload: GroupProfileSettingsPayload) => {
+    return apiPost<Group>(`${API_ENDPOINTS.groups}/setup`, payload, {
+      auth: true,
+    });
+  },
   remove: (id: string) => apiDelete(`${API_ENDPOINTS.groups}/${id}`),
 };
 

@@ -4,10 +4,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { ArrowRight, Phone } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { API_ENDPOINTS, buildApiUrl } from '@/lib/api/endpoints'
+import { authService } from '@/lib/api/services'
 
 function Logo({ light = false }: { light?: boolean }) {
   return (
@@ -20,46 +21,39 @@ function Logo({ light = false }: { light?: boolean }) {
 
 export default function LoginPage() {
   const router = useRouter()
-  const [form, setForm] = useState({ phone: '' })
+  const [form, setForm] = useState({ phone: '255' })
   const [error, setError] = useState('')
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 12)
+    const normalized = digits.startsWith('255') ? digits : `255${digits.replace(/^255/, '')}`
+    return normalized.slice(0, 12)
+  }
 
   const loginMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const response = await fetch(buildApiUrl(API_ENDPOINTS.auth.login), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      })
-
-      const result = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(result?.message || 'Unable to continue login.')
-      }
-
+      const result = await authService.login({ phone })
       return result
     },
     onSuccess: (result) => {
-      console.log('====>>>Login result:', result)
-      const status = result?.data?.status || result?.status
+      const status = result?.status
+      const message = result?.message || 'Login request accepted. Please continue verification.'
 
-      // if (status === 'NEW') {
-      //   router.push(`/auth/verify-otp?action=register&phone=${encodeURIComponent(form.phone)}`)
-      //   return
-      // }
+      if (status !== true) {
+        const fallbackMessage = result?.message || 'This phone number is not registered for login.'
+        setError(fallbackMessage)
+        toast.error(fallbackMessage)
+        return
+      }
 
-      // if (typeof window !== 'undefined') {
-      //   localStorage.setItem('v360_user', JSON.stringify({
-      //     name: 'Juma Majid',
-      //     role: 'Administrator',
-      //     phone: form.phone,
-      //   }))
-      // }
-
-      // router.push(`/auth/verify-otp?action=login&phone=${encodeURIComponent(form.phone)}`)
+      authService.saveSession(result)
+      toast.success(message)
+      router.push(`/auth/verify-otp?action=login&phone=${encodeURIComponent(form.phone)}`)
     },
     onError: (err: Error) => {
-      setError(err.message || 'Unable to continue login.')
+      const message = err.message || 'Unable to continue login.'
+      setError(message)
+      toast.error(message)
     },
   })
 
@@ -67,8 +61,10 @@ export default function LoginPage() {
     e.preventDefault()
 
     const phone = form.phone.trim()
-    if (!phone) {
-      setError('Please enter your phone number.')
+    if (!/^255\d{9}$/.test(phone)) {
+      const message = 'Please enter a valid phone number starting with 255 and with 9 digits after the prefix.'
+      setError(message)
+      toast.error(message)
       return
     }
 
@@ -77,7 +73,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth-page min-h-screen bg-white">
+    <div className="auth-page min-h-screen">
       {/* Left side: Branding & Quote */}
       <div className="auth-aside bg-secondary text-white p-12 flex flex-col justify-between hidden md:flex">
         <Link href="/" className="auth-logo inline-block">
@@ -126,12 +122,13 @@ export default function LoginPage() {
                 <Input
                   type="tel"
                   required
-                  placeholder="+255 712 345 678"
+                  inputMode="numeric"
+                  maxLength={12}
+                  placeholder="Example: 255712345678"
                   value={form.phone}
-                  onChange={e => setForm({ ...form, phone: e.target.value })}
-                  className="pl-9 h-11 text-sm"
+                  onChange={e => setForm({ ...form, phone: formatPhone(e.target.value) })}
+                  className="pl-9 h-11 text-sm placeholder:text-slate-500 placeholder:font-medium"
                 />
-                {/* <Phone className="absolute left-3 top-3.5 text-neutral-400" size={14} /> */}
               </div>
             </div>
 
