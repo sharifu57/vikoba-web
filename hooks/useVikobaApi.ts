@@ -71,7 +71,8 @@ export function useLoans(groupId?: string) {
 export function useMeetings(groupId?: string) {
   return useQuery({
     queryKey: [...queryKeys.meetings, groupId],
-    queryFn: () => meetingService.list(groupId),
+    queryFn: () =>
+      groupId ? meetingService.listByGroup(groupId) : meetingService.list(),
     staleTime: 30_000,
   });
 }
@@ -211,7 +212,8 @@ export function useCreateMeeting() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: Partial<Meeting>) => meetingService.create(payload),
+    mutationFn: (payload: { groupId: string; data: Partial<Meeting> }) =>
+      meetingService.createForGroup(payload.groupId, payload.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.meetings });
     },

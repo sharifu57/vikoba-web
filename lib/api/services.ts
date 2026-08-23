@@ -403,7 +403,6 @@ export const memberService = {
       { auth: true },
     ),
 };
-
 export type Member360Response = {
   member?: Member | null;
   contributions?: Contribution[];
@@ -451,6 +450,30 @@ export const meetingService = {
   update: (id: string, payload: Partial<Meeting>) =>
     apiPut<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, payload),
   remove: (id: string) => apiDelete(`${API_ENDPOINTS.meetings}/${id}`),
+  listByGroup: (groupId: string) =>
+    apiGet<Meeting[]>(
+      `${API_ENDPOINTS.groups}/${groupId}/meetings`,
+      undefined,
+      {
+        auth: true,
+      },
+    ),
+  createForGroup: (groupId: string, payload: Partial<Meeting>) =>
+    apiPost<Meeting>(`${API_ENDPOINTS.groups}/${groupId}/meetings`, payload, {
+      auth: true,
+    }),
+  recordAttendance: (meetingId: string, payload: any) =>
+    apiPost(`${API_ENDPOINTS.meetings}/${meetingId}/attendance`, payload, {
+      auth: true,
+    }),
+  getAttendance: (meetingId: string) =>
+    apiGet<any[]>(
+      `${API_ENDPOINTS.meetings}/${meetingId}/attendance`,
+      undefined,
+      {
+        auth: true,
+      },
+    ),
 };
 
 export const paymentService = {

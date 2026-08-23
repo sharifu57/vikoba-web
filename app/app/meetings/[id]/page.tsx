@@ -3,82 +3,135 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useVikobaStore, Attendance } from '@/lib/mockStore'
 import { ArrowLeft, Check, CheckSquare } from 'lucide-react'
+import { meetingService, memberService, type Meeting } from '@/lib/api/services'
+
+type AttendanceRow = {
+  memberId: string;
+  status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED';
+  arrivalTime?: string;
+  reason?: string;
+};
 
 export default function MeetingAttendancePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params)
   const router = useRouter()
-  const {
-    meetings,
-    members,
-    currentGroup,
-    saveAttendance
-  } = useVikobaStore()
 
-  const meeting = meetings.find(m => m.id === id && m.groupId === currentGroup.id)
-
-  // State to hold temporary register list
-  const [register, setRegister] = useState<Omit<Attendance, 'id'>[]>([])
+  const [meeting, setMeeting] = useState<Meeting | null>(null)
+  const [members, setMembers] = useState<any[]>([])
+  const [register, setRegister] = useState<AttendanceRow[]>([])
+  const [attendanceTaken, setAttendanceTaken] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    if (meeting && members) {
-      const activeMembers = members.filter(m => m.groupId === currentGroup.id)
-      const list = activeMembers.map(m => ({
-        meetingId: id,
-        memberId: m.id,
-        status: 'PRESENT' as const,
-        arrivalTime: '09:55 AM',
-        fineAmount: 0,
-        reason: ''
-      }))
-      setRegister(list)
-    }
-  }, [meeting, members])
+    let mounted = true
+    meetingService
+      .getById(String(id))
+      .then((raw: any) => {
+        if (!mounted) return
+        // normalize ApiResponse envelope if present
+        const payload = raw as any
+        const meetingObj = Array.isArray(payload) ? payload[0] : payload?.data ?? payload
+        setMeeting(meetingObj as any)
+        const groupId = (meetingObj as any)?.groupId ?? (meetingObj as any)?.group?.id
+        if (groupId) {
+          memberService
+            .list(String(groupId))
+            .then((listRaw: any) => {
+              if (!mounted) return
+              const arr = Array.isArray(listRaw) ? listRaw : listRaw?.data ?? []
+              setMembers(arr as any[])
+              const rows = (arr as any[]).map((mem) => ({
+                memberId: mem.id,
+                status: 'PRESENT' as const,
+                arrivalTime: '',
+                reason: '',
+              }))
+              setRegister(rows)
 
-  const handleStatusChange = (memberId: string, status: Attendance['status']) => {
-    let fineAmt = 0
-    if (status === 'ABSENT') fineAmt = 15000
-    if (status === 'LATE') fineAmt = 5000
-
-    const updated = register.map(item => {
-      if (item.memberId === memberId) {
-        return {
-          ...item,
-          status,
-          fineAmount: fineAmt,
-          arrivalTime: status === 'PRESENT' ? '09:55 AM' : status === 'LATE' ? '10:15 AM' : ''
+              // fetch existing attendance for this meeting
+              meetingService.getAttendance(String(id)).then((attRaw: any) => {
+                const attArr = Array.isArray(attRaw) ? attRaw : attRaw?.data ?? []
+                if (attArr && attArr.length > 0) {
+                  // map attendance to register rows
+                  const updated = rows.map(r => {
+                    const found = attArr.find((a: any) => String(a.groupMemberId) === String(r.memberId))
+                    if (found) {
+                      return {
+                        memberId: r.memberId,
+                        status: found.status ?? r.status,
+                        arrivalTime: found.arrivalTime ? String(found.arrivalTime).split(':').slice(0, 2).join(':') : '',
+                        reason: found.reason ?? '',
+                      }
+                    }
+                    return r
+                  })
+                  setRegister(updated)
+                  setAttendanceTaken(true)
+                }
+              }).catch(() => { })
+            })
+            .catch((err) => {
+              // eslint-disable-next-line no-console
+              console.error('Failed to load members', err)
+            })
         }
-      }
-      return item
-    })
+      })
+      .catch((err: any) => {
+        // handle permission errors or missing auth
+        // eslint-disable-next-line no-console
+        console.error('Failed to load meeting', err);
+        if (err?.status === 403) {
+          alert('Access denied. Please login and try again.');
+          router.push('/app/meetings');
+        }
+      })
+    return () => {
+      mounted = false
+    }
+  }, [id])
+
+  const handleStatusChange = (memberId: string, status: AttendanceRow['status']) => {
+    if (attendanceTaken) return
+    const updated = register.map((r) => r.memberId === memberId ? { ...r, status, arrivalTime: status === 'PRESENT' ? r.arrivalTime ?? '09:55' : status === 'LATE' ? r.arrivalTime ?? '10:15' : '' } : r)
     setRegister(updated)
   }
 
   const handleReasonChange = (memberId: string, reason: string) => {
-    const updated = register.map(item => {
-      if (item.memberId === memberId) {
-        return { ...item, reason }
-      }
-      return item
-    })
+    const updated = register.map((r) => r.memberId === memberId ? { ...r, reason } : r)
     setRegister(updated)
   }
 
   const handleMarkAllPresent = () => {
-    const updated = register.map(item => ({
-      ...item,
-      status: 'PRESENT' as const,
-      arrivalTime: '09:55 AM',
-      fineAmount: 0,
-      reason: ''
-    }))
-    setRegister(updated)
+    if (attendanceTaken) return
+    setRegister((prev) => prev.map(r => ({ ...r, status: 'PRESENT', arrivalTime: r.arrivalTime ?? '09:55', reason: '' })))
   }
 
-  const handleSave = () => {
-    saveAttendance(id, register)
-    router.push('/app/meetings')
+  const handleSave = async () => {
+    if (attendanceTaken) return
+    try {
+      setIsSaving(true)
+      // prepare payload: ensure arrivalTime is HH:mm:ss or null
+      const payload = register.map((r) => {
+        let at = r.arrivalTime?.trim();
+        if (!at) at = null as any;
+        else if (/^\d{1,2}:\d{2}$/.test(at)) at = at + ':00';
+        else if (/^\d{1,2}:\d{2}:\d{2}$/.test(at)) at = at;
+        else at = null as any;
+
+        return { groupMemberId: r.memberId, status: r.status, arrivalTime: at, reason: r.reason };
+      })
+
+      await meetingService.recordAttendance(String(id), payload)
+      setAttendanceTaken(true)
+      setIsSaving(false)
+      router.push('/app/meetings')
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to save attendance', err)
+      setIsSaving(false)
+      alert(err?.message || 'Failed to save attendance')
+    }
   }
 
   if (!meeting) {
@@ -91,6 +144,8 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
       </div>
     )
   }
+
+  const currency = (meeting as any)?.group?.currency ?? 'TZS'
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -109,22 +164,24 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
           </div>
           <h1 className="text-2xl font-black text-neutral-900 mt-2">Take Attendance Register</h1>
           <p className="text-xs text-neutral-400 mt-0.5">
-            Assembly Date: <strong className="text-neutral-700 font-bold">{meeting.date}</strong> · Location: <strong className="text-neutral-500 font-bold">{meeting.location}</strong>
+            Assembly Date: <strong className="text-neutral-700 font-bold">{(meeting as any).meetingDate ?? (meeting as any).date}</strong> · Location: <strong className="text-neutral-500 font-bold">{(meeting as any).location ?? (meeting as any).venue}</strong>
           </p>
         </div>
 
         <div className="flex gap-2 w-full md:w-auto">
           <button
             onClick={handleMarkAllPresent}
-            className="flex-1 md:flex-none px-4 py-2.5 border border-[#dfe8e2] hover:bg-neutral-50 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
+            disabled={attendanceTaken}
+            className={`flex-1 md:flex-none px-4 py-2.5 border border-[#dfe8e2] rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${attendanceTaken ? 'opacity-60 cursor-not-allowed' : 'hover:bg-neutral-50'}`}
           >
             <CheckSquare size={14} /> Mark All Present
           </button>
           <button
             onClick={handleSave}
-            className="flex-1 md:flex-none px-4 py-2.5 bg-[#087f5b] hover:bg-[#066b4c] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+            disabled={attendanceTaken || isSaving}
+            className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm ${attendanceTaken || isSaving ? 'bg-neutral-300 cursor-wait text-neutral-600' : 'bg-[#087f5b] hover:bg-[#066b4c] text-white'}`}
           >
-            <Check size={14} strokeWidth={3} /> Save Attendance
+            <Check size={14} strokeWidth={3} /> {isSaving ? 'Saving…' : 'Save Attendance'}
           </button>
         </div>
       </div>
@@ -145,31 +202,44 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
             <tbody className="divide-y divide-neutral-50">
               {register.map(item => {
                 const member = members.find(m => m.id === item.memberId)
+                const initials = (member?.name || member?.fullName || 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 3)
+                const fineAmount = item.status === 'ABSENT' ? ((meeting as any)?.absenceFine ?? 15000) : item.status === 'LATE' ? ((meeting as any)?.lateFine ?? 5000) : 0
                 return (
                   <tr key={item.memberId} className="hover:bg-neutral-50/50">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#eaf6ef] text-[#087f5b] font-bold text-xs flex items-center justify-center">
-                          {member?.name.split(' ').map(n => n[0]).join('')}
+                          {initials}
                         </div>
                         <div>
-                          <span className="font-bold text-neutral-800 block text-xs">{member?.name}</span>
-                          <span className="text-[9px] text-neutral-400 block mt-0.5">{member?.memberNo}</span>
+                          <span className="font-bold text-neutral-800 block text-xs">{member?.name ?? member?.fullName ?? 'Member'}</span>
+                          <span className="text-[9px] text-neutral-400 block mt-0.5">{member?.memberNo ?? member?.membershipNumber ?? ''}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 flex items-center gap-2">
                       <input
-                        type="text"
-                        placeholder="e.g. 09:55 AM"
-                        disabled={item.status === 'ABSENT' || item.status === 'EXCUSED'}
+                        type="time"
+                        readOnly
+                        placeholder="--:--"
+                        disabled={item.status === 'ABSENT' || item.status === 'EXCUSED' || attendanceTaken}
                         value={item.arrivalTime}
-                        onChange={e => {
-                          const updated = register.map(r => r.memberId === item.memberId ? { ...r, arrivalTime: e.target.value } : r)
-                          setRegister(updated)
-                        }}
+                        onChange={() => { /* readOnly enforced */ }}
                         className="border border-[#dfe8e2] rounded p-1.5 text-[11px] outline-none w-24 text-neutral-600 font-semibold disabled:bg-neutral-50 disabled:text-neutral-300"
                       />
+                      {!attendanceTaken && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const now = new Date()
+                            const hh = String(now.getHours()).padStart(2, '0')
+                            const mm = String(now.getMinutes()).padStart(2, '0')
+                            const updated = register.map(r => r.memberId === item.memberId ? { ...r, arrivalTime: `${hh}:${mm}` } : r)
+                            setRegister(updated)
+                          }}
+                          className="px-2 py-1 text-[11px] bg-neutral-50 border border-neutral-100 rounded text-neutral-600"
+                        >Now</button>
+                      )}
                     </td>
                     <td className="p-4 text-center">
                       <div className="inline-flex rounded-lg border border-neutral-100 p-0.5 gap-0.5 bg-neutral-50/50">
@@ -181,10 +251,10 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                               type="button"
                               onClick={() => handleStatusChange(item.memberId, st)}
                               className={`px-2 py-1 rounded text-[9px] font-bold transition ${active && st === 'PRESENT' ? 'bg-[#087f5b] text-white' :
-                                  active && st === 'LATE' ? 'bg-[#d99521] text-white' :
-                                    active && st === 'ABSENT' ? 'bg-red-600 text-white' :
-                                      active && st === 'EXCUSED' ? 'bg-blue-600 text-white' :
-                                        'text-neutral-400 hover:text-neutral-700'
+                                active && st === 'LATE' ? 'bg-[#d99521] text-white' :
+                                  active && st === 'ABSENT' ? 'bg-red-600 text-white' :
+                                    active && st === 'EXCUSED' ? 'bg-blue-600 text-white' :
+                                      'text-neutral-400 hover:text-neutral-700'
                                 }`}
                             >
                               {st}
@@ -203,8 +273,8 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                       />
                     </td>
                     <td className="p-4 font-black text-right text-neutral-800">
-                      {(Number(item.fineAmount ?? 0) > 0) ? (
-                        <span className="text-red-500">+{currentGroup.currency} {Number(item.fineAmount ?? 0).toLocaleString()}</span>
+                      {(Number(fineAmount ?? 0) > 0) ? (
+                        <span className="text-red-500">+{currency} {Number(fineAmount ?? 0).toLocaleString()}</span>
                       ) : (
                         <span className="text-neutral-300">—</span>
                       )}
