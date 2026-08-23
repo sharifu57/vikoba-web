@@ -150,6 +150,7 @@ export default function MembersPage() {
         memberNo: String(member.memberNumber ?? member.membershipNumber ?? '—'),
         phone: String(member.phone ?? ''),
         email: String(member.email ?? ''),
+        joinedDate: String(member.joinedDate ?? '—'),
         role: formatRoleLabel(String(member.role ?? 'MEMBER')),
         status: String(member.membershipStatus ?? member.status ?? 'ACTIVE').toUpperCase(),
       }
@@ -388,28 +389,6 @@ export default function MembersPage() {
           <p className="mt-1 text-sm text-neutral-500">Add one member at a time or upload a bulk spreadsheet in seconds.</p>
         </div>
 
-        {/* <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => {
-              // setImportMode('single')
-              setModalOpen(true)
-            }}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#066b4c]"
-          >
-            <UserPlus size={14} /> Add Member
-          </button>
-
-          <button
-            onClick={() => {
-              // setImportMode('bulk')
-              setModalOpen(true)
-            }}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#d9e6e0] bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 transition hover:bg-neutral-50"
-          >
-            <FileSpreadsheet size={14} /> Import Excel/CSV
-          </button>
-        </div> */}
-
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => {
@@ -475,6 +454,7 @@ export default function MembersPage() {
                 <th className="px-4 py-3">Member</th>
                 <th className="px-4 py-3">Member No</th>
                 <th className="px-4 py-3">Phone</th>
+                <th className="px-4 py-3">Joined</th>
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
@@ -511,6 +491,7 @@ export default function MembersPage() {
                     </td>
                     <td className="px-4 py-3 font-semibold text-neutral-600">{member.memberNo}</td>
                     <td className="px-4 py-3 text-neutral-600">{member.phone || '—'}</td>
+                    <td className="px-4 py-3 text-neutral-600">{member.joinedDate || '—'}</td>
                     <td className="px-4 py-3">
                       <span className="rounded-full bg-[#edf4f1] px-2.5 py-1 text-[10px] font-bold text-[#0b6c57]">
                         {member.role}

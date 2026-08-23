@@ -1,9 +1,9 @@
-'use client'
+"use client"
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useVikobaStore } from '@/lib/mockStore'
+import { memberService, Member360Response } from '@/lib/api/services'
 import {
   ArrowLeft, FileDown, Landmark, WalletCards, BarChart3, AlertCircle,
   Clock, CheckCircle, HelpCircle, Eye
@@ -12,23 +12,41 @@ import {
 export default function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params)
   const router = useRouter()
-  const {
-    members,
-    currentGroup,
-    contributions,
-    shareTransactions,
-    loans,
-    repayments,
-    fines,
-    payments,
-    attendance,
-    meetings
-  } = useVikobaStore()
 
   const [activeTab, setActiveTab] = useState<'overview' | 'contributions' | 'shares' | 'loans' | 'fines' | 'payments' | 'attendance'>('overview')
+  const [data, setData] = useState<Member360Response | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Find member
-  const member = members.find(m => m.id === id && m.groupId === currentGroup.id)
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    memberService.get360(id)
+      .then((res: any) => {
+        if (!mounted) return
+        if (res?.status) {
+          setData(res.data ?? null)
+        } else {
+          console.error(res?.message)
+          router.back()
+        }
+      })
+      .catch((e) => {
+        console.error(e)
+        router.back()
+      })
+      .finally(() => mounted && setLoading(false))
+
+    return () => { mounted = false }
+  }, [id])
+
+  if (loading) {
+    return <div className="max-w-7xl mx-auto px-6 py-12 text-center">Loading member details...</div>
+  }
+
+  const member = (data?.member as any) ?? null
+  const currentGroup = (typeof window !== 'undefined' && localStorage.getItem('v360_currentGroup'))
+    ? JSON.parse(localStorage.getItem('v360_currentGroup') as string)
+    : { id: null, name: 'Group', currency: 'TZS' }
 
   if (!member) {
     return (
@@ -43,23 +61,36 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
   }
 
   // Format currency helper
-  const fmt = (val: number) => {
-    return `${currentGroup.currency} ${val.toLocaleString()}`
-  }
+  const fmt = (val: number) => `${currentGroup.currency} ${val.toLocaleString()}`
 
-  // Live filter arrays
-  const memberContributions = contributions.filter(c => c.memberId === id)
-  const memberShares = shareTransactions.filter(s => s.memberId === id)
-  const memberLoans = loans.filter(l => l.memberId === id)
-  const memberFines = fines.filter(f => f.memberId === id)
-  const memberPayments = payments.filter(p => p.memberId === id)
-  const memberAttendance = attendance.filter(a => a.memberId === id)
+
+  // Live arrays from API
+  const memberContributions = (data?.contributions as any[]) ?? []
+  const memberShares = ((data?.member as any)?.shares ? [{ sharesCount: (data?.member as any).shares, value: ((data?.member as any).shares * ((data?.member as any).sharePrice ?? 0)) }] : []) as any[]
+  const memberLoans = (data?.loans as any[]) ?? []
+  const memberFines = (data?.fines as any[]) ?? []
+  const memberPayments = (data?.socialFundContributions as any[]) ?? []
+  const memberAttendance = (data?.meetingAttendance as any[]) ?? []
 
   // Calculate stats
-  const paidConts = memberContributions.reduce((sum, c) => sum + c.paid, 0)
-  const sharesVal = member.shares * 5000
-  const outstandingLoansVal = memberLoans.filter(l => l.status === 'DISBURSED').reduce((sum, l) => sum + l.remainingBalance, 0)
-  const outstandingFinesVal = memberFines.filter(f => f.status === 'UNPAID').reduce((sum, f) => sum + (f.outstanding ?? 0), 0)
+  const paidConts = memberContributions.reduce((sum, c) => sum + (c.paid ?? c.amount ?? 0), 0)
+  const sharesVal = ((member as any)?.shares ?? 0) * ((member as any)?.sharePrice ?? 0)
+  const outstandingLoansVal = memberLoans.filter(l => l.status === 'DISBURSED').reduce((sum, l) => sum + (l.remainingBalance ?? 0), 0)
+  const outstandingFinesVal = memberFines.filter(f => f.status === 'UNPAID' || f.status === 'UNPAID').reduce((sum, f) => sum + (f.outstanding ?? f.amount ?? 0), 0)
+
+  // Normalize member fields from API (backend may return fullName/firstName/lastName)
+  const displayName = (member && (member.name || member.fullName || `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim())) || 'Member'
+  const normalizedMember = {
+    name: displayName,
+    status: member?.membershipStatus ?? member?.status ?? 'ACTIVE',
+    memberNo: member?.memberNo ?? member?.memberNumber ?? member?.membershipNumber ?? member?.memberId ?? '',
+    role: member?.role ?? 'MEMBER',
+    contributions: paidConts,
+    shares: member?.shares ?? 0,
+    phone: member?.phone ?? '',
+    email: member?.email ?? '',
+    joinDate: member?.joinDate ?? member?.joinedDate ?? member?.createdAt ?? '',
+  } as any
 
   // Statement download simulator
   const handleDownloadStatement = () => {
@@ -69,7 +100,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement("a")
     link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `${member.name.replace(' ', '_')}_Statement.csv`)
+    link.setAttribute("download", `${(normalizedMember.name || 'Member').replace(/\s+/g, '_')}_Statement.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -86,17 +117,17 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
       <div className="bg-white border border-[#dfe8e2] rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-[#eaf6ef] text-[#087f5b] font-extrabold text-xl flex items-center justify-center">
-            {member.name.split(' ').map(n => n[0]).join('')}
+            {(normalizedMember.name || 'Member').split(' ').map((n: string) => (n || '?')[0]).join('')}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-neutral-900">{member.name}</h1>
-              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${member.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                {member.status}
+              <h1 className="text-2xl font-black text-neutral-900">{normalizedMember.name}</h1>
+              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${normalizedMember.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                {normalizedMember.status}
               </span>
             </div>
             <p className="text-xs text-neutral-400 mt-1">
-              Member No: <strong className="text-neutral-600 font-bold">{member.memberNo}</strong> · Role: <strong className="text-[#087f5b] font-bold">{member.role}</strong>
+              Member No: <strong className="text-neutral-600 font-bold">{normalizedMember.memberNo}</strong> · Role: <strong className="text-[#087f5b] font-bold">{normalizedMember.role}</strong>
             </p>
           </div>
         </div>
@@ -120,8 +151,8 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
       {/* Profile Metrics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { title: 'Total Contributions', val: fmt(member.contributions), icon: WalletCards, color: 'text-neutral-800' },
-          { title: 'Total Shares Capital', val: fmt(sharesVal), sub: `${member.shares} total shares`, icon: BarChart3, color: 'text-[#d99521]' },
+          { title: 'Total Contributions', val: fmt(normalizedMember.contributions), icon: WalletCards, color: 'text-neutral-800' },
+          { title: 'Total Shares Capital', val: fmt(sharesVal), sub: `${normalizedMember.shares} total shares`, icon: BarChart3, color: 'text-[#d99521]' },
           { title: 'Outstanding Loan Balance', val: fmt(outstandingLoansVal), icon: Landmark, color: outstandingLoansVal > 0 ? 'text-red-600' : 'text-neutral-800' },
           { title: 'Outstanding Fines', val: fmt(outstandingFinesVal), icon: AlertCircle, color: outstandingFinesVal > 0 ? 'text-red-600' : 'text-neutral-800' }
         ].map((s, idx) => (
@@ -166,19 +197,19 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
               <div className="flex flex-col gap-3 text-xs">
                 <div className="flex justify-between py-1 border-b border-neutral-50">
                   <span className="text-neutral-400 font-semibold">Full Name</span>
-                  <span className="text-neutral-800 font-bold">{member.name}</span>
+                  <span className="text-neutral-800 font-bold">{normalizedMember.name}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-neutral-50">
                   <span className="text-neutral-400 font-semibold">Phone Number</span>
-                  <span className="text-neutral-800 font-bold">{member.phone}</span>
+                  <span className="text-neutral-800 font-bold">{normalizedMember.phone}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-neutral-50">
                   <span className="text-neutral-400 font-semibold">Email Address</span>
-                  <span className="text-neutral-800 font-bold">{member.email}</span>
+                  <span className="text-neutral-800 font-bold">{normalizedMember.email}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-neutral-50">
                   <span className="text-neutral-400 font-semibold">Join Date</span>
-                  <span className="text-neutral-800 font-bold">{member.joinDate}</span>
+                  <span className="text-neutral-800 font-bold">{normalizedMember.joinDate}</span>
                 </div>
               </div>
             </div>
@@ -186,7 +217,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
             <div className="flex flex-col gap-4">
               <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Membership Summary</h3>
               <p className="text-xs text-neutral-500 leading-relaxed">
-                {member.name} joined Umoja VIKOBA on {member.joinDate}. Currently possesses a contribution rate of 100%, holding {member.shares} share tokens.
+                {normalizedMember.name} joined Umoja VIKOBA on {normalizedMember.joinDate}. Currently possesses a contribution rate of 100%, holding {normalizedMember.shares} share tokens.
                 {outstandingLoansVal > 0 ? ` Outstanding loan balances currently stand at ${fmt(outstandingLoansVal)}.` : " No active loan liabilities outstanding."}
               </p>
             </div>

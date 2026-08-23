@@ -396,6 +396,21 @@ export const memberService = {
     apiPut<Member>(`${API_ENDPOINTS.members}/${id}`, payload, { auth: true }),
   remove: (id: string) =>
     apiDelete(`${API_ENDPOINTS.members}/${id}`, { auth: true }),
+  get360: (groupMemberId: string) =>
+    apiGet<Member360Response>(
+      `${API_ENDPOINTS.members}/${groupMemberId}/360`,
+      undefined,
+      { auth: true },
+    ),
+};
+
+export type Member360Response = {
+  member?: Member | null;
+  contributions?: Contribution[];
+  loans?: Loan[];
+  fines?: Fine[];
+  meetingAttendance?: Meeting[];
+  socialFundContributions?: Payment[];
 };
 
 export const contributionService = {
