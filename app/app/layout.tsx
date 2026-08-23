@@ -109,14 +109,24 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-
     const protectedRoutes = ['/app/dashboard', '/app/members', '/app/meetings', '/app/contributions', '/app/shares', '/app/payments', '/app/expenses', '/app/finance', '/app/loans', '/app/loans/applications', '/app/social-fund', '/app/fines', '/app/reports', '/app/users', '/app/roles', '/app/settings']
     const token = localStorage.getItem('v360_access_token')
     const setupComplete = localStorage.getItem('v360_group_setup_complete') === 'true' || localStorage.getItem('v360_group_setup_done') === 'true'
     const isProtectedRoute = protectedRoutes.some(route => pathname === route || pathname.startsWith(route))
 
+    // If user has token but hasn't completed setup, force them to settings (except settings page)
     if (token && !setupComplete && isProtectedRoute && pathname !== '/app/settings') {
       router.replace('/app/settings')
+      return
+    }
+
+    // Auth guard: if route is protected and no token, redirect to login with return URL
+    if (isProtectedRoute && !token) {
+      // don't redirect if already on an auth route
+      if (!pathname.startsWith('/auth')) {
+        const returnUrl = encodeURIComponent(pathname || '/app/dashboard')
+        router.replace(`/auth/login?returnUrl=${returnUrl}`)
+      }
     }
   }, [pathname, router])
 

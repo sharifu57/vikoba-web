@@ -46,18 +46,21 @@ export const authService = {
     }),
   saveSession: (response: ApiResponse<unknown>) => {
     const payload = response as Record<string, unknown> & {
-      data?: UserSession;
+      data?: UserSession | Record<string, unknown>;
       token?: string | null;
       accessToken?: string | null;
       refreshToken?: string | null;
       expired?: string | null;
     };
 
-    const user = payload?.data ?? null;
-    const dataRecord = (payload?.data ?? null) as Record<
-      string,
-      unknown
-    > | null;
+    const user =
+      payload?.data && (payload.data as any).user
+        ? (payload.data as any).user
+        : (payload?.data ?? null);
+    const dataRecord =
+      payload?.data && typeof payload.data === "object"
+        ? (payload.data as Record<string, unknown>)
+        : null;
     const tokenValue =
       typeof payload?.token === "string"
         ? payload.token
@@ -106,6 +109,86 @@ export const authService = {
               expired: expiredValue || null,
             }),
           );
+
+          // Persist group(s) and settings if returned by the auth response
+          try {
+            // New server shape: data.groups = [{ group, settings, settingsConfigured }, ...]
+            const groupsArray =
+              (dataRecord?.groups as
+                | Array<Record<string, unknown>>
+                | undefined) ?? null;
+
+            if (Array.isArray(groupsArray) && groupsArray.length > 0) {
+              // persist full groups list for reference
+              localStorage.setItem("v360_groups", JSON.stringify(groupsArray));
+
+              // choose primary group: prefer the first item with settingsConfigured === true
+              let primary =
+                groupsArray.find((g) => (g as any)?.settingsConfigured) ??
+                groupsArray[0];
+              const grp = (primary as any)?.group ?? primary;
+              const settings = (primary as any)?.settings ?? null;
+
+              if (grp && (grp.groupId || grp.id)) {
+                localStorage.setItem("v360_currentGroup", JSON.stringify(grp));
+                localStorage.setItem(
+                  "v360_currentGroupId",
+                  String(grp.groupId ?? grp.id),
+                );
+                if (typeof grp.currency === "string") {
+                  localStorage.setItem(
+                    "v360_currentGroupCurrency",
+                    grp.currency as string,
+                  );
+                }
+              }
+
+              if (settings) {
+                localStorage.setItem(
+                  "v360_group_settings",
+                  JSON.stringify(settings),
+                );
+                localStorage.setItem("v360_group_setup_complete", "true");
+                localStorage.setItem("v360_group_setup_done", "true");
+              }
+            } else {
+              // legacy: single group at top-level
+              const group = dataRecord?.group as
+                | Record<string, unknown>
+                | undefined;
+              const settings = dataRecord?.settings as
+                | Record<string, unknown>
+                | undefined;
+              if (group && (group.groupId || group.id)) {
+                localStorage.setItem(
+                  "v360_currentGroup",
+                  JSON.stringify(group),
+                );
+                localStorage.setItem(
+                  "v360_currentGroupId",
+                  String(group.groupId ?? group.id),
+                );
+                if (typeof group.currency === "string") {
+                  localStorage.setItem(
+                    "v360_currentGroupCurrency",
+                    group.currency as string,
+                  );
+                }
+                localStorage.setItem("v360_group_setup_complete", "true");
+                localStorage.setItem("v360_group_setup_done", "true");
+              }
+              if (settings) {
+                localStorage.setItem(
+                  "v360_group_settings",
+                  JSON.stringify(settings),
+                );
+              }
+            }
+          } catch (e) {
+            // ignore storage errors
+            // eslint-disable-next-line no-console
+            console.error("Failed to persist auth group data", e);
+          }
         }
       }
     }
@@ -142,6 +225,22 @@ export type GroupProfileSettingsPayload = {
   startDate?: string | null;
   endDate?: string | null;
   settings?: GroupSettingsPayload;
+};
+
+export type VikobaGroupCreateResponse = {
+  organizationId?: number | null;
+  groupId?: number | string | null;
+  organizationName?: string | null;
+  groupName?: string | null;
+  groupCode?: string | null;
+  currency?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+};
+
+export type GroupWithSettingsResponse = {
+  group?: VikobaGroupCreateResponse | null;
+  settings?: GroupSettingsPayload | null;
 };
 
 export type Member = {
@@ -249,12 +348,22 @@ export type DashboardSummary = {
 export const groupService = {
   list: () => apiGet<Group[]>(API_ENDPOINTS.groups),
   getById: (id: string) => apiGet<Group>(`${API_ENDPOINTS.groups}/${id}`),
+  getWithSettings: (id: string) =>
+    apiGet<GroupWithSettingsResponse>(
+      `${API_ENDPOINTS.groups}/${id}`,
+      undefined,
+      { auth: true },
+    ),
   create: (payload: Partial<Group>) =>
     apiPost<Group>(API_ENDPOINTS.groups, payload),
   saveProfileAndSettings: (payload: GroupProfileSettingsPayload) => {
-    return apiPost<Group>(`${API_ENDPOINTS.groups}/setup`, payload, {
-      auth: true,
-    });
+    return apiPost<ApiResponse<GroupWithSettingsResponse>>(
+      `${API_ENDPOINTS.groups}/setup`,
+      payload,
+      {
+        auth: true,
+      },
+    );
   },
   remove: (id: string) => apiDelete(`${API_ENDPOINTS.groups}/${id}`),
 };

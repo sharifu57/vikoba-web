@@ -96,13 +96,11 @@ export default function GroupSettingsPage() {
       },
     }
 
-    console.log('=====>>>>>Saving group settings with payload:', payload)
+    // console.log('=====>>>>>Saving group settings with payload:', payload)
 
     try {
       setLoading(true)
       const result = await groupService.saveProfileAndSettings(payload)
-
-      console.log('=====>>>>>Group settings save result:', result)
 
       const apiResponse = result as any
       const isSuccess = apiResponse?.status === true || apiResponse?.status === 'success'
@@ -114,14 +112,15 @@ export default function GroupSettingsPage() {
       }
 
       const existingSavedGroup = JSON.parse(localStorage.getItem('v360_currentGroup') || '{}')
-      const groupId = (responseData as any)?.groupId ?? (responseData as any)?.id ?? localStorage.getItem('v360_currentGroupId') ?? 'new-group'
-      const groupName = (responseData as any)?.groupName || (responseData as any)?.name || form.name
-      const groupCode = (responseData as any)?.groupCode || (responseData as any)?.code || existingSavedGroup.groupCode || ''
-      const organizationId = (responseData as any)?.organizationId ?? existingSavedGroup.organizationId ?? null
-      const organizationName = (responseData as any)?.organizationName ?? existingSavedGroup.organizationName ?? null
-      const currency = (responseData as any)?.currency || form.currency || 'TZS'
-      const startDate = (responseData as any)?.startDate ?? (responseData as any)?.startedAt ?? (form.startDate || existingSavedGroup.startDate || '')
-      const endDate = (responseData as any)?.endDate ?? (responseData as any)?.endsAt ?? (form.endDate || existingSavedGroup.endDate || '')
+      const groupResp = (responseData as any)?.group ?? responseData
+      const groupId = groupResp?.groupId ?? groupResp?.id ?? localStorage.getItem('v360_currentGroupId') ?? 'new-group'
+      const groupName = groupResp?.groupName || groupResp?.name || form.name
+      const groupCode = groupResp?.groupCode || groupResp?.code || existingSavedGroup.groupCode || ''
+      const organizationId = groupResp?.organizationId ?? existingSavedGroup.organizationId ?? null
+      const organizationName = groupResp?.organizationName ?? existingSavedGroup.organizationName ?? null
+      const currency = groupResp?.currency || form.currency || 'TZS'
+      const startDate = groupResp?.startDate ?? groupResp?.startedAt ?? (form.startDate || existingSavedGroup.startDate || '')
+      const endDate = groupResp?.endDate ?? groupResp?.endsAt ?? (form.endDate || existingSavedGroup.endDate || '')
 
       const savedGroup = {
         ...existingSavedGroup,
@@ -139,19 +138,64 @@ export default function GroupSettingsPage() {
         endDate,
       }
 
+      // persist basic group locally first
       localStorage.setItem('v360_currentGroupId', String(groupId))
       localStorage.setItem('v360_currentGroup', JSON.stringify(savedGroup))
-      localStorage.setItem('v360_group_setup_complete', 'true')
-      localStorage.setItem('v360_group_setup_done', 'true')
+
+      // then fetch the freshly-saved group+settings from server to ensure consistency
+      try {
+        const fetchResp = await (groupService as any).getWithSettings(String(groupId))
+        const payload = fetchResp as any
+        const isFetchSuccess = payload?.status === true || payload?.status === 'success'
+        const fetchData = payload?.data ?? fetchResp
+        if (isFetchSuccess && fetchData) {
+          const grp = fetchData.group ?? fetchData
+          const settings = fetchData.settings ?? null
+          if (grp) {
+            localStorage.setItem('v360_currentGroup', JSON.stringify(grp))
+            localStorage.setItem('v360_currentGroupId', String(grp.groupId ?? groupId))
+            if ((grp as any).currency) localStorage.setItem('v360_currentGroupCurrency', (grp as any).currency)
+          }
+          if (settings) {
+            localStorage.setItem('v360_group_settings', JSON.stringify(settings))
+            localStorage.setItem('v360_group_setup_complete', 'true')
+            localStorage.setItem('v360_group_setup_done', 'true')
+          }
+        } else {
+          // still mark setup complete if server-side call didn't return detailed payload
+          localStorage.setItem('v360_group_setup_complete', 'true')
+          localStorage.setItem('v360_group_setup_done', 'true')
+        }
+      } catch (e) {
+        // best-effort: mark setup complete locally
+        localStorage.setItem('v360_group_setup_complete', 'true')
+        localStorage.setItem('v360_group_setup_done', 'true')
+      }
 
       setSuccess(true)
       toast.success(apiResponse?.message || 'Group profile and settings saved successfully.')
 
-      window.setTimeout(() => {
-        setSuccess(false)
-        router.push('/app/dashboard')
-        window.location.reload()
-      }, 700)
+      try {
+        // Ensure setup flags persisted before navigation
+        localStorage.setItem('v360_group_setup_complete', 'true')
+        localStorage.setItem('v360_group_setup_done', 'true')
+
+        // Navigate to dashboard and force a full reload so localStorage-driven state is fresh
+        try {
+          router.push('/app/dashboard')
+        } catch (e) {
+          // ignore - we'll perform a hard navigation below
+        }
+
+        // Give the router a short moment to transition, then do a full-page load to ensure fresh data
+        window.setTimeout(() => {
+          window.location.href = '/app/dashboard'
+        }, 350)
+      } catch (navErr) {
+        // eslint-disable-next-line no-console
+        console.error('Navigation to dashboard failed, falling back to location.href', navErr)
+        window.location.href = '/app/dashboard'
+      }
     } catch (error) {
       console.error(error)
       toast.error(error instanceof Error ? error.message : 'Unable to save group settings.')
