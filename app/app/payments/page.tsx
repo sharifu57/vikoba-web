@@ -1,174 +1,314 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useVikobaStore } from '@/lib/mockStore'
-import { Search, CreditCard, Landmark, CheckCircle, FileSpreadsheet } from 'lucide-react'
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, Search } from "lucide-react";
+import { usePayments, type UniversalPayment } from "@/hooks/usePayments";
+import { groupService, type Group } from "@/lib/api/services";
+
+const ALL = "ALL";
+
+const label = (value?: string) =>
+  (value || "OTHER")
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+const paymentDate = (value?: string) =>
+  value
+    ? new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value))
+    : "—";
 
 export default function PaymentsPage() {
-  const { payments, members, currentGroup } = useVikobaStore()
-  
-  // Search states
-  const [search, setSearch] = useState('')
-  const [methodFilter, setMethodFilter] = useState('ALL')
-  const [typeFilter, setTypeFilter] = useState('ALL')
+  const { loading, error, list } = usePayments();
+  const [payments, setPayments] = useState<UniversalPayment[]>([]);
+  const [groupId, setGroupId] = useState("");
+  const [currency, setCurrency] = useState("TZS");
+  const [search, setSearch] = useState("");
+  const [methodFilter, setMethodFilter] = useState(ALL);
+  const [typeFilter, setTypeFilter] = useState(ALL);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Format currency helper
-  const fmt = (val: number) => {
-    return `${currentGroup.currency} ${val.toLocaleString()}`
-  }
+  useEffect(() => {
+    const resolveCurrentGroup = async () => {
+      const storedGroupId = localStorage.getItem("v360_currentGroupId") || "";
+      let storedGroup: Record<string, unknown> = {};
+      try {
+        storedGroup = JSON.parse(localStorage.getItem("v360_currentGroup") || "{}");
+      } catch {
+        setLoadError("Unable to read the selected group.");
+        return;
+      }
 
-  // Filter payments
-  const filteredPayments = payments.filter(p => {
-    if (p.groupId !== currentGroup.id) return false
-    
-    const memberName = members.find(m => m.id === p.memberId)?.name || ''
-    const matchesSearch = memberName.toLowerCase().includes(search.toLowerCase()) || p.reference.toLowerCase().includes(search.toLowerCase())
-    
-    const matchesMethod = methodFilter === 'ALL' || p.method === methodFilter
-    const matchesType = typeFilter === 'ALL' || p.type === typeFilter
+      setCurrency(String(storedGroup.currency || "TZS"));
+      const directId = String(storedGroup.groupId ?? storedGroup.id ?? storedGroupId);
+      if (/^\d+$/.test(directId)) {
+        setGroupId(directId);
+        return;
+      }
 
-    return matchesSearch && matchesMethod && matchesType
-  })
+      try {
+        const response = await groupService.list();
+        const groups = ((response as { data?: Group[] }).data ?? response) as Group[];
+        const selectedName = String(storedGroup.groupName ?? storedGroup.name ?? storedGroupId).toLowerCase();
+        const selectedGroup = groups.find(group =>
+          String(group.id) === storedGroupId || group.name.toLowerCase() === selectedName,
+        );
+        if (!selectedGroup || !/^\d+$/.test(String(selectedGroup.id))) {
+          setLoadError("Select a valid group before viewing payments.");
+          return;
+        }
+        const resolvedId = String(selectedGroup.id);
+        localStorage.setItem("v360_currentGroupId", resolvedId);
+        setGroupId(resolvedId);
+      } catch {
+        setLoadError("Unable to resolve the selected group.");
+      }
+    };
 
-  // Calculations
-  const groupPayments = payments.filter(p => p.groupId === currentGroup.id)
-  
-  const todayTotal = groupPayments
-    .filter(p => p.date === new Date().toISOString().split('T')[0] && p.status === 'COMPLETED')
-    .reduce((sum, p) => sum + p.amount, 0)
-    
-  const monthTotal = groupPayments
-    .filter(p => p.status === 'COMPLETED') // crude proxy for active month
-    .reduce((sum, p) => sum + p.amount, 0)
+    resolveCurrentGroup();
+  }, []);
 
-  const pendingTotal = groupPayments
-    .filter(p => p.status === 'PENDING')
-    .reduce((sum, p) => sum + p.amount, 0)
+  useEffect(() => {
+    if (!groupId) return;
+    list(groupId)
+      .then(setPayments)
+      .catch((cause: Error) => setLoadError(cause.message));
+  }, [groupId, list]);
+
+  const formatMoney = (value: number) =>
+    new Intl.NumberFormat("en-TZ", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(Number(value || 0));
+  const visiblePayments = useMemo(
+    () =>
+      payments.filter((payment) => {
+        const query = search.trim().toLowerCase();
+        const matchesSearch =
+          !query ||
+          [
+            payment.memberName,
+            payment.membershipNumber,
+            payment.reference,
+            payment.externalReference,
+            payment.description,
+          ].some((value) => value?.toLowerCase().includes(query));
+        return (
+          matchesSearch &&
+          (methodFilter === ALL || payment.paymentMethod === methodFilter) &&
+          (typeFilter === ALL || payment.allocationType === typeFilter)
+        );
+      }),
+    [payments, search, methodFilter, typeFilter],
+  );
+
+  const today = new Date().toISOString().slice(0, 10);
+  const completed = payments.filter(
+    (payment) => payment.status === "COMPLETED",
+  );
+  const todayTotal = completed
+    .filter((payment) => payment.paymentDate?.slice(0, 10) === today)
+    .reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const monthTotal = completed
+    .filter((payment) => payment.paymentDate?.slice(0, 7) === today.slice(0, 7))
+    .reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const pendingTotal = payments
+    .filter((payment) => payment.status === "PENDING")
+    .reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const methods = Array.from(
+    new Set(payments.map((payment) => payment.paymentMethod)),
+  ).sort();
+  const types = Array.from(
+    new Set(
+      payments
+        .map((payment) => payment.allocationType)
+        .filter(Boolean) as string[],
+    ),
+  ).sort();
+  const statusClass = (status: string) =>
+    status === "COMPLETED"
+      ? "bg-emerald-100 text-emerald-800"
+      : status === "PENDING"
+        ? "bg-amber-50 text-amber-800"
+        : "bg-red-50 text-red-600";
+  const typeClass = (type?: string) =>
+    type === "CONTRIBUTION"
+      ? "bg-emerald-50 text-emerald-700"
+      : type === "LOAN_REPAYMENT"
+        ? "bg-blue-50 text-blue-700"
+        : type === "SHARE_PURCHASE"
+          ? "bg-amber-50 text-amber-800"
+          : "bg-neutral-100 text-neutral-600";
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <div className="breadcrumb text-xs text-neutral-400 font-bold flex items-center gap-1">
-            <span>Finance</span>
-            <span className="text-neutral-300">/</span>
-            <span className="text-neutral-500">Payments</span>
-          </div>
-          <h1 className="text-2xl font-black text-neutral-900 mt-2">Payments Received</h1>
-          <p className="text-xs text-neutral-400">Ledger history of all group cash deposits, mobile money M-Pesa, and bank lines.</p>
-        </div>
-      </div>
-
-      {/* Summary Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <main className="mx-auto max-w-7xl px-6 py-8">
+      <header className="mb-8">
+        <p className="flex items-center gap-1 text-xs font-bold text-neutral-400">
+          Finance <span className="text-neutral-300">/</span> Payments
+        </p>
+        <h1 className="mt-2 text-2xl font-black text-neutral-900">
+          Payments Received
+        </h1>
+        <p className="mt-1 text-xs text-neutral-400">
+          Database-backed ledger of group collections and allocations.
+        </p>
+      </header>
+      <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { title: "Today's Collection", val: fmt(todayTotal), color: 'text-emerald-600' },
-          { title: 'This Month Total', val: fmt(monthTotal), color: 'text-neutral-800' },
-          { title: 'Pending Settlement', val: fmt(pendingTotal), color: 'text-amber-600' },
-          { title: 'Completed Ledgers', val: `${groupPayments.filter(p => p.status === 'COMPLETED').length} logs`, color: 'text-[#087f5b]' }
-        ].map((s, idx) => (
-          <div key={idx} className="bg-white border border-[#dfe8e2] rounded-xl p-5 shadow-sm">
-            <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">{s.title}</span>
-            <h3 className={`text-base md:text-lg font-black mt-2 ${s.color}`}>{s.val}</h3>
+          ["Today's collection", formatMoney(todayTotal), "text-emerald-600"],
+          ["This month total", formatMoney(monthTotal), "text-neutral-800"],
+          ["Pending settlement", formatMoney(pendingTotal), "text-amber-600"],
+          ["Completed ledgers", `${completed.length} logs`, "text-[#087f5b]"],
+        ].map(([title, value, color]) => (
+          <div
+            key={title}
+            className="rounded-xl border border-[#dfe8e2] bg-white p-5 shadow-sm"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+              {title}
+            </span>
+            <p className={`mt-2 text-base font-black md:text-lg ${color}`}>
+              {value}
+            </p>
           </div>
         ))}
-      </div>
-
-      {/* Filters search */}
-      <div className="bg-white border border-[#dfe8e2] rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+      </section>
+      <section className="mb-6 flex flex-col gap-4 rounded-xl border border-[#dfe8e2] bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:w-80">
-          <input 
-            type="text" 
-            placeholder="Search by reference or borrower..." 
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full border border-[#dfe8e2] rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-[#087f5b]"
+          <Search
+            className="absolute left-3 top-3 text-neutral-400"
+            size={14}
           />
-          <Search className="absolute left-3 top-3 text-neutral-400" size={14} />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search member, reference or description..."
+            className="w-full rounded-lg border border-[#dfe8e2] p-2.5 pl-9 text-xs outline-none focus:border-[#087f5b]"
+          />
         </div>
-
-        <div className="flex gap-2 w-full sm:w-auto">
-          <select 
-            value={methodFilter} 
-            onChange={e => setMethodFilter(e.target.value)}
-            className="border border-[#dfe8e2] rounded-lg p-2 text-xs bg-[#fcfdfc] outline-none text-neutral-600 font-semibold"
+        <div className="flex w-full gap-2 sm:w-auto">
+          <select
+            value={methodFilter}
+            onChange={(event) => setMethodFilter(event.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-[#dfe8e2] bg-[#fcfdfc] p-2 text-xs font-semibold text-neutral-600 sm:flex-none"
           >
-            <option value="ALL">All Methods</option>
-            <option value="Mobile Money">Mobile Money</option>
-            <option value="Cash">Cash</option>
-            <option value="Bank">Bank Deposit</option>
+            <option value={ALL}>All methods</option>
+            {methods.map((method) => (
+              <option key={method} value={method}>
+                {label(method)}
+              </option>
+            ))}
           </select>
-          
-          <select 
-            value={typeFilter} 
-            onChange={e => setTypeFilter(e.target.value)}
-            className="border border-[#dfe8e2] rounded-lg p-2 text-xs bg-[#fcfdfc] outline-none text-neutral-600 font-semibold"
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-[#dfe8e2] bg-[#fcfdfc] p-2 text-xs font-semibold text-neutral-600 sm:flex-none"
           >
-            <option value="ALL">All Types</option>
-            <option value="Contribution">Contribution</option>
-            <option value="Loan Repayment">Loan Repayment</option>
-            <option value="Share Purchase">Share Purchase</option>
-            <option value="Fine Payment">Fine Payment</option>
+            <option value={ALL}>All types</option>
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {label(type)}
+              </option>
+            ))}
           </select>
         </div>
-      </div>
-
-      {/* Payments Table */}
-      <div className="bg-white border border-[#dfe8e2] rounded-xl overflow-hidden shadow-sm">
+      </section>
+      {(loadError || error) && (
+        <div className="mb-6 rounded-lg border border-red-100 bg-red-50 p-3 text-xs font-semibold text-red-700">
+          {loadError || error}
+        </div>
+      )}
+      <section className="overflow-hidden rounded-xl border border-[#dfe8e2] bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full border-collapse text-left text-xs">
             <thead>
-              <tr className="bg-neutral-50/70 text-neutral-400 uppercase text-[9px] tracking-wider border-b border-neutral-100">
-                <th className="p-4 font-bold">Reference</th>
-                <th className="p-4 font-bold">Member</th>
-                <th className="p-4 font-bold text-right">Amount</th>
-                <th className="p-4 font-bold">Allocation Type</th>
-                <th className="p-4 font-bold">Method</th>
-                <th className="p-4 font-bold">Date Logged</th>
-                <th className="p-4 font-bold text-center">Status</th>
+              <tr className="border-b border-neutral-100 bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
+                <th className="p-4">Reference</th>
+                <th className="p-4">Member</th>
+                <th className="p-4 text-right">Amount</th>
+                <th className="p-4">Allocation</th>
+                <th className="p-4">Method</th>
+                <th className="p-4">Date logged</th>
+                <th className="p-4 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-50">
-              {filteredPayments.map((p, idx) => {
-                const member = members.find(m => m.id === p.memberId)
-                return (
-                  <tr key={idx} className="hover:bg-neutral-50/50">
-                    <td className="p-4 font-bold text-[#087f5b]">{p.reference}</td>
-                    <td className="p-4">
-                      <span className="font-bold text-neutral-800 block">{member?.name}</span>
-                      <span className="text-[10px] text-neutral-400 block mt-0.5">{member?.memberNo}</span>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="p-10 text-center text-neutral-400">
+                    <Loader2 className="mr-2 inline animate-spin" size={16} />{" "}
+                    Loading payments…
+                  </td>
+                </tr>
+              ) : (
+                visiblePayments.map((payment) => (
+                  <tr key={payment.id} className="hover:bg-neutral-50/50">
+                    <td className="p-4 font-bold text-[#087f5b]">
+                      <span className="block">{payment.reference}</span>
+                      {payment.externalReference && (
+                        <span className="mt-0.5 block text-[10px] font-medium text-neutral-400">
+                          {payment.externalReference}
+                        </span>
+                      )}
                     </td>
-                    <td className="p-4 font-black text-neutral-800 text-right">{fmt(p.amount)}</td>
                     <td className="p-4">
-                      <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${
-                        p.type === 'Contribution' ? 'bg-emerald-50 text-emerald-700' :
-                        p.type === 'Loan Repayment' ? 'bg-blue-50 text-blue-700' :
-                        p.type === 'Share Purchase' ? 'bg-amber-50 text-amber-800' :
-                        'bg-neutral-50 text-neutral-600'
-                      }`}>
-                        {p.type}
+                      <span className="block font-bold text-neutral-800">
+                        {payment.memberName || "Group payment"}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-neutral-400">
+                        {payment.membershipNumber || "—"}
                       </span>
                     </td>
-                    <td className="p-4 text-neutral-500 font-semibold">{p.method}</td>
-                    <td className="p-4 text-neutral-500 font-semibold">{p.date}</td>
+                    <td className="p-4 text-right font-black text-neutral-800">
+                      {formatMoney(payment.amount)}
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`rounded px-2.5 py-0.5 text-[9px] font-bold ${typeClass(payment.allocationType)}`}
+                      >
+                        {label(payment.allocationType)}
+                      </span>
+                      {payment.description && (
+                        <span
+                          className="mt-1 block max-w-44 truncate text-[10px] text-neutral-400"
+                          title={payment.description}
+                        >
+                          {payment.description}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4 font-semibold text-neutral-500">
+                      {label(payment.paymentMethod)}
+                    </td>
+                    <td className="whitespace-nowrap p-4 font-semibold text-neutral-500">
+                      {paymentDate(payment.paymentDate)}
+                    </td>
                     <td className="p-4 text-center">
-                      <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[9px] font-extrabold">
-                        {p.status}
+                      <span
+                        className={`rounded px-2 py-0.5 text-[9px] font-extrabold ${statusClass(payment.status)}`}
+                      >
+                        {label(payment.status)}
                       </span>
                     </td>
                   </tr>
-                )
-              })}
-              {filteredPayments.length === 0 && (
+                ))
+              )}
+              {!loading && !visiblePayments.length && (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-neutral-400">No payment logs.</td>
+                  <td colSpan={7} className="p-10 text-center text-neutral-400">
+                    {groupId
+                      ? "No payment logs match your filters."
+                      : "Select a group to view its payments."}
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
-  )
+      </section>
+    </main>
+  );
 }
