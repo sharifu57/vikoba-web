@@ -244,20 +244,30 @@ export type GroupWithSettingsResponse = {
 };
 
 export type Member = {
-  id: string;
+  id: string | number;
   name?: string;
   memberNo?: string;
-  groupId?: string;
+  groupId?: string | number;
+  memberId?: string | number;
   phone?: string;
   status?: string;
   role?: string;
   firstName?: string;
+  middleName?: string;
   lastName?: string;
   email?: string;
   membershipNumber?: string;
   membershipType?: string;
+  membershipStatus?: string;
   joinedDate?: string;
+  createdAt?: string;
   fullName?: string;
+  nationalId?: string;
+  address?: string;
+  occupation?: string;
+  nextOfKinName?: string;
+  nextOfKinPhone?: string;
+  nextOfKinRelationship?: string;
 };
 
 export type MemberRoleOption = {
@@ -397,7 +407,7 @@ export const memberService = {
   remove: (id: string) =>
     apiDelete(`${API_ENDPOINTS.members}/${id}`, { auth: true }),
   get360: (groupMemberId: string) =>
-    apiGet<Member360Response>(
+    apiGet<ApiResponse<Member360Response>>(
       `${API_ENDPOINTS.members}/${groupMemberId}/360`,
       undefined,
       { auth: true },
@@ -405,11 +415,75 @@ export const memberService = {
 };
 export type Member360Response = {
   member?: Member | null;
-  contributions?: Contribution[];
-  loans?: Loan[];
-  fines?: Fine[];
-  meetingAttendance?: Meeting[];
-  socialFundContributions?: Payment[];
+  contributions?: MemberContribution360[];
+  loans?: MemberLoan360[];
+  fines?: MemberFine360[];
+  meetingAttendance?: MemberAttendance360[];
+  socialFundContributions?: SocialFundContribution360[];
+};
+
+export type MemberContribution360 = {
+  id: string | number;
+  groupMemberId?: string | number;
+  contributionPeriodId?: string | number;
+  expectedAmount?: number;
+  paidAmount?: number;
+  balance?: number;
+  status?: string;
+  paidAt?: string;
+};
+
+export type MemberLoan360 = {
+  id: string | number;
+  groupMemberId?: string | number;
+  loanNumber?: string;
+  principalAmount?: number;
+  interestAmount?: number;
+  totalAmount?: number;
+  durationMonths?: number;
+  applicationDate?: string;
+  approvalDate?: string;
+  disbursementDate?: string;
+  maturityDate?: string;
+  status?: string;
+  purpose?: string;
+  rejectionReason?: string;
+};
+
+export type MemberFine360 = {
+  id: string | number;
+  groupMemberId?: string | number;
+  amount?: number;
+  paidAmount?: number;
+  balance?: number;
+  reason?: string;
+  status?: string;
+  fineDate?: string;
+  dueDate?: string;
+  paidDate?: string;
+};
+
+export type MemberAttendance360 = {
+  id: string | number;
+  meetingId?: string | number;
+  meetingTitle?: string;
+  meetingDate?: string;
+  startTime?: string;
+  endTime?: string;
+  location?: string;
+  meetingStatus?: string;
+  attendanceStatus?: string;
+  arrivalTime?: string;
+  reason?: string;
+};
+
+export type SocialFundContribution360 = {
+  id: string | number;
+  groupMemberId?: string | number;
+  fundTypeId?: string | number;
+  amount?: number;
+  contributionDate?: string;
+  reference?: string;
 };
 
 export const contributionService = {
