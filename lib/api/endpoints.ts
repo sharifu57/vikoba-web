@@ -21,6 +21,7 @@ export const API_ENDPOINTS = {
   meetings: "/api/meetings",
   payments: "/api/payments",
   expenses: "/api/expenses",
+  accounting: "/api/accounting",
   fines: "/api/fines",
   socialFund: "/api/social-fund",
   reports: "/api/reports",

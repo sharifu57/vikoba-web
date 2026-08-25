@@ -141,7 +141,7 @@ export async function apiRequest<T>(
     const error = new Error(message) as ApiError;
     error.status = response.status;
 
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
       clearAuthTokens();
     }
 
