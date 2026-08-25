@@ -16,7 +16,26 @@ export const AUTH_STORAGE_KEYS = {
 
 export function getAccessToken() {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(AUTH_STORAGE_KEYS.accessToken) || null;
+
+  const storedToken = localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
+  if (storedToken) return storedToken;
+
+  // Support sessions created before the standalone access-token key was added.
+  const storedSession = localStorage.getItem(AUTH_STORAGE_KEYS.session);
+  if (!storedSession) return null;
+
+  try {
+    const session = JSON.parse(storedSession) as {
+      accessToken?: unknown;
+      token?: unknown;
+    };
+    const sessionToken = session.accessToken ?? session.token;
+    return typeof sessionToken === "string" && sessionToken.length > 0
+      ? sessionToken
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function setAuthTokens(

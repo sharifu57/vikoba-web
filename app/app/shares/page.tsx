@@ -1,466 +1,146 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useVikobaStore } from '@/lib/mockStore'
-import { PlusCircle, ArrowLeftRight, Check, X, Search, FileText } from 'lucide-react'
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { AlertCircle, ArrowLeftRight, Coins, Loader2, Plus, Search, TrendingUp, Undo2 } from "lucide-react";
+import { useShares, type ShareOwnership, type ShareSummary, type ShareTransaction } from "@/hooks/useShares";
+import { groupService, memberService, type Group, type Member } from "@/lib/api/services";
+
+type Action = "purchase" | "transfer" | "redeem" | null;
+
+const emptySummary: ShareSummary = {
+    unitPrice: 0,
+    totalShares: 0,
+    totalCapital: 0,
+    holdersCount: 0,
+    totalMembers: 0,
+};
+
+function unwrap<T>(response: T | { data?: T }): T {
+    if (response && typeof response === "object" && "data" in response) {
+        return (response as { data?: T }).data as T;
+    }
+    return response as T;
+}
 
 export default function SharesPage() {
-  const { 
-    members, 
-    currentGroup, 
-    recordPayment,
-    shareTransactions,
-    addAuditLog
-  } = useVikobaStore()
+    const { loading, error, getSummary, getOwnership, getLedger, purchase, transfer, redeem } = useShares();
+    const [groupId, setGroupId] = useState("");
+    const [summary, setSummary] = useState(emptySummary);
+    const [ownership, setOwnership] = useState<ShareOwnership[]>([]);
+    const [ledger, setLedger] = useState<ShareTransaction[]>([]);
+    const [members, setMembers] = useState<Member[]>([]);
+    const [action, setAction] = useState<Action>(null);
+    const [search, setSearch] = useState("");
+    const [message, setMessage] = useState<string | null>(null);
+    const [purchaseForm, setPurchaseForm] = useState({ memberId: "", quantity: "", amount: "", reference: "", paymentMethod: "Cash" });
+    const [transferForm, setTransferForm] = useState({ from: "", to: "", quantity: "", reference: "" });
+    const [redeemForm, setRedeemForm] = useState({ memberId: "", quantity: "", reference: "" });
 
-  // Modal actions state
-  const [actionModal, setActionModal] = useState<'buy' | 'transfer' | 'redeem' | null>(null)
-  
-  // Forms state
-  const [buyForm, setBuyForm] = useState({ memberId: '', sharesCount: 10, method: 'Mobile Money' as const })
-  const [transferForm, setTransferForm] = useState({ fromMemberId: '', toMemberId: '', sharesCount: 5 })
-  const [redeemForm, setRedeemForm] = useState({ memberId: '', sharesCount: 5 })
+    const formatMoney = (value: number) => `TZS ${Number(value || 0).toLocaleString()}`;
 
-  // Search state
-  const [search, setSearch] = useState('')
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const stored = localStorage.getItem("v360_currentGroupId") || "";
+        if (/^\d+$/.test(stored)) {
+            setGroupId(stored);
+            return;
+        }
+        const storedGroup = localStorage.getItem("v360_currentGroup");
+        let groupName = stored;
+        try {
+            const parsed = storedGroup ? JSON.parse(storedGroup) : {};
+            groupName = parsed.groupName || parsed.name || stored;
+        } catch { /* use stored value */ }
+        groupService.list().then(response => {
+            const groups = unwrap(response) as Group[];
+            const selected = groups.find(group => group.name.toLowerCase() === groupName.toLowerCase());
+            if (selected && /^\d+$/.test(String(selected.id))) {
+                setGroupId(String(selected.id));
+                localStorage.setItem("v360_currentGroupId", String(selected.id));
+            }
+        }).catch(() => setMessage("Unable to resolve the selected group."));
+    }, []);
 
-  // Format currency helper
-  const fmt = (val: number) => {
-    return `${currentGroup.currency} ${val.toLocaleString()}`
-  }
+    const loadData = async () => {
+        if (!groupId) return;
+        try {
+            const [nextSummary, nextOwnership, nextLedger, memberResponse] = await Promise.all([
+                getSummary(groupId), getOwnership(groupId), getLedger(groupId), memberService.list(groupId),
+            ]);
+            setSummary(nextSummary || emptySummary);
+            setOwnership(nextOwnership || []);
+            setLedger(nextLedger || []);
+            setMembers(unwrap(memberResponse) as Member[]);
+        } catch { /* hook exposes the error */ }
+    };
 
-  // Calculate metrics
-  const activeMembersWithShares = members.filter(m => m.groupId === currentGroup.id && m.shares > 0)
-  const totalSharesCount = activeMembersWithShares.reduce((sum, m) => sum + m.shares, 0)
-  const totalCapitalValue = totalSharesCount * 5000
+    useEffect(() => { loadData(); }, [groupId]);
 
-  // Filter members table
-  const filteredMembers = members.filter(m => {
-    if (m.groupId !== currentGroup.id) return false
-    return m.name.toLowerCase().includes(search.toLowerCase())
-  })
+    const visibleOwnership = useMemo(() => ownership.filter(item => item.memberName.toLowerCase().includes(search.toLowerCase())), [ownership, search]);
+    const memberName = (id: string) => members.find(member => String(member.id) === id)?.name || "Selected member";
 
-  // Top shareholders (sorted)
-  const topShareholders = [...activeMembersWithShares]
-    .sort((a, b) => b.shares - a.shares)
-    .slice(0, 4)
+    const submit = async (event: FormEvent) => {
+        event.preventDefault();
+        if (!groupId) return;
+        try {
+            if (action === "purchase") {
+                const quantity = purchaseForm.quantity ? Number(purchaseForm.quantity) : undefined;
+                const amount = purchaseForm.amount ? Number(purchaseForm.amount) : undefined;
+                if (!quantity && !amount) throw new Error("Enter shares or an amount.");
+                await purchase(groupId, { groupMemberId: purchaseForm.memberId, quantity, amount, reference: purchaseForm.reference || undefined, paymentMethod: purchaseForm.paymentMethod });
+            } else if (action === "transfer") {
+                await transfer(groupId, { fromGroupMemberId: transferForm.from, toGroupMemberId: transferForm.to, quantity: Number(transferForm.quantity), reference: transferForm.reference || undefined });
+            } else if (action === "redeem") {
+                await redeem(groupId, { groupMemberId: redeemForm.memberId, quantity: Number(redeemForm.quantity), reference: redeemForm.reference || undefined });
+            }
+            setAction(null);
+            setMessage("Share transaction recorded successfully.");
+            await loadData();
+        } catch (cause) {
+            setMessage(cause instanceof Error ? cause.message : "Unable to record transaction.");
+        }
+    };
 
-  const handleBuyShares = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (buyForm.memberId && buyForm.sharesCount > 0) {
-      const amount = buyForm.sharesCount * 5000
-      recordPayment({
-        memberId: buyForm.memberId,
-        amount,
-        type: 'Share Purchase',
-        method: buyForm.method
-      })
-      setActionModal(null)
-      setBuyForm({ memberId: '', sharesCount: 10, method: 'Mobile Money' })
-    }
-  }
-
-  const handleTransferShares = (e: React.FormEvent) => {
-    e.preventDefault()
-    const { fromMemberId, toMemberId, sharesCount } = transferForm
-    if (fromMemberId && toMemberId && sharesCount > 0 && fromMemberId !== toMemberId) {
-      const fromMem = members.find(m => m.id === fromMemberId)
-      if (fromMem && fromMem.shares >= sharesCount) {
-        // Direct state manipulation for transfer demo (simple audit logs)
-        fromMem.shares -= sharesCount
-        const toMem = members.find(m => m.id === toMemberId)
-        if (toMem) toMem.shares += sharesCount
-
-        addAuditLog(
-          'Transfer Shares', 
-          'Shares', 
-          fromMemberId, 
-          `Transferred ${sharesCount} shares from ${fromMem.name} to ${toMem?.name}`
-        )
-
-        setActionModal(null)
-        setTransferForm({ fromMemberId: '', toMemberId: '', sharesCount: 5 })
-      }
-    }
-  }
-
-  const handleRedeemShares = (e: React.FormEvent) => {
-    e.preventDefault()
-    const { memberId, sharesCount } = redeemForm
-    if (memberId && sharesCount > 0) {
-      const mem = members.find(m => m.id === memberId)
-      if (mem && mem.shares >= sharesCount) {
-        mem.shares -= sharesCount
-        
-        addAuditLog(
-          'Redeem Shares', 
-          'Shares', 
-          memberId, 
-          `Redeemed ${sharesCount} shares (TZS ${(sharesCount * 5000).toLocaleString()}) for ${mem.name}`
-        )
-
-        setActionModal(null)
-        setRedeemForm({ memberId: '', sharesCount: 5 })
-      }
-    }
-  }
-
-  return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* Header and Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <div className="breadcrumb text-xs text-neutral-400 font-bold flex items-center gap-1">
-            <span>Finance</span>
-            <span className="text-neutral-300">/</span>
-            <span className="text-neutral-500">Shares</span>
-          </div>
-          <h1 className="text-2xl font-black text-neutral-900 mt-2">Shares Ledger (Hisa)</h1>
-          <p className="text-xs text-neutral-400">Manage member share capitals, buy-ins, and transfer logs.</p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <button 
-            onClick={() => setActionModal('buy')}
-            className="flex-1 sm:flex-none px-4 py-2.5 bg-[#d99521] hover:bg-[#c08216] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
-          >
-            <PlusCircle size={14} /> Buy Shares
-          </button>
-          <button 
-            onClick={() => setActionModal('transfer')}
-            className="flex-1 sm:flex-none px-4 py-2.5 border border-[#dfe8e2] hover:bg-neutral-50 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
-          >
-            <ArrowLeftRight size={14} /> Transfer Shares
-          </button>
-        </div>
-      </div>
-
-      {/* Summary Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          { title: 'Total Shares Capitalized', val: `${totalSharesCount.toLocaleString()} Shares`, color: 'text-[#d99521]' },
-          { title: 'Share Unit Price', val: fmt(5000), color: 'text-neutral-800', sub: 'Fixed group rate' },
-          { title: 'Total Capital Value', val: fmt(totalCapitalValue), color: 'text-neutral-800' },
-          { title: 'Holders Count', val: `${activeMembersWithShares.length} Members`, color: 'text-[#087f5b]' }
-        ].map((s, idx) => (
-          <div key={idx} className="bg-white border border-[#dfe8e2] rounded-xl p-5 shadow-sm">
-            <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">{s.title}</span>
-            <h3 className={`text-lg md:text-xl font-black mt-2 ${s.color}`}>{s.val}</h3>
-            {s.sub && <span className="text-[9px] text-neutral-400 mt-1 block font-semibold">{s.sub}</span>}
-          </div>
-        ))}
-      </div>
-
-      {/* Visual ownership distribution & Top holders grid */}
-      <div className="grid lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-2 bg-white border border-[#dfe8e2] rounded-xl p-6">
-          <h3 className="font-extrabold text-neutral-800 text-sm mb-4">Ownership Share Distribution</h3>
-          
-          <div className="flex flex-col gap-4 mt-6">
-            {topShareholders.map((m, i) => {
-              const pct = totalSharesCount > 0 ? Math.round((m.shares / totalSharesCount) * 100) : 0
-              return (
-                <div key={i} className="flex flex-col gap-1.5">
-                  <div className="flex justify-between text-xs font-semibold text-neutral-700">
-                    <span>{m.name}</span>
-                    <span>{pct}% ({m.shares} shares)</span>
-                  </div>
-                  <div className="w-full bg-neutral-100 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-[#d99521] h-full rounded-full" 
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 flex flex-col justify-between">
-          <div>
-            <h3 className="font-extrabold text-neutral-800 text-sm mb-2">Redeem Shares</h3>
-            <p className="text-[10px] text-neutral-400 leading-normal">
-              Need to cash out member holdings back into the group available liquidity? Perform a share redemption.
-            </p>
-          </div>
-          <button 
-            onClick={() => setActionModal('redeem')}
-            className="w-full py-2.5 border border-red-200 hover:border-red-500 hover:bg-red-50 text-red-600 font-bold rounded-lg text-xs transition mt-4"
-          >
-            Redeem Shares Drawer
-          </button>
-        </div>
-      </div>
-
-      {/* Shares register table */}
-      <div className="bg-white border border-[#dfe8e2] rounded-xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-neutral-100 flex justify-between items-center">
-          <h3 className="font-extrabold text-neutral-800 text-sm">Holders Ledger</h3>
-          <div className="relative w-64">
-            <input 
-              type="text" 
-              placeholder="Filter by name..." 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full border border-[#dfe8e2] rounded-lg p-2 pl-8 text-xs outline-none focus:border-[#d99521]"
-            />
-            <Search className="absolute left-2.5 top-2.5 text-neutral-400" size={13} />
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-neutral-50/70 text-neutral-400 uppercase text-[9px] tracking-wider border-b border-neutral-100">
-                <th className="p-4 font-bold">Member</th>
-                <th className="p-4 font-bold text-right">Shares Owned</th>
-                <th className="p-4 font-bold text-right">Total Equity Value</th>
-                <th className="p-4 font-bold text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-50">
-              {filteredMembers.map(m => (
-                <tr key={m.id} className="hover:bg-neutral-50/50">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#fdfaf5] text-[#d99521] font-bold text-xs flex items-center justify-center border border-[#f3e5d0]">
-                        {m.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div>
-                        <span className="font-bold text-neutral-800 block text-xs">{m.name}</span>
-                        <span className="text-[10px] text-neutral-400 block mt-0.5">{m.memberNo}</span>
-                      </div>
+    return (
+        <main className="min-h-screen bg-linear-to-br from-neutral-50 to-amber-50/40 px-4 py-8 sm:px-6">
+            <div className="mx-auto max-w-7xl space-y-7">
+                <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-amber-700">Finance / Shares</p>
+                        <h1 className="mt-2 text-3xl font-black text-neutral-900">Share ownership</h1>
+                        <p className="mt-1 text-sm text-neutral-500">A clear view of capital, ownership, and every share movement.</p>
                     </div>
-                  </td>
-                  <td className="p-4 font-extrabold text-neutral-800 text-right">{m.shares.toLocaleString()} Shares</td>
-                  <td className="p-4 font-black text-neutral-800 text-right">{fmt(m.shares * 5000)}</td>
-                  <td className="p-4 text-center">
-                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-extrabold">
-                      COMPLETED
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setAction("purchase")} disabled={!groupId} className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-amber-700 disabled:opacity-50"><Plus size={17} /> Buy shares</button>
+                        <button onClick={() => setAction("transfer")} disabled={!groupId} className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"><ArrowLeftRight size={17} /> Transfer</button>
+                    </div>
+                </header>
 
-      {/* Action Modal Overlay: Buy Shares */}
-      {actionModal === 'buy' && (
-        <div className="fixed inset-0 bg-[#122b1c]/30 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#dfe8e2] rounded-2xl p-6 shadow-2xl max-w-md w-full flex flex-col gap-5">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-              <h3 className="font-extrabold text-neutral-800 text-sm">Buy Shares (Hisa)</h3>
-              <button onClick={() => setActionModal(null)} className="text-neutral-400 hover:text-neutral-700">
-                <X size={18} />
-              </button>
+                {message && <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"><span>{message}</span><button onClick={() => setMessage(null)}>Dismiss</button></div>}
+                {error && <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"><AlertCircle size={17} /> {error}</div>}
+                {!groupId && <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-10 text-center text-sm text-neutral-500">Select or create a group to view its shares.</div>}
+
+                <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                        ["Share price", formatMoney(summary.unitPrice), Coins],
+                        ["Shares in circulation", summary.totalShares.toLocaleString(), TrendingUp],
+                        ["Total capital", formatMoney(summary.totalCapital), Coins],
+                        ["Shareholders", `${summary.holdersCount} / ${summary.totalMembers}`, ArrowLeftRight],
+                    ].map(([label, value, Icon]) => <div key={String(label)} className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex justify-between"><p className="text-xs font-bold uppercase tracking-wider text-neutral-500">{label}</p><Icon size={18} className="text-amber-600" /></div><p className="mt-3 text-2xl font-black text-neutral-900">{value}</p></div>)}
+                </section>
+
+                <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                    <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+                        <div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="font-black text-neutral-900">Ownership distribution</h2><p className="text-xs text-neutral-500">Calculated from the share ledger</p></div><div className="relative"><Search size={15} className="absolute left-3 top-2.5 text-neutral-400" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Find member" className="w-44 rounded-lg border border-neutral-200 py-2 pl-9 pr-3 text-xs outline-none focus:border-amber-500" /></div></div>
+                        <div className="space-y-4">{visibleOwnership.length === 0 ? <p className="py-8 text-center text-sm text-neutral-500">No share ownership recorded yet.</p> : visibleOwnership.map(item => <div key={item.groupMemberId}><div className="mb-1 flex justify-between text-sm"><span className="font-bold text-neutral-800">{item.memberName}</span><span className="text-neutral-500">{item.sharesOwned} shares · {item.ownershipPercentage.toFixed(1)}%</span></div><div className="h-2 overflow-hidden rounded-full bg-neutral-100"><div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.min(item.ownershipPercentage, 100)}%` }} /></div><p className="mt-1 text-xs text-neutral-500">{item.membershipNumber || ""} · {formatMoney(item.equityValue)}</p></div>)}</div>
+                    </div>
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-900 p-6 text-white shadow-sm"><h2 className="font-black">Share rules</h2><p className="mt-2 text-sm text-neutral-300">One share costs <strong className="text-amber-300">{formatMoney(summary.unitPrice)}</strong>, taken directly from group settings.</p><div className="mt-6 grid grid-cols-2 gap-3 text-sm"><div className="rounded-lg bg-white/10 p-3"><p className="text-neutral-400">Maximum per member</p><p className="mt-1 font-bold">{summary.maximumSharesPerMember || "No limit"}</p></div><div className="rounded-lg bg-white/10 p-3"><p className="text-neutral-400">Valuation basis</p><p className="mt-1 font-bold">Ledger balance</p></div></div><button onClick={() => setAction("redeem")} disabled={!groupId} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/50 px-4 py-2.5 text-sm font-bold text-red-200 hover:bg-red-500/20 disabled:opacity-50"><Undo2 size={16} /> Redeem shares</button></div>
+                </section>
+
+                <section className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm"><div className="border-b border-neutral-100 p-6"><h2 className="font-black text-neutral-900">Share ledger</h2><p className="text-xs text-neutral-500">Immutable purchase, transfer, and redemption history</p></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-neutral-50 text-xs uppercase tracking-wider text-neutral-500"><tr><th className="px-6 py-3">Date</th><th className="px-6 py-3">Member</th><th className="px-6 py-3">Type</th><th className="px-6 py-3 text-right">Shares</th><th className="px-6 py-3 text-right">Amount</th><th className="px-6 py-3">Reference</th></tr></thead><tbody className="divide-y divide-neutral-100">{ledger.map(item => <tr key={item.id}><td className="px-6 py-4 text-neutral-500">{new Date(item.transactionDate).toLocaleDateString()}</td><td className="px-6 py-4 font-bold text-neutral-800">{item.memberName}<span className="block text-xs font-normal text-neutral-400">{item.membershipNumber}</span></td><td className="px-6 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.type === "PURCHASE" ? "bg-emerald-50 text-emerald-700" : item.type === "REDEMPTION" ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"}`}>{item.type.replace("_", " ")}</span></td><td className="px-6 py-4 text-right font-bold">{item.quantity}</td><td className="px-6 py-4 text-right font-bold">{formatMoney(item.totalAmount)}</td><td className="px-6 py-4 text-xs text-neutral-500">{item.reference}</td></tr>)}{ledger.length === 0 && <tr><td colSpan={6} className="px-6 py-12 text-center text-neutral-500">No share transactions recorded yet.</td></tr>}</tbody></table></div></section>
             </div>
 
-            <form onSubmit={handleBuyShares} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Select Member *</label>
-                <select
-                  required
-                  value={buyForm.memberId}
-                  onChange={e => setBuyForm({ ...buyForm, memberId: e.target.value })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#d99521] text-neutral-600 font-semibold"
-                >
-                  <option value="">Choose a member...</option>
-                  {members.filter(m => m.groupId === currentGroup.id).map(m => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.memberNo})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1.5">Shares Count *</label>
-                  <input 
-                    type="number"
-                    required
-                    min={1}
-                    value={buyForm.sharesCount}
-                    onChange={e => setBuyForm({ ...buyForm, sharesCount: Number(e.target.value) })}
-                    className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#d99521] font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1.5">Calculated Cost</label>
-                  <input 
-                    type="text"
-                    disabled
-                    value={fmt(buyForm.sharesCount * 5000)}
-                    className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs bg-neutral-50 text-neutral-500 font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Funding Source *</label>
-                <select
-                  value={buyForm.method}
-                  onChange={e => setBuyForm({ ...buyForm, method: e.target.value as any })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#d99521] text-neutral-600 font-semibold"
-                >
-                  <option value="Mobile Money">Mobile Money (M-Pesa/Tigo/Airtel)</option>
-                  <option value="Cash">Cash Handover</option>
-                  <option value="Bank">Bank Deposit</option>
-                </select>
-              </div>
-
-              <div className="flex gap-3 justify-end pt-3 border-t border-neutral-100">
-                <button 
-                  type="button" 
-                  onClick={() => setActionModal(null)}
-                  className="px-4 py-2 border border-[#dfe8e2] rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-50"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-[#d99521] hover:bg-[#c08216] text-white rounded-lg text-xs font-bold"
-                >
-                  Record Share Purchase
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Action Modal Overlay: Transfer Shares */}
-      {actionModal === 'transfer' && (
-        <div className="fixed inset-0 bg-[#122b1c]/30 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#dfe8e2] rounded-2xl p-6 shadow-2xl max-w-md w-full flex flex-col gap-5">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-              <h3 className="font-extrabold text-neutral-800 text-sm">Transfer Shares</h3>
-              <button onClick={() => setActionModal(null)} className="text-neutral-400 hover:text-neutral-700">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleTransferShares} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Source Member (From) *</label>
-                <select
-                  required
-                  value={transferForm.fromMemberId}
-                  onChange={e => setTransferForm({ ...transferForm, fromMemberId: e.target.value })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#d99521] text-neutral-600 font-semibold"
-                >
-                  <option value="">Select source member...</option>
-                  {members.filter(m => m.groupId === currentGroup.id && m.shares > 0).map(m => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.shares} shares)</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Target Member (To) *</label>
-                <select
-                  required
-                  value={transferForm.toMemberId}
-                  onChange={e => setTransferForm({ ...transferForm, toMemberId: e.target.value })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#d99521] text-neutral-600 font-semibold"
-                >
-                  <option value="">Select target member...</option>
-                  {members.filter(m => m.groupId === currentGroup.id && m.id !== transferForm.fromMemberId).map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Number of Shares to Transfer *</label>
-                <input 
-                  type="number"
-                  required
-                  min={1}
-                  value={transferForm.sharesCount}
-                  onChange={e => setTransferForm({ ...transferForm, sharesCount: Number(e.target.value) })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#d99521] font-bold"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-3 border-t border-neutral-100">
-                <button 
-                  type="button" 
-                  onClick={() => setActionModal(null)}
-                  className="px-4 py-2 border border-[#dfe8e2] rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-50"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-[#d99521] hover:bg-[#c08216] text-white rounded-lg text-xs font-bold"
-                >
-                  Complete Transfer
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Action Modal Overlay: Redeem Shares */}
-      {actionModal === 'redeem' && (
-        <div className="fixed inset-0 bg-[#122b1c]/30 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#dfe8e2] rounded-2xl p-6 shadow-2xl max-w-md w-full flex flex-col gap-5">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-              <h3 className="font-extrabold text-neutral-800 text-sm text-red-600">Redeem Shares (Withdraw Cash)</h3>
-              <button onClick={() => setActionModal(null)} className="text-neutral-400 hover:text-neutral-700">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleRedeemShares} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Member *</label>
-                <select
-                  required
-                  value={redeemForm.memberId}
-                  onChange={e => setRedeemForm({ ...redeemForm, memberId: e.target.value })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#d99521] text-neutral-600 font-semibold"
-                >
-                  <option value="">Select member...</option>
-                  {members.filter(m => m.groupId === currentGroup.id && m.shares > 0).map(m => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.shares} shares)</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Shares to Withdraw *</label>
-                <input 
-                  type="number"
-                  required
-                  min={1}
-                  value={redeemForm.sharesCount}
-                  onChange={e => setRedeemForm({ ...redeemForm, sharesCount: Number(e.target.value) })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#d99521] font-bold"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end pt-3 border-t border-neutral-100">
-                <button 
-                  type="button" 
-                  onClick={() => setActionModal(null)}
-                  className="px-4 py-2 border border-[#dfe8e2] rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-50"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold"
-                >
-                  Approve Redemption
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+            {action && <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4"><div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><div><h2 className="text-xl font-black text-neutral-900">{action === "purchase" ? "Buy shares" : action === "transfer" ? "Transfer shares" : "Redeem shares"}</h2><p className="text-xs text-neutral-500">All values use the configured group share price.</p></div><button onClick={() => setAction(null)} className="text-sm font-bold text-neutral-400">Close</button></div><form onSubmit={submit} className="space-y-4">{action === "purchase" && <><select required value={purchaseForm.memberId} onChange={event => setPurchaseForm({ ...purchaseForm, memberId: event.target.value })} className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"><option value="">Select member</option>{members.map(member => <option key={member.id} value={String(member.id)}>{member.name || member.fullName || member.memberNo}</option>)}</select><div className="grid grid-cols-2 gap-3"><input type="number" min="1" value={purchaseForm.quantity} onChange={event => setPurchaseForm({ ...purchaseForm, quantity: event.target.value, amount: "" })} placeholder="Number of shares" className="rounded-lg border border-neutral-200 px-3 py-3 text-sm" /><input type="number" min="1" value={purchaseForm.amount} onChange={event => setPurchaseForm({ ...purchaseForm, amount: event.target.value, quantity: "" })} placeholder="Amount paid" className="rounded-lg border border-neutral-200 px-3 py-3 text-sm" /></div><p className="text-xs text-neutral-500">{purchaseForm.quantity ? `Total: ${formatMoney(Number(purchaseForm.quantity) * summary.unitPrice)}` : purchaseForm.amount ? `Shares: ${Math.floor(Number(purchaseForm.amount) / summary.unitPrice)}` : "Enter shares or amount"}</p><select value={purchaseForm.paymentMethod} onChange={event => setPurchaseForm({ ...purchaseForm, paymentMethod: event.target.value })} className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select><input value={purchaseForm.reference} onChange={event => setPurchaseForm({ ...purchaseForm, reference: event.target.value })} placeholder="Payment reference (optional)" className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm" /></>}{action === "transfer" && <><select required value={transferForm.from} onChange={event => setTransferForm({ ...transferForm, from: event.target.value })} className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"><option value="">Transfer from</option>{ownership.filter(item => item.sharesOwned > 0).map(item => <option key={item.groupMemberId} value={String(item.groupMemberId)}>{item.memberName} ({item.sharesOwned})</option>)}</select><select required value={transferForm.to} onChange={event => setTransferForm({ ...transferForm, to: event.target.value })} className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"><option value="">Transfer to</option>{members.map(member => <option key={member.id} value={String(member.id)}>{member.name || member.fullName || member.memberNo}</option>)}</select><input required type="number" min="1" value={transferForm.quantity} onChange={event => setTransferForm({ ...transferForm, quantity: event.target.value })} placeholder="Number of shares" className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm" /><input value={transferForm.reference} onChange={event => setTransferForm({ ...transferForm, reference: event.target.value })} placeholder="Transfer reference (optional)" className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm" /></>}{action === "redeem" && <><select required value={redeemForm.memberId} onChange={event => setRedeemForm({ ...redeemForm, memberId: event.target.value })} className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"><option value="">Select member</option>{ownership.filter(item => item.sharesOwned > 0).map(item => <option key={item.groupMemberId} value={String(item.groupMemberId)}>{item.memberName} ({item.sharesOwned})</option>)}</select><input required type="number" min="1" value={redeemForm.quantity} onChange={event => setRedeemForm({ ...redeemForm, quantity: event.target.value })} placeholder="Number of shares" className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm" /><input value={redeemForm.reference} onChange={event => setRedeemForm({ ...redeemForm, reference: event.target.value })} placeholder="Redemption reference (optional)" className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm" /></>}<button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-3 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50">{loading && <Loader2 size={16} className="animate-spin" />} Save transaction</button></form></div></div>}
+        </main>
+    );
 }

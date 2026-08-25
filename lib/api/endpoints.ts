@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   groups: "/api/groups",
   members: "/api/members",
   contributions: "/api/contributions",
+  shares: "/api/shares",
   loans: "/api/loans",
   meetings: "/api/meetings",
   payments: "/api/payments",
