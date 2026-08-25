@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowLeftRight, Coins, Loader2, Plus, Search, TrendingUp, Undo2 } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Coins, Loader2, Plus, Search, TrendingUp, Undo2, type LucideIcon } from "lucide-react";
 import { useShares, type ShareOwnership, type ShareSummary, type ShareTransaction } from "@/hooks/useShares";
 import { groupService, memberService, type Group, type Member } from "@/lib/api/services";
 
@@ -78,6 +78,12 @@ export default function SharesPage() {
 
     const visibleOwnership = useMemo(() => ownership.filter(item => item.memberName.toLowerCase().includes(search.toLowerCase())), [ownership, search]);
     const memberName = (id: string) => members.find(member => String(member.id) === id)?.name || "Selected member";
+    const summaryCards: Array<{ label: string; value: string; icon: LucideIcon }> = [
+        { label: "Share price", value: formatMoney(summary.unitPrice), icon: Coins },
+        { label: "Shares in circulation", value: summary.totalShares.toLocaleString(), icon: TrendingUp },
+        { label: "Total capital", value: formatMoney(summary.totalCapital), icon: Coins },
+        { label: "Shareholders", value: `${summary.holdersCount} / ${summary.totalMembers}`, icon: ArrowLeftRight },
+    ];
 
     const submit = async (event: FormEvent) => {
         event.preventDefault();
@@ -121,12 +127,7 @@ export default function SharesPage() {
                 {!groupId && <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-10 text-center text-sm text-neutral-500">Select or create a group to view its shares.</div>}
 
                 <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                        ["Share price", formatMoney(summary.unitPrice), Coins],
-                        ["Shares in circulation", summary.totalShares.toLocaleString(), TrendingUp],
-                        ["Total capital", formatMoney(summary.totalCapital), Coins],
-                        ["Shareholders", `${summary.holdersCount} / ${summary.totalMembers}`, ArrowLeftRight],
-                    ].map(([label, value, Icon]) => <div key={String(label)} className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex justify-between"><p className="text-xs font-bold uppercase tracking-wider text-neutral-500">{label}</p><Icon size={18} className="text-amber-600" /></div><p className="mt-3 text-2xl font-black text-neutral-900">{value}</p></div>)}
+                    {summaryCards.map(({ label, value, icon: SummaryIcon }) => <div key={label} className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex justify-between"><p className="text-xs font-bold uppercase tracking-wider text-neutral-500">{label}</p><SummaryIcon size={18} className="text-amber-600" /></div><p className="mt-3 text-2xl font-black text-neutral-900">{value}</p></div>)}
                 </section>
 
                 <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
