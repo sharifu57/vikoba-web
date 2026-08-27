@@ -326,8 +326,13 @@ export default function LoansDashboard() {
                                     className="mt-1 w-full rounded-lg border p-2.5"
                                 />
                             </label>
-                            <button className="w-full rounded-lg bg-[#087f5b] p-2.5 text-xs font-bold text-white">
-                                Submit application
+                            <button
+                                type="submit"
+                                disabled={api.loading}
+                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#087f5b] p-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {api.loading && <Loader2 size={14} className="animate-spin" />}
+                                {api.loading ? "Submitting application..." : "Submit application"}
                             </button>
                         </form>
                     </div>

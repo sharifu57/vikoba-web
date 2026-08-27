@@ -18,24 +18,29 @@ export function getAccessToken() {
   if (typeof window === "undefined") return null;
 
   const storedToken = localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
-  if (storedToken) return storedToken;
+  if (storedToken) return normaliseToken(storedToken);
 
   // Support sessions created before the standalone access-token key was added.
   const storedSession = localStorage.getItem(AUTH_STORAGE_KEYS.session);
   if (!storedSession) return null;
 
   try {
-    const session = JSON.parse(storedSession) as {
-      accessToken?: unknown;
-      token?: unknown;
-    };
-    const sessionToken = session.accessToken ?? session.token;
-    return typeof sessionToken === "string" && sessionToken.length > 0
-      ? sessionToken
-      : null;
+    const session = JSON.parse(storedSession) as Record<string, unknown>;
+    const sessionData = session.data as Record<string, unknown> | undefined;
+    const sessionToken =
+      session.accessToken ?? session.token ?? sessionData?.accessToken ?? sessionData?.token;
+    return typeof sessionToken === "string" ? normaliseToken(sessionToken) : null;
   } catch {
     return null;
   }
+}
+
+function normaliseToken(token: string) {
+  // Some older login/session flows persisted the token as a JSON string.
+  // Remove that wrapping before constructing the Authorization header.
+  const value = token.trim().replace(/^"(.*)"$/, "$1");
+  if (!value) return null;
+  return value.replace(/^Bearer\s+/i, "");
 }
 
 export function setAuthTokens(
@@ -122,11 +127,14 @@ export async function apiRequest<T>(
     requestHeaders.set("Content-Type", "application/json");
   }
 
-  if (auth) {
+  if (auth && !requestHeaders.has("Authorization")) {
     const token = getAccessToken();
-    if (token) {
-      requestHeaders.set("Authorization", `Bearer ${token}`);
+    if (!token) {
+      const error = new Error("Your session has expired. Please sign in again.") as ApiError;
+      error.status = 401;
+      throw error;
     }
+    requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(buildApiUrl(path), {
@@ -140,10 +148,6 @@ export async function apiRequest<T>(
       payload?.message || `Request failed with status ${response.status}`;
     const error = new Error(message) as ApiError;
     error.status = response.status;
-
-    if (response.status === 401 || response.status === 403) {
-      clearAuthTokens();
-    }
 
     throw error;
   }

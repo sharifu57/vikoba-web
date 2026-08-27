@@ -355,6 +355,52 @@ export type DashboardSummary = {
   totalLoans: number;
 };
 
+export type DashboardOverview = {
+  summary: {
+    totalMembers: number;
+    contributions: number;
+    shares: number;
+    shareCapital: number;
+    outstandingLoans: number;
+  };
+  contributionTrend: Array<{ month: string; amount: number }>;
+  shareTrend: Array<{ month: string; amount: number }>;
+  nextMeetings: Array<{
+    id: string | number;
+    title: string;
+    date: string;
+    startTime?: string;
+    location?: string;
+    status?: string;
+    agenda?: string;
+  }>;
+  finance: {
+    totalReceived: number;
+    cashReceived: number;
+    bankReceived: number;
+    mobileMoneyReceived: number;
+    socialFundReceived: number;
+    pendingAmount: number;
+  };
+  recentActivities: Array<{
+    id: string | number;
+    reference: string;
+    memberName: string;
+    type?: string;
+    amount: number;
+    method?: string;
+    status?: string;
+    date: string;
+    description?: string;
+  }>;
+  actions: {
+    pendingLoanApplications: number;
+    membersWithContributionArrears: number;
+    unpaidFines: number;
+    upcomingMeetings: number;
+  };
+};
+
 export const groupService = {
   list: () => apiGet<Group[]>(API_ENDPOINTS.groups),
   getById: (id: string) => apiGet<Group>(`${API_ENDPOINTS.groups}/${id}`),
@@ -503,13 +549,19 @@ export const contributionService = {
 
 export const loanService = {
   list: (groupId?: string) =>
-    apiGet<Loan[]>(API_ENDPOINTS.loans, groupId ? { groupId } : undefined),
-  getById: (id: string) => apiGet<Loan>(`${API_ENDPOINTS.loans}/${id}`),
+    apiGet<Loan[]>(
+      groupId ? `${API_ENDPOINTS.loans}/group/${groupId}` : API_ENDPOINTS.loans,
+      undefined,
+      { auth: true },
+    ),
+  getById: (id: string) =>
+    apiGet<Loan>(`${API_ENDPOINTS.loans}/${id}`, undefined, { auth: true }),
   create: (payload: Partial<Loan>) =>
-    apiPost<Loan>(API_ENDPOINTS.loans, payload),
+    apiPost<Loan>(API_ENDPOINTS.loans, payload, { auth: true }),
   update: (id: string, payload: Partial<Loan>) =>
-    apiPut<Loan>(`${API_ENDPOINTS.loans}/${id}`, payload),
-  remove: (id: string) => apiDelete(`${API_ENDPOINTS.loans}/${id}`),
+    apiPut<Loan>(`${API_ENDPOINTS.loans}/${id}`, payload, { auth: true }),
+  remove: (id: string) =>
+    apiDelete(`${API_ENDPOINTS.loans}/${id}`, { auth: true }),
 };
 
 export const meetingService = {
@@ -574,11 +626,13 @@ export const expenseService = {
 
 export const fineService = {
   list: (groupId?: string) =>
-    apiGet<Fine[]>(API_ENDPOINTS.fines, groupId ? { groupId } : undefined),
+    apiGet<Fine[]>(API_ENDPOINTS.fines, groupId ? { groupId } : undefined, {
+      auth: true,
+    }),
   create: (payload: Partial<Fine>) =>
-    apiPost<Fine>(API_ENDPOINTS.fines, payload),
+    apiPost<Fine>(API_ENDPOINTS.fines, payload, { auth: true }),
   update: (id: string, payload: Partial<Fine>) =>
-    apiPut<Fine>(`${API_ENDPOINTS.fines}/${id}`, payload),
+    apiPut<Fine>(`${API_ENDPOINTS.fines}/${id}`, payload, { auth: true }),
 };
 
 export const socialFundService = {
@@ -599,6 +653,12 @@ export const reportService = {
     apiGet<DashboardSummary>(
       `${API_ENDPOINTS.dashboard}`,
       groupId ? { groupId } : undefined,
+      { auth: true },
+    ),
+  getOverview: (groupId: string) =>
+    apiGet<ApiResponse<DashboardOverview>>(
+      `${API_ENDPOINTS.dashboard}/group/${groupId}`,
+      undefined,
       { auth: true },
     ),
 };
