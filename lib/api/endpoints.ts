@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   expenses: "/api/expenses",
   accounting: "/api/accounting",
   fines: "/api/fines",
+  dividends: "/api/dividends",
   socialFund: "/api/social-fund",
   reports: "/api/reports",
   users: "/api/users",

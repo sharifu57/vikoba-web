@@ -335,7 +335,18 @@ export type Fine = {
   id: string;
   groupId: string;
   memberId: string;
+  groupMemberId?: string | number;
+  memberName?: string;
+  membershipNumber?: string;
+  fineTypeId?: string | number;
+  fineTypeName?: string;
+  fineType?: string;
+  reference?: string;
   amount: number;
+  paidAmount?: number;
+  balance?: number;
+  reason?: string;
+  fineDate?: string;
   type?: string;
   status?: string;
 };
@@ -626,13 +637,37 @@ export const expenseService = {
 
 export const fineService = {
   list: (groupId?: string) =>
-    apiGet<Fine[]>(API_ENDPOINTS.fines, groupId ? { groupId } : undefined, {
-      auth: true,
-    }),
-  create: (payload: Partial<Fine>) =>
-    apiPost<Fine>(API_ENDPOINTS.fines, payload, { auth: true }),
-  update: (id: string, payload: Partial<Fine>) =>
-    apiPut<Fine>(`${API_ENDPOINTS.fines}/${id}`, payload, { auth: true }),
+    apiGet<{ data?: Fine[] }>(
+      API_ENDPOINTS.fines,
+      groupId ? { groupId } : undefined,
+      {
+        auth: true,
+      },
+    ).then((r) => r?.data ?? []),
+  create: (
+    payload: Partial<Fine> & {
+      groupId?: string;
+      groupMemberId?: string | number;
+    },
+  ) => {
+    const { groupId, ...body } = payload;
+    return apiPost<{ data?: Fine }>(
+      `${API_ENDPOINTS.fines}?groupId=${encodeURIComponent(String(groupId ?? ""))}`,
+      body,
+      { auth: true },
+    ).then((r) => r.data as Fine);
+  },
+  update: (
+    id: string,
+    payload: Partial<Fine> & { groupId?: string; paymentAmount?: number },
+  ) => {
+    const { groupId, ...body } = payload;
+    return apiPut<{ data?: Fine }>(
+      `${API_ENDPOINTS.fines}/${id}?groupId=${encodeURIComponent(String(groupId ?? ""))}`,
+      body,
+      { auth: true },
+    ).then((r) => r.data as Fine);
+  },
 };
 
 export const socialFundService = {

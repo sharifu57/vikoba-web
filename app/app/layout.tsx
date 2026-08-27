@@ -109,7 +109,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const protectedRoutes = ['/app/dashboard', '/app/members', '/app/meetings', '/app/contributions', '/app/shares', '/app/payments', '/app/expenses', '/app/finance', '/app/loans', '/app/loans/applications', '/app/social-fund', '/app/fines', '/app/reports', '/app/users', '/app/roles', '/app/settings']
+    const protectedRoutes = ['/app/dashboard', '/app/members', '/app/meetings', '/app/contributions', '/app/shares', '/app/payments', '/app/expenses', '/app/finance', '/app/loans', '/app/loans/applications', '/app/social-fund', '/app/fines', '/app/dividends', '/app/reports', '/app/users', '/app/roles', '/app/settings']
     const token = localStorage.getItem('v360_access_token')
     const setupComplete = localStorage.getItem('v360_group_setup_complete') === 'true' || localStorage.getItem('v360_group_setup_done') === 'true'
     const isProtectedRoute = protectedRoutes.some(route => pathname === route || pathname.startsWith(route))
@@ -169,6 +169,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     { label: 'Community & Penalties', isHeader: true },
     { label: 'Jamii Fund', path: '/app/social-fund', icon: CircleDollarSign },
     { label: 'Fines Tracker', path: '/app/fines', icon: AlertCircle },
+    { label: 'Dividends (Mgao)', path: '/app/dividends', icon: CircleDollarSign },
 
     { label: 'Reports & Audits', isHeader: true },
     { label: 'Reports Center', path: '/app/reports', icon: FileText },
