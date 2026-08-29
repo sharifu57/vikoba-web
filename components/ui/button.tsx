@@ -56,3 +56,11 @@ function Button({
 }
 
 export { Button, buttonVariants }
+
+/** Styled link that shares the exact same shadcn button tokens. */
+import Link, { type LinkProps } from "next/link"
+import type { ComponentProps } from "react"
+type ButtonLinkProps = LinkProps & ComponentProps<typeof Link> & VariantProps<typeof buttonVariants>
+export function ButtonLink({ className, variant = "default", size = "default", ...props }: ButtonLinkProps) {
+  return <Link className={cn(buttonVariants({ variant, size, className }))} {...props} />
+}

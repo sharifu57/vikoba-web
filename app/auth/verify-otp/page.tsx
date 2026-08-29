@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { clearVikobaLocalState } from '@/lib/api/client'
 import { authService } from '@/lib/api/services'
+import { ThemeToggle } from '@/components/brand'
 
 export default function VerifyOtpPage() {
   return (
@@ -144,7 +145,8 @@ function VerifyOtpContent() {
   }
 
   return (
-    <div className="auth-page min-h-screen w-full bg-[radial-gradient(circle_at_top,_#f3faf6_0%,_#f7f9f7_55%,_#eef2ef_100%)] flex items-center justify-center p-6">
+    <div className="auth-page min-h-screen w-full flex items-center justify-center p-6">
+      <div className="fixed right-5 top-5"><ThemeToggle /></div>
       <div className="mx-auto w-full max-w-md rounded-[28px] border border-[#dfe8e2] bg-white p-6 shadow-[0_30px_80px_rgba(8,127,91,0.12)] md:p-8">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#eaf6ef] text-[#087f5b] ring-8 ring-[#f1faf5] shadow-inner">

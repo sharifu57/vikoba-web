@@ -1,0 +1,24 @@
+.dark {
+  --background: #0d1420;
+  --foreground: #e8f0f4;
+  --card: #141f2d;
+  --card-foreground: #e8f0f4;
+  --muted: #1b2b3b;
+  --muted-foreground: #a9bac5;
+  --border: #2a4052;
+  --primary-soft: #163746;
+  --secondary: #dce8ee;
+}
+
+/* Shared auth/app surfaces follow the same theme tokens. */
+.auth-page { background: var(--background) !important; color: var(--foreground); }
+.auth-form-wrap { background: var(--background) !important; }
+.dark .auth-form input:not([type=checkbox]),
+.dark .auth-form textarea,
+.dark .auth-form select { background: var(--card); color: var(--foreground); border-color: var(--border); }
+.dark .auth-form input::placeholder { color: var(--muted-foreground); }
+.dark .app-header, .dark .sidebar, .dark .bottom-nav { background: var(--card) !important; border-color: var(--border) !important; }
+.dark .panel, .dark .dash-kpi, .dark .preview-card, .dark .price-card, .dark .feature-card { background: var(--card) !important; border-color: var(--border) !important; color: var(--foreground); }
+
+/* Keep the primary action readable in every theme. */
+.bg-primary, .button-primary, [data-slot="button"]:not([data-variant="ghost"]):not([data-variant="link"]) { color: var(--primary-foreground) !important; }

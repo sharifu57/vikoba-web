@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { clearVikobaLocalState } from '@/lib/api/client'
+import { ThemeToggle } from '@/components/brand'
 
 // Main Layout component wrapped inside Provider
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -363,6 +364,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="header-right flex items-center gap-5 relative">
+            <ThemeToggle />
             <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#dfe8e2] bg-[#fcfdfc] px-2 py-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{t('common.language')}</span>
               <select

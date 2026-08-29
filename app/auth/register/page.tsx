@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { clearVikobaLocalState } from '@/lib/api/client'
 import { authService } from '@/lib/api/services'
+import { ThemeToggle } from '@/components/brand'
 
 function Logo({ light = false }: { light?: boolean }) {
   return (
@@ -136,6 +137,7 @@ export default function RegisterPage() {
       </div>
 
       <div className="auth-form-wrap p-8 md:p-20 flex flex-col justify-between flex-1">
+        <div className="flex justify-end"><ThemeToggle /></div>
         <Link href="/" className="auth-back text-xs font-semibold text-neutral-400 hover:text-neutral-700 transition self-end">
           ← Back to Home
         </Link>

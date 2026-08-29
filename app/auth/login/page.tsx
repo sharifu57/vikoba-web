@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { authService } from '@/lib/api/services'
+import { ThemeToggle } from '@/components/brand'
 
 function Logo({ light = false }: { light?: boolean }) {
   return (
@@ -100,6 +101,7 @@ export default function LoginPage() {
 
       {/* Right side: Login form */}
       <div className="auth-form-wrap p-8 md:p-20 flex flex-col justify-between flex-1">
+        <div className="flex justify-end"><ThemeToggle /></div>
         <Link href="/" className="auth-back text-xs font-semibold text-neutral-400 hover:text-neutral-700 transition self-end">
           ← Back to Home
         </Link>
