@@ -25,6 +25,7 @@ import { LanguageSwitcher, ThemeToggle, VikobaLogo } from "@/components/brand";
 import { AnimatedCounter } from "@/components/animated-counter";
 import { Card, CardContent } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n";
 
 // Features list
 const features = [
@@ -82,6 +83,7 @@ const features = [
 
 export default function Page() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <div className="marketing min-h-screen bg-[#f7f9f7]">
@@ -92,22 +94,22 @@ export default function Page() {
         </Link>
         <nav className="hidden md:flex items-center gap-1 rounded-full border border-border bg-card/80 p-1 text-sm font-semibold text-muted-foreground shadow-sm">
           <Link href="/features" className="rounded-full px-3 py-2 hover:bg-primary-soft hover:text-primary transition">
-            Features
+            {t('marketing.nav.features')}
           </Link>
           <a href="#how" className="rounded-full px-3 py-2 hover:bg-primary-soft hover:text-primary transition">
-            How It Works
+            {t('marketing.nav.howItWorks')}
           </a>
           <Link href="/about" className="rounded-full px-3 py-2 hover:bg-primary-soft hover:text-primary transition">
-            Solutions
+            {t('marketing.nav.solutions')}
           </Link>
           <Link href="/pricing" className="rounded-full px-3 py-2 hover:bg-primary-soft hover:text-primary transition">
-            Pricing
+            {t('marketing.nav.pricing')}
           </Link>
           <Link href="/about" className="rounded-full px-3 py-2 hover:bg-primary-soft hover:text-primary transition">
-            About
+            {t('marketing.nav.about')}
           </Link>
           <Link href="/contact" className="rounded-full px-3 py-2 hover:bg-primary-soft hover:text-primary transition">
-            Contact
+            {t('marketing.nav.contact')}
           </Link>
         </nav>
         <div className="hidden md:flex items-center gap-3">
@@ -205,12 +207,12 @@ export default function Page() {
           <div className="flex flex-col gap-6">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary-soft text-primary rounded-full text-xs font-bold tracking-wider uppercase self-start">
               <span className="w-2 h-2 rounded-full bg-primary" />
-              Digital Banking for VIKOBA
+              {t('marketing.hero.badge')}
             </div>
             <h1 className="text-4xl md:text-6xl font-black text-neutral-900 leading-tight tracking-tight">
-              Manage Your VIKOBA.
+              {t('marketing.hero.title')}
               <br />
-              <span className="text-primary">Grow Together.</span>
+              <span className="text-primary">{t('marketing.hero.highlight')}</span>
             </h1>
             <p className="text-neutral-500 text-lg md:text-xl leading-relaxed max-w-lg">
               VIKOBA360 makes it simple to manage contributions, shares, loans,
@@ -222,13 +224,13 @@ export default function Page() {
                 href="/auth/register"
                 size="lg"
               >
-                Create Your VIKOBA <ArrowRight size={18} />
+                {t('marketing.hero.ctaPrimary')} <ArrowRight size={18} />
               </ButtonLink>
               <ButtonLink
                 href="/auth/login"
                 variant="outline" size="lg"
               >
-                Explore Dashboard
+                {t('marketing.hero.ctaSecondary')}
               </ButtonLink>
             </div>
             <div className="flex flex-wrap gap-6 text-xs text-neutral-400 mt-6 border-t border-neutral-200/60 pt-6">
