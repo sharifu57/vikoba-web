@@ -34,6 +34,10 @@ export default function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: async (phone: string) => {
       const result = await authService.login({ phone })
+
+      console.log("======>>>LOGIN RESPONSE")
+      console.log(result)
+      console.log("=====end log")
       return result
     },
     onSuccess: (result) => {
