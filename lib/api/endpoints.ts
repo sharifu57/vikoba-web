@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8050";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://157.173.101.170:8050";
 
 export const API_ENDPOINTS = {
   auth: {
