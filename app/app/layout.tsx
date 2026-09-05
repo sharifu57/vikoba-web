@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { clearVikobaLocalState } from '@/lib/api/client'
+import { clearVikobaLocalState, SESSION_EXPIRED_EVENT } from '@/lib/api/client'
 import { ThemeToggle } from '@/components/brand'
 
 // Main Layout component wrapped inside Provider
@@ -33,6 +33,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
+  const IDLE_TIMEOUT_MS = 15 * 60 * 1000
+  const IDLE_WARNING_MS = 60 * 1000
   const pathname = usePathname()
   const router = useRouter()
   const { locale, setLocale, t } = useLanguage()
@@ -40,6 +42,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [groupDropdownOpen, setGroupDropdownOpen] = useState(false)
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
+  const [showIdleWarning, setShowIdleWarning] = useState(false)
+  const [idleSecondsLeft, setIdleSecondsLeft] = useState(60)
   const [user, setUser] = useState({
     id: null,
     name: 'User',
@@ -140,10 +144,94 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return
 
     clearVikobaLocalState()
+    localStorage.setItem('v360_session_expired', String(Date.now()))
 
     setShowSignOutDialog(false)
-    router.push('/')
+    setShowIdleWarning(false)
+    router.replace('/auth/login?reason=session-expired')
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    let idleTimer: number | undefined
+    let warningTimer: number | undefined
+    let countdownTimer: number | undefined
+    let lastPersistedActivity = 0
+
+    const clearIdleTimers = () => {
+      if (idleTimer) window.clearTimeout(idleTimer)
+      if (warningTimer) window.clearTimeout(warningTimer)
+      if (countdownTimer) window.clearInterval(countdownTimer)
+    }
+
+    const beginWarning = () => {
+      setShowIdleWarning(true)
+      setIdleSecondsLeft(Math.ceil(IDLE_WARNING_MS / 1000))
+      countdownTimer = window.setInterval(() => {
+        setIdleSecondsLeft((seconds) => Math.max(0, seconds - 1))
+      }, 1000)
+      warningTimer = window.setTimeout(() => {
+        clearIdleTimers()
+        handleSignOut()
+      }, IDLE_WARNING_MS)
+    }
+
+    const scheduleIdleLogout = (lastActivity = Date.now()) => {
+      clearIdleTimers()
+      setShowIdleWarning(false)
+      const elapsed = Math.max(0, Date.now() - lastActivity)
+      const remaining = IDLE_TIMEOUT_MS - elapsed
+
+      if (remaining <= 0) {
+        beginWarning()
+        return
+      }
+
+      idleTimer = window.setTimeout(beginWarning, remaining)
+    }
+
+    const recordActivity = () => {
+      if (showIdleWarning) return
+      const now = Date.now()
+      if (now - lastPersistedActivity > 10000) {
+        lastPersistedActivity = now
+        localStorage.setItem('v360_last_activity', String(now))
+      }
+      scheduleIdleLogout(now)
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'v360_last_activity' && event.newValue) {
+        scheduleIdleLogout(Number(event.newValue))
+      }
+      if (event.key === 'v360_session_expired') {
+        handleSignOut()
+      }
+    }
+
+    const handleSessionExpired = () => {
+      clearIdleTimers()
+      setShowIdleWarning(false)
+      localStorage.setItem('v360_session_expired', String(Date.now()))
+      router.replace('/auth/login?reason=session-expired')
+    }
+
+    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
+    activityEvents.forEach((event) => window.addEventListener(event, recordActivity, { passive: true }))
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+
+    const storedActivity = Number(localStorage.getItem('v360_last_activity') || Date.now())
+    scheduleIdleLogout(storedActivity)
+
+    return () => {
+      clearIdleTimers()
+      activityEvents.forEach((event) => window.removeEventListener(event, recordActivity))
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+    }
+  }, [router, showIdleWarning])
 
   const unreadNotifications = notifications.filter(n => !n.read)
 
@@ -332,6 +420,36 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               <DialogFooter className="mt-6 sm:justify-between">
                 <Button variant="outline" type="button" onClick={() => setShowSignOutDialog(false)} className="flex-1 sm:flex-none">Cancel</Button>
                 <Button type="button" onClick={handleSignOut} className="flex-1 bg-red-600 text-white hover:bg-red-700 sm:flex-none">Sign out</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={showIdleWarning} onOpenChange={() => undefined}>
+            <DialogContent showCloseButton={false}>
+              <DialogHeader className="space-y-3">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                  <TriangleAlert size={22} />
+                </div>
+                <DialogTitle className="text-center text-xl font-black text-neutral-900">Still there?</DialogTitle>
+                <DialogDescription className="text-center text-sm leading-relaxed text-neutral-500">
+                  For your security, you will be logged out because there has been no activity. You have <strong className="text-amber-700">{idleSecondsLeft} seconds</strong> to continue your session.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-6 sm:justify-between">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const now = Date.now()
+                    localStorage.setItem('v360_last_activity', String(now))
+                    setIdleSecondsLeft(60)
+                    setShowIdleWarning(false)
+                  }}
+                  className="flex-1 bg-[#087f5b] text-white hover:bg-[#066b4d] sm:flex-none"
+                >
+                  Stay signed in
+                </Button>
+                <Button type="button" variant="outline" onClick={handleSignOut} className="flex-1 sm:flex-none">
+                  Log out now
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

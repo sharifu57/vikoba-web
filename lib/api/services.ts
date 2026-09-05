@@ -99,6 +99,8 @@ export const authService = {
         };
 
         if (typeof window !== "undefined") {
+          localStorage.removeItem("v360_session_expired");
+          localStorage.setItem("v360_last_activity", String(Date.now()));
           localStorage.setItem("v360_user", JSON.stringify(normalizedUser));
           localStorage.setItem(
             "v360_session",

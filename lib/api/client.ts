@@ -14,6 +14,17 @@ export const AUTH_STORAGE_KEYS = {
   session: "v360_session",
 };
 
+export const SESSION_EXPIRED_EVENT = "vikoba:session-expired";
+
+export function notifySessionExpired(reason = "expired") {
+  if (typeof window === "undefined") return;
+
+  clearAuthTokens();
+  window.dispatchEvent(
+    new CustomEvent(SESSION_EXPIRED_EVENT, { detail: { reason } }),
+  );
+}
+
 export function getAccessToken() {
   if (typeof window === "undefined") return null;
 
@@ -78,6 +89,8 @@ export function clearVikobaLocalState() {
   localStorage.removeItem("v360_currentGroupId");
   localStorage.removeItem("v360_group_setup_complete");
   localStorage.removeItem("v360_group_setup_done");
+  localStorage.removeItem("v360_last_activity");
+  localStorage.removeItem("v360_session_expired");
 }
 
 export function clearAuthTokens() {
@@ -135,6 +148,7 @@ export async function apiRequest<T>(
   if (auth && !requestHeaders.has("Authorization")) {
     const token = getAccessToken();
     if (!token) {
+      notifySessionExpired("missing-token");
       const error = new Error(
         "Your session has expired. Please sign in again.",
       ) as ApiError;
@@ -155,6 +169,10 @@ export async function apiRequest<T>(
       payload?.message || `Request failed with status ${response.status}`;
     const error = new Error(message) as ApiError;
     error.status = response.status;
+
+    if (response.status === 401 && !isAuthRoute(path)) {
+      notifySessionExpired("unauthorized");
+    }
 
     throw error;
   }
