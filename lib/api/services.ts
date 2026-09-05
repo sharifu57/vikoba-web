@@ -723,6 +723,12 @@ export const socialFundService = {
 
 export const reportService = {
   list: () => apiGet<unknown[]>(API_ENDPOINTS.reports),
+  getGroupReport: (groupId: string, start?: string, end?: string) =>
+    apiGet<{ data?: GroupReport }>(
+      `${API_ENDPOINTS.reports}/group/${groupId}`,
+      { start, end },
+      { auth: true },
+    ).then((response) => response?.data as GroupReport),
   getSummary: (groupId?: string) =>
     apiGet<DashboardSummary>(
       `${API_ENDPOINTS.dashboard}`,
@@ -735,4 +741,69 @@ export const reportService = {
       undefined,
       { auth: true },
     ),
+};
+
+export type GroupReport = {
+  groupId: string | number;
+  groupName: string;
+  periodStart: string;
+  periodEnd: string;
+  summary: {
+    members: number;
+    contributions: number;
+    shareCapital: number;
+    loanOutstanding: number;
+    finesOutstanding: number;
+    income: number;
+    expenses: number;
+    netIncome: number;
+    activeLoans: number;
+    unpaidFines: number;
+    meetings: number;
+  };
+  monthlyTotals: Array<{
+    month: string;
+    contributions: number;
+    payments: number;
+    expenses: number;
+  }>;
+  memberBalances: Array<{
+    groupMemberId: string | number;
+    memberName: string;
+    membershipNumber?: string;
+    contributions: number;
+    fines: number;
+    loanBalance: number;
+  }>;
+  recentTransactions: Array<{
+    date?: string;
+    reference?: string;
+    memberName?: string;
+    category?: string;
+    amount: number;
+    status?: string;
+  }>;
+};
+
+export type AuditLog = {
+  id: string | number;
+  groupId?: string | number;
+  username?: string;
+  action: string;
+  entityType: string;
+  entityId?: string | number;
+  ipAddress?: string;
+  description?: string;
+  oldValues?: string;
+  newValues?: string;
+  createdAt?: string;
+};
+
+export const auditLogService = {
+  list: (groupId: string, page = 0, size = 25) =>
+    apiGet<{ data?: { content?: AuditLog[]; totalElements?: number } }>(
+      `${API_ENDPOINTS.auditLogs}/group/${groupId}`,
+      { page, size },
+      { auth: true },
+    ).then((response) => response?.data),
 };
