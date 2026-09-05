@@ -117,6 +117,7 @@ export default function ContributionsPage() {
         ])
 
         setPeriods(periodData)
+        setPeriodFilter(current => current || periodData[0]?.id || '')
         setContributions(contributionData as Contribution[])
         setSummary(summaryData)
 

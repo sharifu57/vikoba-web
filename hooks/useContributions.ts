@@ -227,7 +227,17 @@ export const useContributions = () => {
           undefined,
           { auth: true },
         );
-        return response.data ?? [];
+        return (response.data ?? []).map((period: any) => ({
+          id: String(period.id),
+          name: period.name ?? period.contributionTypeName ?? "Contribution",
+          displayText:
+            period.displayText ??
+            period.contributionTypeName ??
+            "Contribution period",
+          startDate: period.startDate ?? period.periodStart,
+          endDate: period.endDate ?? period.periodEnd,
+          expectedAmount: Number(period.expectedAmount ?? 0),
+        }));
       } catch (err: any) {
         const errorMessage =
           err.response?.data?.message || "Failed to fetch periods";
