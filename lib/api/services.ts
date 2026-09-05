@@ -351,6 +351,15 @@ export type Fine = {
   status?: string;
 };
 
+export type FineTypeOption = {
+  id?: string | number;
+  code?: string;
+  name: string;
+  defaultAmount?: number;
+  description?: string;
+  active?: boolean;
+};
+
 export type SocialFundRequest = {
   id: string;
   groupId: string;
@@ -644,10 +653,38 @@ export const fineService = {
         auth: true,
       },
     ).then((r) => r?.data ?? []),
+  types: (groupId?: string) =>
+    apiGet<{ data?: FineTypeOption[] }>(
+      `${API_ENDPOINTS.fines}/types`,
+      groupId ? { groupId } : undefined,
+      { auth: true },
+    ).then((r) => r?.data ?? []),
+  createType: (groupId: string, payload: Partial<FineTypeOption>) =>
+    apiPost<{ data?: FineTypeOption }>(
+      `${API_ENDPOINTS.fines}/types?groupId=${encodeURIComponent(String(groupId ?? ""))}`,
+      payload,
+      { auth: true },
+    ).then((r) => r.data as FineTypeOption),
+  updateType: (
+    groupId: string,
+    id: string | number,
+    payload: Partial<FineTypeOption>,
+  ) =>
+    apiPut<{ data?: FineTypeOption }>(
+      `${API_ENDPOINTS.fines}/types/${id}?groupId=${encodeURIComponent(String(groupId ?? ""))}`,
+      payload,
+      { auth: true },
+    ).then((r) => r.data as FineTypeOption),
+  deleteType: (groupId: string, id: string | number) =>
+    apiDelete(
+      `${API_ENDPOINTS.fines}/types/${id}?groupId=${encodeURIComponent(String(groupId ?? ""))}`,
+      { auth: true },
+    ),
   create: (
     payload: Partial<Fine> & {
       groupId?: string;
       groupMemberId?: string | number;
+      fineTypeId?: string | number;
     },
   ) => {
     const { groupId, ...body } = payload;

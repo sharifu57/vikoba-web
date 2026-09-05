@@ -28,8 +28,13 @@ export function getAccessToken() {
     const session = JSON.parse(storedSession) as Record<string, unknown>;
     const sessionData = session.data as Record<string, unknown> | undefined;
     const sessionToken =
-      session.accessToken ?? session.token ?? sessionData?.accessToken ?? sessionData?.token;
-    return typeof sessionToken === "string" ? normaliseToken(sessionToken) : null;
+      session.accessToken ??
+      session.token ??
+      sessionData?.accessToken ??
+      sessionData?.token;
+    return typeof sessionToken === "string"
+      ? normaliseToken(sessionToken)
+      : null;
   } catch {
     return null;
   }
@@ -130,7 +135,9 @@ export async function apiRequest<T>(
   if (auth && !requestHeaders.has("Authorization")) {
     const token = getAccessToken();
     if (!token) {
-      const error = new Error("Your session has expired. Please sign in again.") as ApiError;
+      const error = new Error(
+        "Your session has expired. Please sign in again.",
+      ) as ApiError;
       error.status = 401;
       throw error;
     }
