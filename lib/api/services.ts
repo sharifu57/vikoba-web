@@ -130,6 +130,18 @@ export const authService = {
                 groupsArray[0];
               const grp = (primary as any)?.group ?? primary;
               const settings = (primary as any)?.settings ?? null;
+              const groupRole = String((primary as any)?.role || "MEMBER");
+              const groupPermissions = Array.isArray(
+                (primary as any)?.permissions,
+              )
+                ? (primary as any).permissions.map(String)
+                : [];
+
+              localStorage.setItem("v360_currentGroupRole", groupRole);
+              localStorage.setItem(
+                "v360_currentGroupPermissions",
+                JSON.stringify(groupPermissions),
+              );
 
               if (grp && (grp.groupId || grp.id)) {
                 localStorage.setItem("v360_currentGroup", JSON.stringify(grp));

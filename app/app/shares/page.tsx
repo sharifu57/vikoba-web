@@ -64,6 +64,7 @@ export default function SharesPage() {
     const [ownership, setOwnership] = useState<ShareOwnership[]>([]);
     const [ledger, setLedger] = useState<ShareTransaction[]>([]);
     const [purchaseRequests, setPurchaseRequests] = useState<SharePurchaseRequest[]>([]);
+    const [canReviewPurchaseProofs, setCanReviewPurchaseProofs] = useState(false);
     const [members, setMembers] = useState<Member[]>([]);
     const [action, setAction] = useState<Action>(null);
     const [search, setSearch] = useState("");
@@ -129,7 +130,7 @@ export default function SharesPage() {
                     getOwnership(groupId),
                     getLedger(groupId),
                     memberService.list(groupId),
-                    getPurchaseRequests(groupId),
+                    canReviewPurchaseProofs ? getPurchaseRequests(groupId) : Promise.resolve([]),
                 ]);
             setSummary(nextSummary || emptySummary);
             setOwnership(nextOwnership || []);
@@ -142,8 +143,29 @@ export default function SharesPage() {
     };
 
     useEffect(() => {
-        loadData();
+        if (typeof window === "undefined" || !groupId) return;
+        try {
+            const groups = JSON.parse(localStorage.getItem("v360_groups") || "[]") as Array<Record<string, unknown>>;
+            const selected = groups.find((item) => {
+                const group = (item.group || item) as Record<string, unknown>;
+                return String(group.groupId ?? group.id) === groupId;
+            });
+            const role = String(selected?.role || "MEMBER").toUpperCase();
+            const permissions = Array.isArray(selected?.permissions)
+                ? selected.permissions.map(String).map((permission) => permission.toUpperCase())
+                : [];
+            setCanReviewPurchaseProofs(
+                ["GROUP_ADMIN", "TREASURER", "ACCOUNTANT", "ADMIN"].includes(role) ||
+                permissions.some((permission) => permission.includes("SHARE") && permission.includes("APPROV")),
+            );
+        } catch {
+            setCanReviewPurchaseProofs(false);
+        }
     }, [groupId]);
+
+    useEffect(() => {
+        loadData();
+    }, [groupId, canReviewPurchaseProofs]);
 
     const reviewRequest = async (request: SharePurchaseRequest, decision: "approve" | "reject") => {
         if (!groupId) return;
@@ -309,7 +331,7 @@ export default function SharesPage() {
                     </div>
                 )}
 
-                {groupId && (
+                {groupId && canReviewPurchaseProofs && (
                     <section className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50/60 shadow-sm">
                         <div className="flex items-center justify-between border-b border-amber-200 px-6 py-5">
                             <div>

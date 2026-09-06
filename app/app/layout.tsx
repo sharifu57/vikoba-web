@@ -94,6 +94,14 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           if (groupId) {
             setCurrentGroupId(groupId)
             localStorage.setItem('v360_currentGroupId', String(groupId))
+
+            const storedGroups = JSON.parse(localStorage.getItem('v360_groups') || '[]')
+            const selectedMembership = Array.isArray(storedGroups)
+              ? storedGroups.find((item: any) => String(item?.group?.groupId ?? item?.groupId ?? item?.id) === groupId)
+              : null
+            if (selectedMembership?.role) {
+              setUser((previous) => ({ ...previous, role: String(selectedMembership.role) }))
+            }
           }
 
           if (groupName && currentGroup?.name !== groupName) {
