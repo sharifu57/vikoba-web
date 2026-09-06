@@ -41,6 +41,25 @@ export type ShareTransaction = {
   transactionDate: string;
 };
 
+export type SharePurchaseRequest = {
+  id: number;
+  groupMemberId: number;
+  memberName: string;
+  membershipNumber?: string;
+  quantity: number;
+  amount: number;
+  paymentMethod: string;
+  paymentReference?: string;
+  proofText?: string;
+  proofFileName?: string;
+  proofContentType?: string;
+  hasProofFile: boolean;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reviewReason?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+};
+
 type ApiResponse<T> = { data?: T; message?: string };
 
 function unwrap<T>(response: ApiResponse<T> | T): T {
@@ -179,6 +198,49 @@ export function useShares() {
     [request],
   );
 
+  const getPurchaseRequests = useCallback(
+    (groupId: string, status = "PENDING") =>
+      request(
+        async () =>
+          unwrap(
+            await apiGet<ApiResponse<SharePurchaseRequest[]>>(
+              `/api/share-purchase-requests/group/${groupId}?status=${status}`,
+              undefined,
+              { auth: true },
+            ),
+          ) ?? [],
+      ),
+    [request],
+  );
+
+  const approvePurchaseRequest = useCallback(
+    (groupId: string, requestId: number) =>
+      request(async () =>
+        unwrap(
+          await apiPost<ApiResponse<SharePurchaseRequest>>(
+            `/api/share-purchase-requests/group/${groupId}/${requestId}/approve`,
+            {},
+            { auth: true },
+          ),
+        ),
+      ),
+    [request],
+  );
+
+  const rejectPurchaseRequest = useCallback(
+    (groupId: string, requestId: number, reason: string) =>
+      request(async () =>
+        unwrap(
+          await apiPost<ApiResponse<SharePurchaseRequest>>(
+            `/api/share-purchase-requests/group/${groupId}/${requestId}/reject?reason=${encodeURIComponent(reason)}`,
+            {},
+            { auth: true },
+          ),
+        ),
+      ),
+    [request],
+  );
+
   return {
     loading,
     error,
@@ -188,5 +250,8 @@ export function useShares() {
     purchase,
     transfer,
     redeem,
+    getPurchaseRequests,
+    approvePurchaseRequest,
+    rejectPurchaseRequest,
   };
 }

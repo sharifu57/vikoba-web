@@ -15,6 +15,7 @@ import {
 import {
     useShares,
     type ShareOwnership,
+    type SharePurchaseRequest,
     type ShareSummary,
     type ShareTransaction,
 } from "@/hooks/useShares";
@@ -24,6 +25,8 @@ import {
     type Group,
     type Member,
 } from "@/lib/api/services";
+import { buildApiUrl } from "@/lib/api/endpoints";
+import { getAccessToken } from "@/lib/api/client";
 
 type Action = "purchase" | "transfer" | "redeem" | null;
 
@@ -52,11 +55,15 @@ export default function SharesPage() {
         purchase,
         transfer,
         redeem,
+        getPurchaseRequests,
+        approvePurchaseRequest,
+        rejectPurchaseRequest,
     } = useShares();
     const [groupId, setGroupId] = useState("");
     const [summary, setSummary] = useState(emptySummary);
     const [ownership, setOwnership] = useState<ShareOwnership[]>([]);
     const [ledger, setLedger] = useState<ShareTransaction[]>([]);
+    const [purchaseRequests, setPurchaseRequests] = useState<SharePurchaseRequest[]>([]);
     const [members, setMembers] = useState<Member[]>([]);
     const [action, setAction] = useState<Action>(null);
     const [search, setSearch] = useState("");
@@ -116,17 +123,19 @@ export default function SharesPage() {
     const loadData = async () => {
         if (!groupId) return;
         try {
-            const [nextSummary, nextOwnership, nextLedger, memberResponse] =
+            const [nextSummary, nextOwnership, nextLedger, memberResponse, nextRequests] =
                 await Promise.all([
                     getSummary(groupId),
                     getOwnership(groupId),
                     getLedger(groupId),
                     memberService.list(groupId),
+                    getPurchaseRequests(groupId),
                 ]);
             setSummary(nextSummary || emptySummary);
             setOwnership(nextOwnership || []);
             setLedger(nextLedger || []);
             setMembers(unwrap(memberResponse) as Member[]);
+            setPurchaseRequests(nextRequests || []);
         } catch {
             /* hook exposes the error */
         }
@@ -135,6 +144,38 @@ export default function SharesPage() {
     useEffect(() => {
         loadData();
     }, [groupId]);
+
+    const reviewRequest = async (request: SharePurchaseRequest, decision: "approve" | "reject") => {
+        if (!groupId) return;
+        try {
+            if (decision === "approve") {
+                await approvePurchaseRequest(groupId, request.id);
+                setMessage(`${request.memberName}'s payment was approved and shares were added.`);
+            } else {
+                const reason = window.prompt("Reason for rejecting this proof", "Proof could not be verified") || "Proof could not be verified";
+                await rejectPurchaseRequest(groupId, request.id, reason);
+                setMessage(`${request.memberName}'s payment proof was rejected.`);
+            }
+            await loadData();
+        } catch (cause) {
+            setMessage(cause instanceof Error ? cause.message : "Unable to review payment proof.");
+        }
+    };
+
+    const openProof = async (request: SharePurchaseRequest) => {
+        if (!groupId) return;
+        try {
+            const response = await fetch(
+                buildApiUrl(`/api/share-purchase-requests/group/${groupId}/${request.id}/proof`),
+                { headers: { Authorization: `Bearer ${getAccessToken() || ""}` } },
+            );
+            if (!response.ok) throw new Error("Unable to open payment proof.");
+            const blobUrl = URL.createObjectURL(await response.blob());
+            window.open(blobUrl, "_blank", "noopener,noreferrer");
+        } catch (cause) {
+            setMessage(cause instanceof Error ? cause.message : "Unable to open payment proof.");
+        }
+    };
 
     const visibleOwnership = useMemo(
         () =>
@@ -266,6 +307,56 @@ export default function SharesPage() {
                     <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-10 text-center text-sm text-neutral-500">
                         Select or create a group to view its shares.
                     </div>
+                )}
+
+                {groupId && (
+                    <section className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50/60 shadow-sm">
+                        <div className="flex items-center justify-between border-b border-amber-200 px-6 py-5">
+                            <div>
+                                <h2 className="font-black text-neutral-900">Payment proofs awaiting review</h2>
+                                <p className="mt-1 text-xs text-neutral-600">
+                                    Approve only after confirming the M-Pesa reference or attached receipt.
+                                </p>
+                            </div>
+                            <span className="rounded-full bg-amber-600 px-3 py-1 text-xs font-black text-white">
+                                {purchaseRequests.length} pending
+                            </span>
+                        </div>
+                        <div className="divide-y divide-amber-100 bg-white">
+                            {purchaseRequests.length === 0 ? (
+                                <p className="px-6 py-8 text-center text-sm text-neutral-500">No payment proofs are waiting.</p>
+                            ) : purchaseRequests.map((request) => (
+                                <div key={request.id} className="grid gap-4 px-6 py-5 lg:grid-cols-[1fr_auto] lg:items-center">
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="font-black text-neutral-900">{request.memberName}</p>
+                                            <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black uppercase text-amber-800">Pending</span>
+                                        </div>
+                                        <p className="mt-1 text-sm text-neutral-600">
+                                            {request.quantity} shares · {formatMoney(request.amount)} · {request.paymentMethod}
+                                        </p>
+                                        <p className="mt-1 text-xs text-neutral-500">
+                                            Ref: {request.paymentReference || "Not provided"} · Submitted {new Date(request.submittedAt).toLocaleString()}
+                                        </p>
+                                        {request.proofText && <p className="mt-2 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-700">{request.proofText}</p>}
+                                        {request.hasProofFile && (
+                                            <button
+                                                type="button"
+                                                onClick={() => openProof(request)}
+                                                className="mt-2 inline-flex text-xs font-bold text-emerald-700 underline"
+                                            >
+                                                Open {request.proofFileName || "payment proof"}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2 lg:justify-end">
+                                        <button onClick={() => reviewRequest(request, "reject")} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-50">Reject</button>
+                                        <button onClick={() => reviewRequest(request, "approve")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white hover:bg-emerald-800">Approve and add shares</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
                 )}
 
                 <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
