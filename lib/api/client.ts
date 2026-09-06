@@ -51,6 +51,14 @@ export function getAccessToken() {
   }
 }
 
+export function getBearerHeaders(): HeadersInit {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("Your session has expired. Please sign in again.");
+  }
+  return { Authorization: `Bearer ${token}` };
+}
+
 function normaliseToken(token: string) {
   // Some older login/session flows persisted the token as a JSON string.
   // Remove that wrapping before constructing the Authorization header.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { apiGet, apiPost } from "@/lib/api/client";
+import { apiGet, apiPost, getBearerHeaders } from "@/lib/api/client";
 import { API_ENDPOINTS } from "@/lib/api/endpoints";
 
 export type ShareSummary = {
@@ -204,9 +204,9 @@ export function useShares() {
         async () =>
           unwrap(
             await apiGet<ApiResponse<SharePurchaseRequest[]>>(
-              `/api/share-purchase-requests/group/${groupId}?status=${status}`,
-              undefined,
-              { auth: true },
+              `/api/share-purchase-requests/group/${groupId}`,
+              { status },
+              { auth: true, headers: getBearerHeaders() },
             ),
           ) ?? [],
       ),
@@ -220,7 +220,7 @@ export function useShares() {
           await apiPost<ApiResponse<SharePurchaseRequest>>(
             `/api/share-purchase-requests/group/${groupId}/${requestId}/approve`,
             {},
-            { auth: true },
+            { auth: true, headers: getBearerHeaders() },
           ),
         ),
       ),
@@ -234,7 +234,7 @@ export function useShares() {
           await apiPost<ApiResponse<SharePurchaseRequest>>(
             `/api/share-purchase-requests/group/${groupId}/${requestId}/reject?reason=${encodeURIComponent(reason)}`,
             {},
-            { auth: true },
+            { auth: true, headers: getBearerHeaders() },
           ),
         ),
       ),
