@@ -155,7 +155,7 @@ export default function SharesPage() {
                 ? selected.permissions.map(String).map((permission) => permission.toUpperCase())
                 : [];
             setCanReviewPurchaseProofs(
-                ["GROUP_ADMIN", "TREASURER", "ACCOUNTANT", "ADMIN"].includes(role) ||
+                ["GROUP_ADMIN", "TREASURER", "ACCOUNTANT"].includes(role) ||
                 permissions.some((permission) => permission.includes("SHARE") && permission.includes("APPROV")),
             );
         } catch {

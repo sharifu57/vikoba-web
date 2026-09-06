@@ -266,6 +266,8 @@ export type Member = {
   phone?: string;
   status?: string;
   role?: string;
+  roles?: string[];
+  permissions?: string[];
   firstName?: string;
   middleName?: string;
   lastName?: string;
@@ -476,6 +478,8 @@ export const memberService = {
     apiGet<MemberRoleOption[]>(`${API_ENDPOINTS.members}/roles`, undefined, {
       auth: true,
     }),
+  getPermissions: () =>
+    apiGet<string[]>(`${API_ENDPOINTS.members}/permissions`, undefined, { auth: true }),
   getById: (id: string) =>
     apiGet<Member>(`${API_ENDPOINTS.members}/${id}`, undefined, { auth: true }),
   create: (payload: Record<string, unknown>) =>
@@ -484,6 +488,8 @@ export const memberService = {
     }),
   update: (id: string, payload: Partial<Member>) =>
     apiPut<Member>(`${API_ENDPOINTS.members}/${id}`, payload, { auth: true }),
+  updateAccess: (groupId: string, groupMemberId: string | number, payload: { roles: string[]; permissions: string[] }) =>
+    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/access`, payload, { auth: true }),
   remove: (id: string) =>
     apiDelete(`${API_ENDPOINTS.members}/${id}`, { auth: true }),
   get360: (groupMemberId: string) =>

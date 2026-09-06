@@ -366,7 +366,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             })}
 
             {/* Admin sub-menu if Admin */}
-            {user.role === 'Administrator' && (
+            {['Administrator', 'GROUP_ADMIN', 'GROUP_CHAIRMAN'].includes(user.role) && (
               <>
                 {adminItems.map((item, idx) => {
                   if (item.isHeader) {

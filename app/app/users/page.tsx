@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search, ShieldCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,9 @@ export default function UsersAdministrationPage() {
   const qc = useQueryClient();
   const [groupId, setGroupId] = useState("");
   const [open, setOpen] = useState(false);
+  const [accessOpen, setAccessOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [access, setAccess] = useState<{ roles: string[]; permissions: string[] }>({ roles: ["MEMBER"], permissions: [] });
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     firstName: "",
@@ -52,6 +55,14 @@ export default function UsersAdministrationPage() {
     queryKey: ["member-roles"],
     queryFn: async () => unwrap(await memberService.getRoles()) || [],
   });
+  const permissions = useQuery({
+    queryKey: ["permissions"],
+    queryFn: async () => unwrap(await memberService.getPermissions()) || [],
+  });
+  const updateAccess = useMutation({
+    mutationFn: () => memberService.updateAccess(groupId, selectedMember!.id, access),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["members", groupId] }); setAccessOpen(false); },
+  });
   const add = useMutation({
     mutationFn: () =>
       memberService.create({
@@ -71,6 +82,10 @@ export default function UsersAdministrationPage() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+  const currentMembership = (() => { try { return (JSON.parse(localStorage.getItem("v360_groups") || "[]") as any[]).find((item) => String(item?.group?.groupId ?? item?.groupId) === groupId) } catch { return null } })();
+  const canManageAccess = currentMembership?.roles?.includes("GROUP_ADMIN") || currentMembership?.role === "GROUP_ADMIN" || (currentMembership?.permissions || []).includes("USER_ROLE_MANAGE");
+  const toggle = (key: "roles" | "permissions", value: string) => setAccess((current) => ({ ...current, [key]: current[key].includes(value) ? current[key].filter((item) => item !== value) : [...current[key], value] }));
+  const openAccess = (member: Member) => { setSelectedMember(member); setAccess({ roles: Array.from(new Set(["MEMBER", ...(member.roles || [member.role || "MEMBER"])])), permissions: member.permissions || [] }); setAccessOpen(true); };
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
       <div className="mb-8 flex items-center justify-between">
@@ -103,14 +118,15 @@ export default function UsersAdministrationPage() {
               <th className="p-4">Member</th>
               <th className="p-4">Phone</th>
               <th className="p-4">Email</th>
-              <th className="p-4">Role</th>
+              <th className="p-4">Roles</th>
               <th className="p-4">Status</th>
+              {canManageAccess && <th className="p-4 text-right">Access</th>}
             </tr>
           </thead>
           <tbody>
             {members.isLoading && (
               <tr>
-                <td colSpan={5} className="p-10 text-center">
+                <td colSpan={canManageAccess ? 6 : 5} className="p-10 text-center">
                   <Loader2 className="mx-auto animate-spin" />
                 </td>
               </tr>
@@ -124,8 +140,9 @@ export default function UsersAdministrationPage() {
                 </td>
                 <td className="p-4">{m.phone || "—"}</td>
                 <td className="p-4">{m.email || "—"}</td>
-                <td className="p-4 font-bold">{m.role || "MEMBER"}</td>
+                <td className="p-4 font-bold">{(m.roles || [m.role || "MEMBER"]).join(", ")}</td>
                 <td className="p-4">{m.status || "ACTIVE"}</td>
+                {canManageAccess && <td className="p-4 text-right"><Button variant="outline" size="sm" onClick={() => openAccess(m)}><ShieldCheck size={14} /> Manage</Button></td>}
               </tr>
             ))}
           </tbody>
@@ -200,6 +217,17 @@ export default function UsersAdministrationPage() {
               {(add.error as Error).message}
             </p>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={accessOpen} onOpenChange={setAccessOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader><DialogTitle>Manage member access</DialogTitle><DialogDescription>{selectedMember?.fullName || selectedMember?.name} can hold several roles. MEMBER is retained as the base role.</DialogDescription></DialogHeader>
+          <div className="space-y-5 text-sm">
+            <div><p className="mb-2 text-xs font-black uppercase text-neutral-500">Roles</p><div className="grid grid-cols-2 gap-2">{(roles.data || []).map((role: any) => <label key={role.value} className="flex items-center gap-2 rounded border p-2 text-xs"><input type="checkbox" checked={access.roles.includes(role.value)} disabled={role.value === "MEMBER"} onChange={() => toggle("roles", role.value)} />{role.label}</label>)}</div></div>
+            <div><p className="mb-2 text-xs font-black uppercase text-neutral-500">Extra permissions</p><p className="mb-2 text-xs text-neutral-400">These are group-specific grants in addition to the selected roles.</p><div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto">{(permissions.data || []).map((permission: string) => <label key={permission} className="flex items-center gap-2 rounded border p-2 text-xs"><input type="checkbox" checked={access.permissions.includes(permission)} onChange={() => toggle("permissions", permission)} />{permission}</label>)}</div></div>
+          </div>
+          {updateAccess.isError && <p className="text-xs text-red-600">{(updateAccess.error as Error).message}</p>}
+          <DialogFooter><Button onClick={() => updateAccess.mutate()} disabled={updateAccess.isPending}>{updateAccess.isPending ? "Saving…" : "Save access"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </main>
