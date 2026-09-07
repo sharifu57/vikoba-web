@@ -190,7 +190,6 @@ export default function DashboardPage() {
   });
 
   const totalMembers = overview?.summary.totalMembers ?? serverStats?.totalMembers ?? 0;
-  const groupContributions = overview?.summary.contributions ?? serverStats?.totalSaved ?? 0;
   const groupSharesVal = overview?.summary.shareCapital ?? 0;
 
   const activeLoans = loans.filter(
@@ -208,7 +207,6 @@ export default function DashboardPage() {
 
   const upcomingMeeting = overview?.nextMeetings[0];
   const pendingLoans = overview?.actions.pendingLoanApplications ?? 0;
-  const overdueContributionsCount = overview?.actions.membersWithContributionArrears ?? 0;
   const outstandingFinesCount = overview?.actions.unpaidFines ?? 0;
   const groupPayments = overview?.recentActivities.slice(0, 5) ?? [];
   const cashBalance = overview?.finance.cashReceived ?? 0;
@@ -220,9 +218,8 @@ export default function DashboardPage() {
     date.setMonth(date.getMonth() - (5 - index), 1);
     return date;
   });
-  const contributionTrend = chartMonths.map((month) => overview?.contributionTrend.find(point => point.month === `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`)?.amount ?? 0);
   const shareTrend = chartMonths.map((month) => overview?.shareTrend.find(point => point.month === `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`)?.amount ?? 0);
-  const maxTrend = Math.max(...contributionTrend, ...shareTrend, 1);
+  const maxTrend = Math.max(...shareTrend, 1);
   const groupStart = currentGroup.startDate || "2024-01-15";
   const groupEnd = currentGroup.endDate || "2030-01-15";
 
@@ -305,13 +302,6 @@ export default function DashboardPage() {
             href: "/app/members",
           },
           {
-            title: "Contributions",
-            value: formatCurrency(groupContributions, currentGroup.currency),
-            meta: "Live ledger",
-            icon: WalletCards,
-            href: "/app/contributions",
-          },
-          {
             title: "Shares",
             value: formatCurrency(groupSharesVal, currentGroup.currency),
             meta: "Capital value",
@@ -324,6 +314,13 @@ export default function DashboardPage() {
             meta: `${activeLoans.length} active`,
             icon: HandCoins,
             href: "/app/loans",
+          },
+          {
+            title: "Jamii Fund",
+            value: formatCurrency(jamiiFund, currentGroup.currency),
+            meta: "Community support fund",
+            icon: CircleDollarSign,
+            href: "/app/social-fund",
           },
         ].map((item) => {
           const Icon = item.icon;
@@ -362,21 +359,19 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-black text-neutral-800">
-                Contribution trend
+                Share purchase trend
               </h2>
               <p className="text-[10px] text-neutral-400">
                 Monthly collection performance
               </p>
             </div>
             <div className="inline-flex items-center gap-1 rounded-full bg-[#eaf6ef] px-2 py-1 text-[9px] font-bold text-[#087f5b]">
-              <span className="h-2 w-2 rounded-full bg-[#0b7c5a]" />{" "}
-              Contributions
-              <span className="ml-2 h-2 w-2 rounded-full bg-[#d99521]" /> Shares
+              <span className="h-2 w-2 rounded-full bg-[#d99521]" /> Shares
             </div>
           </div>
 
           <div className="mt-6 flex h-56 items-stretch gap-3">
-            {contributionTrend.map((value, index) => (
+            {shareTrend.map((value, index) => (
               <div
                 key={index}
                 className="flex min-w-0 flex-1 flex-col"
@@ -384,14 +379,8 @@ export default function DashboardPage() {
                 <div className="relative min-h-0 flex-1 border-b border-l border-neutral-200 bg-[linear-gradient(to_bottom,transparent_24%,#f5f5f5_25%,transparent_26%,transparent_49%,#f5f5f5_50%,transparent_51%,transparent_74%,#f5f5f5_75%,transparent_76%)] px-1">
                   <div className="absolute inset-x-0 bottom-0 flex h-full items-end justify-center gap-1">
                     <div
-                      className="w-1/2 min-h-0 rounded-t-lg bg-[#0b7c5a] transition-[height] duration-500"
+                      className="w-full min-h-0 rounded-t-lg bg-[#d99521] transition-[height] duration-500"
                       style={{ height: `${(value / maxTrend) * 100}%` }}
-                    />
-                    <div
-                      className="w-1/2 min-h-0 rounded-t-lg bg-[#d99521] transition-[height] duration-500"
-                      style={{
-                        height: `${(shareTrend[index] / maxTrend) * 100}%`,
-                      }}
                     />
                   </div>
                 </div>
@@ -607,17 +596,6 @@ export default function DashboardPage() {
               </span>
               <span className="rounded-full bg-orange-100 px-2 py-1 text-[9px] font-black text-orange-700">
                 {pendingLoans}
-              </span>
-            </Link>
-            <Link
-              href="/app/contributions"
-              className="flex items-center justify-between rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2.5"
-            >
-              <span className="text-[10px] font-semibold text-neutral-700">
-                Arrears members
-              </span>
-              <span className="rounded-full bg-amber-100 px-2 py-1 text-[9px] font-black text-amber-700">
-                {overdueContributionsCount}
               </span>
             </Link>
             <Link

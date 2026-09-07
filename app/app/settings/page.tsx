@@ -3,8 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Save, CheckCircle2 } from 'lucide-react'
-import { groupService, type GroupProfileSettingsPayload } from '@/lib/api/services'
+import { Save, CheckCircle2, Plus, Trash2 } from 'lucide-react'
+import { fineService, groupService, type FineTypeOption, type GroupProfileSettingsPayload } from '@/lib/api/services'
+
+type FineRule = { id?: string | number; code: string; name: string; defaultAmount: string; description: string }
+const defaultFineRules: FineRule[] = [
+  { code: 'MEETING_ABSENCE', name: 'Meeting absence', defaultAmount: '', description: 'Automatically charged when a member is absent.' },
+  { code: 'MEETING_LATE', name: 'Late arrival', defaultAmount: '', description: 'Charged when a member arrives late to a meeting.' },
+  { code: 'LATE_LOAN_PAYMENT', name: 'Late loan payment', defaultAmount: '', description: 'Charged for an overdue loan repayment.' },
+]
 
 const emptyForm = {
   name: '',
@@ -13,14 +20,14 @@ const emptyForm = {
   currency: 'TZS',
   startDate: '',
   endDate: '',
-  minimumContribution: 25000,
-  maximumContribution: 500000,
+  minimumSharePurchaseAmount: 25000,
   sharePrice: 5000,
-  maximumSharesPerMember: 20,
+  requiredLoanGuarantors: 2,
   loanMultiplier: 3,
   defaultInterestRate: 8,
   defaultLoanDurationMonths: 6,
   latePaymentFine: 5000,
+  jamiiContributionPerSharePayment: 0,
 }
 
 export default function GroupSettingsPage() {
@@ -28,6 +35,8 @@ export default function GroupSettingsPage() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [fineRules, setFineRules] = useState<FineRule[]>(defaultFineRules)
+  const [removedFineTypeIds, setRemovedFineTypeIds] = useState<Array<string | number>>([])
 
   useEffect(() => {
     const storedGroup = localStorage.getItem('v360_currentGroup')
@@ -43,6 +52,17 @@ export default function GroupSettingsPage() {
         endDate: parsed.endDate || parsed.endsAt || '',
       }))
     }
+  }, [])
+
+  useEffect(() => {
+    const groupId = localStorage.getItem('v360_currentGroupId') || ''
+    if (!/^\d+$/.test(groupId)) return
+    fineService.types(groupId).then((types) => {
+      if (types.length) setFineRules(types.map((type: FineTypeOption) => ({
+        id: type.id, code: type.code || type.name, name: type.name,
+        defaultAmount: String(type.defaultAmount ?? ''), description: type.description || '',
+      })))
+    }).catch(() => { /* Fine rules will be created when settings are saved. */ })
   }, [])
 
   const validateCycleDates = (startDate: string, endDate: string) => {
@@ -85,14 +105,14 @@ export default function GroupSettingsPage() {
       startDate: form.startDate.trim(),
       endDate: form.endDate.trim(),
       settings: {
-        minimumContribution: Number(form.minimumContribution),
-        maximumContribution: Number(form.maximumContribution),
+        minimumSharePurchaseAmount: Number(form.minimumSharePurchaseAmount),
         sharePrice: Number(form.sharePrice),
-        maximumSharesPerMember: Number(form.maximumSharesPerMember),
+        requiredLoanGuarantors: Number(form.requiredLoanGuarantors),
         loanMultiplier: Number(form.loanMultiplier),
         defaultInterestRate: Number(form.defaultInterestRate),
         defaultLoanDurationMonths: Number(form.defaultLoanDurationMonths),
         latePaymentFine: Number(form.latePaymentFine),
+        jamiiContributionPerSharePayment: Number(form.jamiiContributionPerSharePayment),
       },
     }
 
@@ -141,6 +161,18 @@ export default function GroupSettingsPage() {
       // persist basic group locally first
       localStorage.setItem('v360_currentGroupId', String(groupId))
       localStorage.setItem('v360_currentGroup', JSON.stringify(savedGroup))
+
+      if (/^\d+$/.test(String(groupId))) {
+        await Promise.all([
+          ...removedFineTypeIds.map((id) => fineService.deleteType(String(groupId), id)),
+          ...fineRules.filter(rule => rule.name.trim()).map((rule) => {
+          const payload = { code: rule.code || rule.name, name: rule.name, defaultAmount: Number(rule.defaultAmount || 0), description: rule.description, active: true }
+          return rule.id
+            ? fineService.updateType(String(groupId), rule.id, payload)
+            : fineService.createType(String(groupId), payload)
+          }),
+        ])
+      }
 
       // then fetch the freshly-saved group+settings from server to ensure consistency
       try {
@@ -213,7 +245,7 @@ export default function GroupSettingsPage() {
           <span className="text-neutral-500">Settings</span>
         </div>
         <h1 className="text-2xl font-black text-neutral-900 mt-2">Group Settings</h1>
-        <p className="text-xs text-neutral-400">Configure the cooperative rules, contribution bands, share values, and default finance settings.</p>
+        <p className="text-xs text-neutral-400">Configure share buying, loans, jamii fund, and automated fine rules for this Kikoba.</p>
         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">
           A Kikoba group cycle lasts about one year. Please set the start date and the end date for the current cycle before continuing.
         </div>
@@ -296,26 +328,32 @@ export default function GroupSettingsPage() {
         </div>
 
         <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm flex flex-col gap-4">
-          <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Contribution & Share Rules</h3>
+          <div className="flex items-start justify-between gap-4 pb-2 border-b border-neutral-100">
+            <div><h3 className="font-extrabold text-neutral-800 text-sm">Fine Rules</h3><p className="mt-1 text-[10px] text-neutral-400">Set the standard amount for every fine type. Automated events, such as meeting absence, use these amounts.</p></div>
+            <button type="button" onClick={() => setFineRules([...fineRules, { code: '', name: '', defaultAmount: '', description: '' }])} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#087f5b] px-3 py-2 text-xs font-bold text-[#087f5b]"><Plus size={14} /> Add fine type</button>
+          </div>
+          <div className="space-y-3">
+            {fineRules.map((rule, index) => <div key={`${rule.id || 'new'}-${index}`} className="grid grid-cols-1 gap-3 rounded-lg bg-neutral-50 p-3 md:grid-cols-[1fr_1fr_140px_auto]">
+              <input required value={rule.name} onChange={e => setFineRules(fineRules.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="Fine type, e.g. Meeting absence" className="rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs outline-none focus:border-[#087f5b]" />
+              <input value={rule.description} onChange={e => setFineRules(fineRules.map((item, i) => i === index ? { ...item, description: e.target.value } : item))} placeholder="When it applies (optional)" className="rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs outline-none focus:border-[#087f5b]" />
+              <input required min={0} inputMode="decimal" type="text" value={rule.defaultAmount} onChange={e => { const value = e.target.value; if (/^\d*(\.\d{0,2})?$/.test(value)) setFineRules(fineRules.map((item, i) => i === index ? { ...item, defaultAmount: value } : item)) }} placeholder="Amount" className="rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs font-bold outline-none focus:border-[#087f5b]" />
+              <button type="button" aria-label={`Remove ${rule.name || 'fine type'}`} onClick={() => { if (rule.id) setRemovedFineTypeIds([...removedFineTypeIds, rule.id]); setFineRules(fineRules.filter((_, i) => i !== index)) }} className="justify-self-end rounded-lg p-2 text-red-600 hover:bg-red-50"><Trash2 size={16} /></button>
+            </div>)}
+          </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+          <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Share Rules</h3>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Minimum Contribution</label>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Minimum amount to buy shares</label>
               <input
                 type="number"
                 required
-                value={form.minimumContribution}
-                onChange={e => setForm({ ...form, minimumContribution: Number(e.target.value) })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-bold"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Maximum Contribution</label>
-              <input
-                type="number"
-                required
-                value={form.maximumContribution}
-                onChange={e => setForm({ ...form, maximumContribution: Number(e.target.value) })}
+                min={0}
+                value={form.minimumSharePurchaseAmount}
+                onChange={e => setForm({ ...form, minimumSharePurchaseAmount: Number(e.target.value) })}
                 className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-bold"
               />
             </div>
@@ -329,17 +367,6 @@ export default function GroupSettingsPage() {
                 className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-bold"
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Max Shares Per Member</label>
-              <input
-                type="number"
-                required
-                min={1}
-                value={form.maximumSharesPerMember}
-                onChange={e => setForm({ ...form, maximumSharesPerMember: Number(e.target.value) })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-bold"
-              />
-            </div>
           </div>
         </div>
 
@@ -347,6 +374,10 @@ export default function GroupSettingsPage() {
           <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Loans & Penalties</h3>
 
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Required Loan Guarantors</label>
+              <input type="number" required min={0} value={form.requiredLoanGuarantors} onChange={e => setForm({ ...form, requiredLoanGuarantors: Number(e.target.value) })} className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-semibold" />
+            </div>
             <div>
               <label className="block text-xs font-bold text-neutral-700 mb-1.5">Loan Multiplier</label>
               <input
@@ -387,6 +418,15 @@ export default function GroupSettingsPage() {
                 className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-red-500 font-semibold"
               />
             </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+          <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Jamii Amount</h3>
+          <div className="max-w-md">
+            <label className="block text-xs font-bold text-neutral-700 mb-1.5">Default Jamii amount for each share purchase</label>
+            <input type="number" required min={0} value={form.jamiiContributionPerSharePayment} onChange={e => setForm({ ...form, jamiiContributionPerSharePayment: Number(e.target.value) })} className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-semibold" />
+            <p className="mt-1 text-[10px] text-neutral-400">This is separate from the share price. It pre-fills the Jamii amount field when a member buys shares.</p>
           </div>
         </div>
 

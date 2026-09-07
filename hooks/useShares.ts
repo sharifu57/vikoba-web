@@ -139,6 +139,7 @@ export function useShares() {
         groupMemberId: string;
         quantity?: number;
         amount?: number;
+        jamiiAmount?: number;
         paymentMethod?: string;
         reference?: string;
       },

@@ -73,6 +73,7 @@ export default function SharesPage() {
         memberId: "",
         quantity: "",
         amount: "",
+        jamiiAmount: "",
         reference: "",
         paymentMethod: "Cash",
     });
@@ -120,6 +121,15 @@ export default function SharesPage() {
             })
             .catch(() => setMessage("Unable to resolve the selected group."));
     }, []);
+
+    useEffect(() => {
+        if (!groupId) return;
+        groupService.getWithSettings(groupId).then((response) => {
+            const payload = response as { data?: { settings?: { jamiiContributionPerSharePayment?: number } }; settings?: { jamiiContributionPerSharePayment?: number } };
+            const configuredAmount = payload.data?.settings?.jamiiContributionPerSharePayment ?? payload.settings?.jamiiContributionPerSharePayment;
+            if (configuredAmount !== undefined) setPurchaseForm(current => ({ ...current, jamiiAmount: String(configuredAmount || "") }));
+        }).catch(() => { /* The optional Jamii amount can still be entered manually. */ });
+    }, [groupId]);
 
     const loadData = async () => {
         if (!groupId) return;
@@ -252,6 +262,7 @@ export default function SharesPage() {
                     groupMemberId: purchaseForm.memberId,
                     quantity,
                     amount,
+                    jamiiAmount: purchaseForm.jamiiAmount ? Number(purchaseForm.jamiiAmount) : undefined,
                     reference: purchaseForm.reference || undefined,
                     paymentMethod: purchaseForm.paymentMethod,
                 });
@@ -641,6 +652,15 @@ export default function SharesPage() {
                                                 ? `Shares: ${Math.floor(Number(purchaseForm.amount) / summary.unitPrice)}`
                                                 : "Enter shares or amount"}
                                     </p>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={purchaseForm.jamiiAmount}
+                                        onChange={(event) => setPurchaseForm({ ...purchaseForm, jamiiAmount: event.target.value })}
+                                        placeholder="Jamii amount (separate from shares)"
+                                        className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
+                                    />
+                                    <p className="text-xs text-neutral-500">Optional amount for Jamii, separate from the amount paid for shares.</p>
                                     <select
                                         value={purchaseForm.paymentMethod}
                                         onChange={(event) =>

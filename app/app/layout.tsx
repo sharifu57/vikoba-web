@@ -253,7 +253,6 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     { label: 'Meetings', path: '/app/meetings', icon: CalendarDays },
 
     { label: 'Finance Management', isHeader: true },
-    { label: 'Contributions', path: '/app/contributions', icon: WalletCards },
     { label: 'Shares (Hisa)', path: '/app/shares', icon: BarChart3 },
     { label: 'Payments Received', path: '/app/payments', icon: CreditCard },
     { label: 'Expenses logged', path: '/app/expenses', icon: CreditCard },

@@ -40,7 +40,7 @@ export default function MeetingsDashboard() {
   // Modal schedule state
   const [modalOpen, setModalOpen] = useState(false);
   // Use 24-hour `HH:mm` format for `time` so backend LocalTime parses it correctly
-  const [form, setForm] = useState({ date: "", time: "10:00", location: "", agenda: "" });
+  const [form, setForm] = useState({ date: "", time: "10:00", meetingMode: "PHYSICAL", location: "", meetingLink: "", agenda: "" });
   const [groupSettings, setGroupSettings] = useState<any | null>(null);
   const todayIso = new Date().toISOString().slice(0, 10); // YYYY-MM-DD for input[type=date] min
 
@@ -64,7 +64,7 @@ export default function MeetingsDashboard() {
   const handleSchedule = (e: React.FormEvent) => {
     e.preventDefault();
     if (!primaryGroupId) return alert("No group available — please select or create a group first.");
-    if (form.date && form.agenda && createMeetingMutation.status !== 'pending') {
+    if (form.date && form.agenda && (form.meetingMode === "ONLINE" ? form.meetingLink : form.location) && createMeetingMutation.status !== 'pending') {
       createMeetingMutation.mutate({
         groupId: String(primaryGroupId),
         data: {
@@ -72,12 +72,14 @@ export default function MeetingsDashboard() {
           title: form.agenda ? String(form.agenda).slice(0, 120) : "Assembly",
           meetingDate: form.date,
           startTime: form.time,
+          meetingMode: form.meetingMode,
           location: form.location,
+          meetingLink: form.meetingLink,
           agenda: form.agenda,
         },
       } as any, {
         onSuccess: () => {
-          setForm({ date: "", time: "10:00", location: "", agenda: "" });
+          setForm({ date: "", time: "10:00", meetingMode: "PHYSICAL", location: "", meetingLink: "", agenda: "" });
           setModalOpen(false);
         },
       });
@@ -262,13 +264,21 @@ export default function MeetingsDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Location *</label>
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Meeting type *</label>
+                <select value={form.meetingMode} onChange={e => setForm({ ...form, meetingMode: e.target.value })} className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]">
+                  <option value="PHYSICAL">Physical meeting</option>
+                  <option value="ONLINE">Online meeting</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">{form.meetingMode === "ONLINE" ? "Meeting link *" : "Location *"}</label>
                 <input
-                  type="text"
+                  type={form.meetingMode === "ONLINE" ? "url" : "text"}
                   required
-                  placeholder="e.g. Community Hall, Mikocheni"
-                  value={form.location}
-                  onChange={e => setForm({ ...form, location: e.target.value })}
+                  placeholder={form.meetingMode === "ONLINE" ? "https://meet.google.com/..." : "e.g. Community Hall, Mikocheni"}
+                  value={form.meetingMode === "ONLINE" ? form.meetingLink : form.location}
+                  onChange={e => setForm({ ...form, [form.meetingMode === "ONLINE" ? "meetingLink" : "location"]: e.target.value })}
                   className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
                 />
               </div>

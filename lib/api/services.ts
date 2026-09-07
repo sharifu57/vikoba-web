@@ -221,14 +221,14 @@ export type Group = {
 };
 
 export type GroupSettingsPayload = {
-  minimumContribution?: number;
-  maximumContribution?: number;
+  minimumSharePurchaseAmount?: number;
   sharePrice?: number;
-  maximumSharesPerMember?: number;
+  requiredLoanGuarantors?: number;
   loanMultiplier?: number;
   defaultInterestRate?: number;
   defaultLoanDurationMonths?: number;
   latePaymentFine?: number;
+  jamiiContributionPerSharePayment?: number;
 };
 
 export type GroupProfileSettingsPayload = {
