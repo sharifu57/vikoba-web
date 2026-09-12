@@ -16,6 +16,12 @@ import { memberService, type Member } from "@/lib/api/services";
 type Env<T> = { data?: T; message?: string };
 const unwrap = <T,>(v: T | Env<T>) =>
   (v && typeof v === "object" && "data" in v ? (v as Env<T>).data : v) as T;
+
+const permissionHint = (permission: string) => {
+  if (permission === "MEETING_MANAGE") return "Schedule meetings and record attendance";
+  if (permission === "MEETING_MINUTES_MANAGE") return "Create and revise meeting minutes";
+  return "Additional group-specific access";
+};
 export default function UsersAdministrationPage() {
   const qc = useQueryClient();
   const [groupId, setGroupId] = useState("");
@@ -224,7 +230,7 @@ export default function UsersAdministrationPage() {
           <DialogHeader><DialogTitle>Manage member access</DialogTitle><DialogDescription>{selectedMember?.fullName || selectedMember?.name} can hold several roles. MEMBER is retained as the base role.</DialogDescription></DialogHeader>
           <div className="space-y-5 text-sm">
             <div><p className="mb-2 text-xs font-black uppercase text-neutral-500">Roles</p><div className="grid grid-cols-2 gap-2">{(roles.data || []).map((role: any) => <label key={role.value} className="flex items-center gap-2 rounded border p-2 text-xs"><input type="checkbox" checked={access.roles.includes(role.value)} disabled={role.value === "MEMBER"} onChange={() => toggle("roles", role.value)} />{role.label}</label>)}</div></div>
-            <div><p className="mb-2 text-xs font-black uppercase text-neutral-500">Extra permissions</p><p className="mb-2 text-xs text-neutral-400">These are group-specific grants in addition to the selected roles.</p><div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto">{(permissions.data || []).map((permission: string) => <label key={permission} className="flex items-center gap-2 rounded border p-2 text-xs"><input type="checkbox" checked={access.permissions.includes(permission)} onChange={() => toggle("permissions", permission)} />{permission}</label>)}</div></div>
+            <div><p className="mb-2 text-xs font-black uppercase text-neutral-500">Extra permissions</p><p className="mb-2 text-xs text-neutral-400">These are group-specific grants in addition to the selected roles.</p><div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">{(permissions.data || []).map((permission: string) => <label key={permission} className="flex items-start gap-2 rounded border p-2 text-xs"><input type="checkbox" className="mt-0.5" checked={access.permissions.includes(permission)} onChange={() => toggle("permissions", permission)} /><span><span className="block font-bold text-neutral-700">{permission}</span><span className="mt-0.5 block text-[10px] leading-4 text-neutral-400">{permissionHint(permission)}</span></span></label>)}</div></div>
           </div>
           {updateAccess.isError && <p className="text-xs text-red-600">{(updateAccess.error as Error).message}</p>}
           <DialogFooter><Button onClick={() => updateAccess.mutate()} disabled={updateAccess.isPending}>{updateAccess.isPending ? "Saving…" : "Save access"}</Button></DialogFooter>

@@ -353,6 +353,14 @@ export type CreateMeetingPayload = {
   agenda?: string;
 };
 
+export type MeetingMinutes = {
+  id: string | number;
+  meetingId: string | number;
+  content: string;
+  approvedAt?: string | null;
+  updatedAt?: string | null;
+};
+
 export type Payment = {
   id: string;
   groupId: string;
@@ -682,6 +690,18 @@ export const meetingService = {
         auth: true,
       },
     ),
+  getMinutes: (meetingId: string) =>
+    apiGet<{ data?: MeetingMinutes | null }>(
+      `${API_ENDPOINTS.meetings}/${meetingId}/minutes`,
+      undefined,
+      { auth: true },
+    ).then((response) => response?.data ?? null),
+  saveMinutes: (meetingId: string, payload: { content: string; approved: boolean }) =>
+    apiPut<{ data?: MeetingMinutes }>(
+      `${API_ENDPOINTS.meetings}/${meetingId}/minutes`,
+      payload,
+      { auth: true },
+    ).then((response) => response.data as MeetingMinutes),
 };
 
 export const paymentService = {
