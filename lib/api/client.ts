@@ -5,6 +5,7 @@ export type ApiError = Error & { status?: number };
 export type ApiRequestOptions = RequestInit & {
   auth?: boolean;
   skipJsonContentType?: boolean;
+  responseType?: "blob";
 };
 
 export const AUTH_STORAGE_KEYS = {
@@ -127,8 +128,12 @@ function isAuthRoute(path: string) {
   return path.includes("/api/auth/");
 }
 
-async function parseApiResponse<T>(response: Response): Promise<T> {
+async function parseApiResponse<T>(
+  response: Response,
+  responseType?: ApiRequestOptions["responseType"],
+): Promise<T> {
   if (response.status === 204) return undefined as T;
+  if (responseType === "blob") return (await response.blob()) as T;
 
   const text = await response.text();
   if (!text) return undefined as T;
@@ -147,6 +152,7 @@ export async function apiRequest<T>(
   const {
     auth = !isAuthRoute(path),
     skipJsonContentType = false,
+    responseType,
     headers,
     ...rest
   } = options;
@@ -192,7 +198,7 @@ export async function apiRequest<T>(
     throw error;
   }
 
-  return parseApiResponse<T>(response);
+  return parseApiResponse<T>(response, responseType);
 }
 
 export async function apiGet<T>(

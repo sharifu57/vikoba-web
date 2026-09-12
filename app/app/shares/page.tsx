@@ -19,9 +19,7 @@ import {
     type ShareSummary,
     type ShareTransaction,
 } from "@/hooks/useShares";
-import { groupService, type Group } from "@/lib/api/services";
-import { buildApiUrl } from "@/lib/api/endpoints";
-import { getAccessToken } from "@/lib/api/client";
+import { groupService, sharePurchaseRequestService, type Group } from "@/lib/api/services";
 
 type Action = "purchase" | "redeem" | null;
 
@@ -171,8 +169,14 @@ export default function SharesPage() {
         if (!groupId) return;
         try {
             if (decision === "approve") {
-                await approvePurchaseRequest(groupId, request.id);
-                setMessage(`${request.memberName}'s payment was approved and shares were added.`);
+                const reviewed = await approvePurchaseRequest(groupId, request.id);
+                setMessage(
+                    reviewed.status === "APPROVED"
+                        ? `${request.memberName}'s payment has both approvals. Shares are now added.`
+                        : reviewed.accountantApprovedAt
+                            ? `${request.memberName}'s payment has accountant approval and is awaiting the chair.`
+                            : `${request.memberName}'s payment has chair approval and is awaiting the accountant.`,
+                );
             } else {
                 const reason = window.prompt("Reason for rejecting this proof", "Proof could not be verified") || "Proof could not be verified";
                 await rejectPurchaseRequest(groupId, request.id, reason);
@@ -187,26 +191,28 @@ export default function SharesPage() {
     const openProof = async (request: SharePurchaseRequest) => {
         if (!groupId) return;
         try {
-            const response = await fetch(
-                buildApiUrl(`/api/share-purchase-requests/group/${groupId}/${request.id}/proof`),
-                { headers: { Authorization: `Bearer ${getAccessToken() || ""}` } },
-            );
-            if (!response.ok) throw new Error("Unable to open payment proof.");
-            const blobUrl = URL.createObjectURL(await response.blob());
+            const proof = await sharePurchaseRequestService.proof(groupId, request.id);
+            const blobUrl = URL.createObjectURL(proof);
             window.open(blobUrl, "_blank", "noopener,noreferrer");
         } catch (cause) {
             setMessage(cause instanceof Error ? cause.message : "Unable to open payment proof.");
         }
     };
 
+    const currentOwnership = ownership.find((item) => String(item.groupMemberId) === currentGroupMemberId);
+    const scopedOwnership = canReviewPurchaseProofs
+        ? ownership
+        : ownership.filter((item) => String(item.groupMemberId) === currentGroupMemberId);
     const visibleOwnership = useMemo(
         () =>
-            ownership.filter((item) =>
+            scopedOwnership.filter((item) =>
                 item.memberName.toLowerCase().includes(search.toLowerCase()),
             ),
-        [ownership, search],
+        [scopedOwnership, search],
     );
-    const currentOwnership = ownership.find((item) => String(item.groupMemberId) === currentGroupMemberId);
+    const visibleLedger = canReviewPurchaseProofs
+        ? ledger
+        : ledger.filter((item) => String(item.groupMemberId) === currentGroupMemberId);
     const selectedQuantity = Number(purchaseForm.quantity || 0);
     const shareAmount = selectedQuantity * summary.unitPrice;
     const summaryCards: Array<{
@@ -290,7 +296,7 @@ export default function SharesPage() {
                     <div className="flex gap-2">
                         <button
                             onClick={() => setAction("purchase")}
-                            disabled={!groupId}
+                            disabled={!groupId || !currentGroupMemberId}
                             className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-amber-700 disabled:opacity-50"
                         >
                             <Plus size={17} /> Buy shares
@@ -346,8 +352,16 @@ export default function SharesPage() {
                                             <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black uppercase text-amber-800">Pending</span>
                                         </div>
                                         <p className="mt-1 text-sm text-neutral-600">
-                                            {request.quantity} shares · {formatMoney(request.amount)} · {request.paymentMethod}
+                                            {request.quantity} shares · {formatMoney(request.amount)} shares · {formatMoney(request.jamiiAmount)} Jamii · {request.paymentMethod}
                                         </p>
+                                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold">
+                                            <span className={`rounded-full px-2 py-1 ${request.accountantApprovedAt ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>
+                                                Accountant: {request.accountantApprovedAt ? "approved" : "pending"}
+                                            </span>
+                                            <span className={`rounded-full px-2 py-1 ${request.chairApprovedAt ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>
+                                                Chair: {request.chairApprovedAt ? "approved" : "pending"}
+                                            </span>
+                                        </div>
                                         <p className="mt-1 text-xs text-neutral-500">
                                             Ref: {request.paymentReference || "Not provided"} · Submitted {new Date(request.submittedAt).toLocaleString()}
                                         </p>
@@ -364,7 +378,7 @@ export default function SharesPage() {
                                     </div>
                                     <div className="flex gap-2 lg:justify-end">
                                         <button onClick={() => reviewRequest(request, "reject")} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-50">Reject</button>
-                                        <button onClick={() => reviewRequest(request, "approve")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white hover:bg-emerald-800">Approve and add shares</button>
+                                        <button onClick={() => reviewRequest(request, "approve")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white hover:bg-emerald-800">Record approval</button>
                                     </div>
                                 </div>
                             ))}
@@ -396,13 +410,13 @@ export default function SharesPage() {
                         <div className="mb-5 flex items-center justify-between gap-3">
                             <div>
                                 <h2 className="font-black text-neutral-900">
-                                    Ownership distribution
+                                    {canReviewPurchaseProofs ? "Ownership distribution" : "My share ownership"}
                                 </h2>
                                 <p className="text-xs text-neutral-500">
-                                    Calculated from the share ledger
+                                    {canReviewPurchaseProofs ? "Calculated from the group share ledger" : "Calculated from your approved share transactions"}
                                 </p>
                             </div>
-                            <div className="relative">
+                            {canReviewPurchaseProofs && <div className="relative">
                                 <Search
                                     size={15}
                                     className="absolute left-3 top-2.5 text-neutral-400"
@@ -413,7 +427,7 @@ export default function SharesPage() {
                                     placeholder="Find member"
                                     className="w-44 rounded-lg border border-neutral-200 py-2 pl-9 pr-3 text-xs outline-none focus:border-amber-500"
                                 />
-                            </div>
+                            </div>}
                         </div>
                         <div className="space-y-4">
                             {visibleOwnership.length === 0 ? (
@@ -450,7 +464,18 @@ export default function SharesPage() {
                         </div>
                     </div>
                     <div className="rounded-xl border border-neutral-200 bg-neutral-900 p-6 text-white shadow-sm">
-                        <h2 className="font-black">Share rules</h2>
+                        <h2 className="font-black">My share statement</h2>
+                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div className="rounded-lg bg-white/10 p-3">
+                                <p className="text-neutral-400">Shares owned</p>
+                                <p className="mt-1 font-bold">{currentOwnership?.sharesOwned || 0}</p>
+                            </div>
+                            <div className="rounded-lg bg-white/10 p-3">
+                                <p className="text-neutral-400">Equity value</p>
+                                <p className="mt-1 font-bold">{formatMoney(currentOwnership?.equityValue || 0)}</p>
+                            </div>
+                        </div>
+                        <h3 className="mt-6 font-black">Share rules</h3>
                         <p className="mt-2 text-sm text-neutral-300">
                             One share costs{" "}
                             <strong className="text-amber-300">
@@ -472,7 +497,7 @@ export default function SharesPage() {
                         </div>
                         <button
                             onClick={() => setAction("redeem")}
-                            disabled={!groupId}
+                            disabled={!groupId || !currentOwnership?.sharesOwned}
                             className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/50 px-4 py-2.5 text-sm font-bold text-red-200 hover:bg-red-500/20 disabled:opacity-50"
                         >
                             <Undo2 size={16} /> Redeem shares
@@ -482,9 +507,9 @@ export default function SharesPage() {
 
                 <section className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
                     <div className="border-b border-neutral-100 p-6">
-                        <h2 className="font-black text-neutral-900">Share ledger</h2>
+                        <h2 className="font-black text-neutral-900">{canReviewPurchaseProofs ? "Share ledger" : "My share statement"}</h2>
                         <p className="text-xs text-neutral-500">
-                            Immutable purchase, transfer, and redemption history
+                            {canReviewPurchaseProofs ? "Immutable group purchase, transfer, and redemption history" : "Your immutable purchase and redemption history"}
                         </p>
                     </div>
                     <div className="overflow-x-auto">
@@ -497,11 +522,10 @@ export default function SharesPage() {
                                     <th className="px-6 py-3 text-right">Shares</th>
                                     <th className="px-6 py-3 text-right">Amount</th>
                                     <th className="px-6 py-3">Reference</th>
-                                    <th className="px-6 py-3">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-100">
-                                {ledger.map((item) => (
+                                {visibleLedger.map((item) => (
                                     <tr key={item.id}>
                                         <td className="px-6 py-4 text-neutral-500">
                                             {new Date(item.transactionDate).toLocaleDateString()}
@@ -528,17 +552,12 @@ export default function SharesPage() {
                                         <td className="px-6 py-4 text-xs text-neutral-500">
                                             {item.reference}
                                         </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <button className="text-red-500 hover:text-red-700">
-                                                Delete
-                                            </button>
-                                        </td>
                                     </tr>
                                 ))}
-                                {ledger.length === 0 && (
+                                {visibleLedger.length === 0 && (
                                     <tr>
                                         <td
-                                            colSpan={7}
+                                            colSpan={6}
                                             className="px-6 py-12 text-center text-neutral-500"
                                         >
                                             No share transactions recorded yet.
@@ -655,8 +674,8 @@ export default function SharesPage() {
                                 disabled={loading}
                                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-3 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50"
                             >
-                                {loading && <Loader2 size={16} className="animate-spin" />} Save
-                                transaction
+                                {loading && <Loader2 size={16} className="animate-spin" />}
+                                {action === "purchase" ? "Submit for approval" : "Redeem shares"}
                             </button>
                         </form>
                     </div>

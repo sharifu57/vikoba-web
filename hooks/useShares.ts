@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { apiGet, apiPost, apiRequest, getBearerHeaders } from "@/lib/api/client";
+import { apiGet, apiPost } from "@/lib/api/client";
 import { API_ENDPOINTS } from "@/lib/api/endpoints";
+import {
+  sharePurchaseRequestService,
+  type SharePurchaseRequestRecord,
+} from "@/lib/api/services";
 
 export type ShareSummary = {
   unitPrice: number;
@@ -41,27 +45,7 @@ export type ShareTransaction = {
   transactionDate: string;
 };
 
-export type SharePurchaseRequest = {
-  id: number;
-  groupMemberId: number;
-  memberName: string;
-  membershipNumber?: string;
-  quantity: number;
-  amount: number;
-  jamiiAmount: number;
-  paymentMethod: string;
-  paymentReference?: string;
-  proofText?: string;
-  proofFileName?: string;
-  proofContentType?: string;
-  hasProofFile: boolean;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  reviewReason?: string;
-  submittedAt: string;
-  reviewedAt?: string;
-  accountantApprovedAt?: string;
-  chairApprovedAt?: string;
-};
+export type SharePurchaseRequest = SharePurchaseRequestRecord;
 
 type ApiResponse<T> = { data?: T; message?: string };
 
@@ -207,11 +191,7 @@ export function useShares() {
       request(
         async () =>
           unwrap(
-            await apiGet<ApiResponse<SharePurchaseRequest[]>>(
-              `/api/share-purchase-requests/group/${groupId}`,
-              { status },
-              { auth: true, headers: getBearerHeaders() },
-            ),
+            await sharePurchaseRequestService.list(groupId, status),
           ) ?? [],
       ),
     [request],
@@ -221,10 +201,7 @@ export function useShares() {
     (groupId: string, formData: FormData) =>
       request(async () =>
         unwrap(
-          await apiRequest<ApiResponse<SharePurchaseRequest>>(
-            `/api/share-purchase-requests/group/${groupId}`,
-            { method: "POST", body: formData, auth: true, skipJsonContentType: true },
-          ),
+          await sharePurchaseRequestService.submit(groupId, formData),
         ),
       ),
     [request],
@@ -234,11 +211,7 @@ export function useShares() {
     (groupId: string, requestId: number) =>
       request(async () =>
         unwrap(
-          await apiPost<ApiResponse<SharePurchaseRequest>>(
-            `/api/share-purchase-requests/group/${groupId}/${requestId}/approve`,
-            {},
-            { auth: true, headers: getBearerHeaders() },
-          ),
+          await sharePurchaseRequestService.approve(groupId, requestId),
         ),
       ),
     [request],
@@ -248,11 +221,7 @@ export function useShares() {
     (groupId: string, requestId: number, reason: string) =>
       request(async () =>
         unwrap(
-          await apiPost<ApiResponse<SharePurchaseRequest>>(
-            `/api/share-purchase-requests/group/${groupId}/${requestId}/reject?reason=${encodeURIComponent(reason)}`,
-            {},
-            { auth: true, headers: getBearerHeaders() },
-          ),
+          await sharePurchaseRequestService.reject(groupId, requestId, reason),
         ),
       ),
     [request],

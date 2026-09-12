@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from "./endpoints";
-import { apiDelete, apiGet, apiPost, apiPut, setAuthTokens } from "./client";
+import { apiDelete, apiGet, apiPost, apiPut, apiRequest, setAuthTokens } from "./client";
 
 export type UserSession = {
   id?: string | number | null;
@@ -17,6 +17,28 @@ export type ApiResponse<T> = {
   refreshToken?: string | null;
   expired?: string | null;
   data?: T;
+};
+
+export type SharePurchaseRequestRecord = {
+  id: number;
+  groupMemberId: number;
+  memberName: string;
+  membershipNumber?: string;
+  quantity: number;
+  amount: number;
+  jamiiAmount: number;
+  paymentMethod: string;
+  paymentReference?: string;
+  proofText?: string;
+  proofFileName?: string;
+  proofContentType?: string;
+  hasProofFile: boolean;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reviewReason?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  accountantApprovedAt?: string;
+  chairApprovedAt?: string;
 };
 
 export const authService = {
@@ -534,6 +556,43 @@ export const memberService = {
       `${API_ENDPOINTS.members}/${groupMemberId}/360`,
       undefined,
       { auth: true },
+    ),
+};
+
+export const sharePurchaseRequestService = {
+  list: (groupId: string, status = "PENDING") =>
+    apiGet<ApiResponse<SharePurchaseRequestRecord[]>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}`,
+      { status },
+      { auth: true },
+    ),
+  submit: (groupId: string, formData: FormData) =>
+    apiRequest<ApiResponse<SharePurchaseRequestRecord>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}`,
+      {
+        method: "POST",
+        body: formData,
+        auth: true,
+        skipJsonContentType: true,
+      },
+    ),
+  approve: (groupId: string, requestId: number) =>
+    apiPost<ApiResponse<SharePurchaseRequestRecord>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}/${requestId}/approve`,
+      {},
+      { auth: true },
+    ),
+  reject: (groupId: string, requestId: number, reason: string) =>
+    apiPost<ApiResponse<SharePurchaseRequestRecord>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}/${requestId}/reject?reason=${encodeURIComponent(reason)}`,
+      {},
+      { auth: true },
+    ),
+  proof: (groupId: string, requestId: number) =>
+    apiGet<Blob>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}/${requestId}/proof`,
+      undefined,
+      { auth: true, responseType: "blob" },
     ),
 };
 export type Member360Response = {
