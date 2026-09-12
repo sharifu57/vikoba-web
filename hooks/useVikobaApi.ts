@@ -13,6 +13,7 @@ import {
   reportService,
   socialFundService,
   type Contribution,
+  type CreateMeetingPayload,
   type Expense,
   type Fine,
   type Group,
@@ -212,7 +213,7 @@ export function useCreateMeeting() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { groupId: string; data: Partial<Meeting> }) =>
+    mutationFn: (payload: { groupId: string; data: CreateMeetingPayload }) =>
       meetingService.createForGroup(payload.groupId, payload.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.meetings });

@@ -342,6 +342,17 @@ export type Meeting = {
   status?: string;
 };
 
+export type CreateMeetingPayload = {
+  title: string;
+  meetingDate: string;
+  startTime: string;
+  endTime?: string;
+  meetingMode: "ONLINE" | "PHYSICAL";
+  location?: string;
+  meetingLink?: string;
+  agenda?: string;
+};
+
 export type Payment = {
   id: string;
   groupId: string;
@@ -639,13 +650,14 @@ export const meetingService = {
     apiGet<Meeting[]>(
       API_ENDPOINTS.meetings,
       groupId ? { groupId } : undefined,
+      { auth: true },
     ),
-  getById: (id: string) => apiGet<Meeting>(`${API_ENDPOINTS.meetings}/${id}`),
+  getById: (id: string) => apiGet<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, undefined, { auth: true }),
   create: (payload: Partial<Meeting>) =>
-    apiPost<Meeting>(API_ENDPOINTS.meetings, payload),
+    apiPost<Meeting>(API_ENDPOINTS.meetings, payload, { auth: true }),
   update: (id: string, payload: Partial<Meeting>) =>
-    apiPut<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, payload),
-  remove: (id: string) => apiDelete(`${API_ENDPOINTS.meetings}/${id}`),
+    apiPut<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, payload, { auth: true }),
+  remove: (id: string) => apiDelete(`${API_ENDPOINTS.meetings}/${id}`, { auth: true }),
   listByGroup: (groupId: string) =>
     apiGet<Meeting[]>(
       `${API_ENDPOINTS.groups}/${groupId}/meetings`,
@@ -654,7 +666,7 @@ export const meetingService = {
         auth: true,
       },
     ),
-  createForGroup: (groupId: string, payload: Partial<Meeting>) =>
+  createForGroup: (groupId: string, payload: CreateMeetingPayload) =>
     apiPost<Meeting>(`${API_ENDPOINTS.groups}/${groupId}/meetings`, payload, {
       auth: true,
     }),
