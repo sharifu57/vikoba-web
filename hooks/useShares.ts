@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { apiGet, apiPost, getBearerHeaders } from "@/lib/api/client";
+import { apiGet, apiPost, apiRequest, getBearerHeaders } from "@/lib/api/client";
 import { API_ENDPOINTS } from "@/lib/api/endpoints";
 
 export type ShareSummary = {
@@ -48,6 +48,7 @@ export type SharePurchaseRequest = {
   membershipNumber?: string;
   quantity: number;
   amount: number;
+  jamiiAmount: number;
   paymentMethod: string;
   paymentReference?: string;
   proofText?: string;
@@ -58,6 +59,8 @@ export type SharePurchaseRequest = {
   reviewReason?: string;
   submittedAt: string;
   reviewedAt?: string;
+  accountantApprovedAt?: string;
+  chairApprovedAt?: string;
 };
 
 type ApiResponse<T> = { data?: T; message?: string };
@@ -214,6 +217,19 @@ export function useShares() {
     [request],
   );
 
+  const submitPurchaseRequest = useCallback(
+    (groupId: string, formData: FormData) =>
+      request(async () =>
+        unwrap(
+          await apiRequest<ApiResponse<SharePurchaseRequest>>(
+            `/api/share-purchase-requests/group/${groupId}`,
+            { method: "POST", body: formData, auth: true, skipJsonContentType: true },
+          ),
+        ),
+      ),
+    [request],
+  );
+
   const approvePurchaseRequest = useCallback(
     (groupId: string, requestId: number) =>
       request(async () =>
@@ -252,6 +268,7 @@ export function useShares() {
     transfer,
     redeem,
     getPurchaseRequests,
+    submitPurchaseRequest,
     approvePurchaseRequest,
     rejectPurchaseRequest,
   };

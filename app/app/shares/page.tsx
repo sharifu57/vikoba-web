@@ -19,16 +19,11 @@ import {
     type ShareSummary,
     type ShareTransaction,
 } from "@/hooks/useShares";
-import {
-    groupService,
-    memberService,
-    type Group,
-    type Member,
-} from "@/lib/api/services";
+import { groupService, type Group } from "@/lib/api/services";
 import { buildApiUrl } from "@/lib/api/endpoints";
 import { getAccessToken } from "@/lib/api/client";
 
-type Action = "purchase" | "transfer" | "redeem" | null;
+type Action = "purchase" | "redeem" | null;
 
 const emptySummary: ShareSummary = {
     unitPrice: 0,
@@ -52,8 +47,7 @@ export default function SharesPage() {
         getSummary,
         getOwnership,
         getLedger,
-        purchase,
-        transfer,
+        submitPurchaseRequest,
         redeem,
         getPurchaseRequests,
         approvePurchaseRequest,
@@ -65,26 +59,19 @@ export default function SharesPage() {
     const [ledger, setLedger] = useState<ShareTransaction[]>([]);
     const [purchaseRequests, setPurchaseRequests] = useState<SharePurchaseRequest[]>([]);
     const [canReviewPurchaseProofs, setCanReviewPurchaseProofs] = useState(false);
-    const [members, setMembers] = useState<Member[]>([]);
+    const [currentGroupMemberId, setCurrentGroupMemberId] = useState("");
+    const [minimumPurchaseAmount, setMinimumPurchaseAmount] = useState(0);
     const [action, setAction] = useState<Action>(null);
     const [search, setSearch] = useState("");
     const [message, setMessage] = useState<string | null>(null);
     const [purchaseForm, setPurchaseForm] = useState({
-        memberId: "",
         quantity: "",
-        amount: "",
         jamiiAmount: "",
         reference: "",
-        paymentMethod: "Cash",
+        paymentMethod: "Mobile Money",
     });
-    const [transferForm, setTransferForm] = useState({
-        from: "",
-        to: "",
-        quantity: "",
-        reference: "",
-    });
+    const [proofFile, setProofFile] = useState<File | null>(null);
     const [redeemForm, setRedeemForm] = useState({
-        memberId: "",
         quantity: "",
         reference: "",
     });
@@ -125,27 +112,27 @@ export default function SharesPage() {
     useEffect(() => {
         if (!groupId) return;
         groupService.getWithSettings(groupId).then((response) => {
-            const payload = response as { data?: { settings?: { jamiiContributionPerSharePayment?: number } }; settings?: { jamiiContributionPerSharePayment?: number } };
+            const payload = response as { data?: { settings?: { jamiiContributionPerSharePayment?: number; minimumSharePurchaseAmount?: number } }; settings?: { jamiiContributionPerSharePayment?: number; minimumSharePurchaseAmount?: number } };
             const configuredAmount = payload.data?.settings?.jamiiContributionPerSharePayment ?? payload.settings?.jamiiContributionPerSharePayment;
+            const configuredMinimum = payload.data?.settings?.minimumSharePurchaseAmount ?? payload.settings?.minimumSharePurchaseAmount;
             if (configuredAmount !== undefined) setPurchaseForm(current => ({ ...current, jamiiAmount: String(configuredAmount || "") }));
+            if (configuredMinimum !== undefined) setMinimumPurchaseAmount(Number(configuredMinimum || 0));
         }).catch(() => { /* The optional Jamii amount can still be entered manually. */ });
     }, [groupId]);
 
     const loadData = async () => {
         if (!groupId) return;
         try {
-            const [nextSummary, nextOwnership, nextLedger, memberResponse, nextRequests] =
+            const [nextSummary, nextOwnership, nextLedger, nextRequests] =
                 await Promise.all([
                     getSummary(groupId),
                     getOwnership(groupId),
                     getLedger(groupId),
-                    memberService.list(groupId),
                     canReviewPurchaseProofs ? getPurchaseRequests(groupId) : Promise.resolve([]),
                 ]);
             setSummary(nextSummary || emptySummary);
             setOwnership(nextOwnership || []);
             setLedger(nextLedger || []);
-            setMembers(unwrap(memberResponse) as Member[]);
             setPurchaseRequests(nextRequests || []);
         } catch {
             /* hook exposes the error */
@@ -160,14 +147,17 @@ export default function SharesPage() {
                 const group = (item.group || item) as Record<string, unknown>;
                 return String(group.groupId ?? group.id) === groupId;
             });
-            const role = String(selected?.role || "MEMBER").toUpperCase();
+            const roles = Array.isArray(selected?.roles)
+                ? selected.roles.map(String).map((role) => role.toUpperCase())
+                : [String(selected?.role || "MEMBER").toUpperCase()];
             const permissions = Array.isArray(selected?.permissions)
                 ? selected.permissions.map(String).map((permission) => permission.toUpperCase())
                 : [];
             setCanReviewPurchaseProofs(
-                ["GROUP_ADMIN", "TREASURER", "ACCOUNTANT"].includes(role) ||
+                roles.some((role) => ["GROUP_ADMIN", "GROUP_CHAIRMAN", "CHAIRPERSON", "ACCOUNTANT"].includes(role)) ||
                 permissions.some((permission) => permission.includes("SHARE") && permission.includes("APPROV")),
             );
+            setCurrentGroupMemberId(String(selected?.groupMemberId ?? selected?.id ?? localStorage.getItem("v360_currentGroupMemberId") ?? ""));
         } catch {
             setCanReviewPurchaseProofs(false);
         }
@@ -216,9 +206,9 @@ export default function SharesPage() {
             ),
         [ownership, search],
     );
-    const memberName = (id: string) =>
-        members.find((member) => String(member.id) === id)?.name ||
-        "Selected member";
+    const currentOwnership = ownership.find((item) => String(item.groupMemberId) === currentGroupMemberId);
+    const selectedQuantity = Number(purchaseForm.quantity || 0);
+    const shareAmount = selectedQuantity * summary.unitPrice;
     const summaryCards: Array<{
         label: string;
         value: string;
@@ -251,37 +241,27 @@ export default function SharesPage() {
         if (!groupId) return;
         try {
             if (action === "purchase") {
-                const quantity = purchaseForm.quantity
-                    ? Number(purchaseForm.quantity)
-                    : undefined;
-                const amount = purchaseForm.amount
-                    ? Number(purchaseForm.amount)
-                    : undefined;
-                if (!quantity && !amount) throw new Error("Enter shares or an amount.");
-                await purchase(groupId, {
-                    groupMemberId: purchaseForm.memberId,
-                    quantity,
-                    amount,
-                    jamiiAmount: purchaseForm.jamiiAmount ? Number(purchaseForm.jamiiAmount) : undefined,
-                    reference: purchaseForm.reference || undefined,
-                    paymentMethod: purchaseForm.paymentMethod,
-                });
-            } else if (action === "transfer") {
-                await transfer(groupId, {
-                    fromGroupMemberId: transferForm.from,
-                    toGroupMemberId: transferForm.to,
-                    quantity: Number(transferForm.quantity),
-                    reference: transferForm.reference || undefined,
-                });
+                if (!selectedQuantity) throw new Error("Enter the number of shares you want to buy.");
+                if (shareAmount < minimumPurchaseAmount) throw new Error(`The minimum purchase is ${formatMoney(minimumPurchaseAmount)}.`);
+                if (!proofFile) throw new Error("Attach a receipt or payment message screenshot.");
+                const data = new FormData();
+                data.append("amount", String(shareAmount));
+                data.append("quantity", String(selectedQuantity));
+                data.append("paymentMethod", purchaseForm.paymentMethod);
+                if (purchaseForm.reference.trim()) data.append("paymentReference", purchaseForm.reference.trim());
+                data.append("proofFile", proofFile);
+                await submitPurchaseRequest(groupId, data);
             } else if (action === "redeem") {
+                if (!currentGroupMemberId) throw new Error("Your active membership could not be resolved.");
                 await redeem(groupId, {
-                    groupMemberId: redeemForm.memberId,
+                    groupMemberId: currentGroupMemberId,
                     quantity: Number(redeemForm.quantity),
                     reference: redeemForm.reference || undefined,
                 });
             }
             setAction(null);
-            setMessage("Share transaction recorded successfully.");
+            setProofFile(null);
+            setMessage(action === "purchase" ? "Your share purchase and payment proof were submitted for approval." : "Share redemption recorded successfully.");
             await loadData();
         } catch (cause) {
             setMessage(
@@ -316,11 +296,11 @@ export default function SharesPage() {
                             <Plus size={17} /> Buy shares
                         </button>
                         <button
-                            onClick={() => setAction("transfer")}
-                            disabled={!groupId}
-                            className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                            onClick={() => setAction("redeem")}
+                            disabled={!groupId || !currentOwnership?.sharesOwned}
+                            className="flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
                         >
-                            <ArrowLeftRight size={17} /> Transfer
+                            <Undo2 size={17} /> Redeem shares
                         </button>
                     </div>
                 </header>
@@ -577,11 +557,7 @@ export default function SharesPage() {
                         <div className="mb-5 flex items-center justify-between">
                             <div>
                                 <h2 className="text-xl font-black text-neutral-900">
-                                    {action === "purchase"
-                                        ? "Buy shares"
-                                        : action === "transfer"
-                                            ? "Transfer shares"
-                                            : "Redeem shares"}
+                                    {action === "purchase" ? "Buy shares" : "Redeem shares"}
                                 </h2>
                                 <p className="text-xs text-neutral-500">
                                     All values use the configured group share price.
@@ -597,26 +573,11 @@ export default function SharesPage() {
                         <form onSubmit={submit} className="space-y-4">
                             {action === "purchase" && (
                                 <>
-                                    <select
-                                        required
-                                        value={purchaseForm.memberId}
-                                        onChange={(event) =>
-                                            setPurchaseForm({
-                                                ...purchaseForm,
-                                                memberId: event.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
-                                    >
-                                        <option value="">Select member</option>
-                                        {members.map((member) => (
-                                            <option key={member.id} value={String(member.id)}>
-                                                {member.name || member.fullName || member.memberNo}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="rounded-lg border border-[#B5D7C5] bg-[#F2F7F4] p-3 text-xs text-[#08503C]">This purchase is for your own active membership. Your payment proof will go to the accountant and chair for approval before shares are added.</div>
+                                    <div>
+                                        <label className="mb-1.5 block text-xs font-bold text-neutral-700">How many shares are you buying?</label>
                                         <input
+                                            required
                                             type="number"
                                             min="1"
                                             value={purchaseForm.quantity}
@@ -624,43 +585,14 @@ export default function SharesPage() {
                                                 setPurchaseForm({
                                                     ...purchaseForm,
                                                     quantity: event.target.value,
-                                                    amount: "",
                                                 })
                                             }
                                             placeholder="Number of shares"
-                                            className="rounded-lg border border-neutral-200 px-3 py-3 text-sm"
-                                        />
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={purchaseForm.amount}
-                                            onChange={(event) =>
-                                                setPurchaseForm({
-                                                    ...purchaseForm,
-                                                    amount: event.target.value,
-                                                    quantity: "",
-                                                })
-                                            }
-                                            placeholder="Amount paid"
-                                            className="rounded-lg border border-neutral-200 px-3 py-3 text-sm"
+                                            className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
                                         />
                                     </div>
-                                    <p className="text-xs text-neutral-500">
-                                        {purchaseForm.quantity
-                                            ? `Total: ${formatMoney(Number(purchaseForm.quantity) * summary.unitPrice)}`
-                                            : purchaseForm.amount
-                                                ? `Shares: ${Math.floor(Number(purchaseForm.amount) / summary.unitPrice)}`
-                                                : "Enter shares or amount"}
-                                    </p>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={purchaseForm.jamiiAmount}
-                                        onChange={(event) => setPurchaseForm({ ...purchaseForm, jamiiAmount: event.target.value })}
-                                        placeholder="Jamii amount (separate from shares)"
-                                        className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
-                                    />
-                                    <p className="text-xs text-neutral-500">Optional amount for Jamii, separate from the amount paid for shares.</p>
+                                    <div className="grid grid-cols-2 gap-3 text-xs"><div className="rounded-lg bg-neutral-50 p-3"><p className="text-neutral-400">Share amount</p><p className="mt-1 font-black text-neutral-900">{formatMoney(shareAmount)}</p></div><div className="rounded-lg bg-neutral-50 p-3"><p className="text-neutral-400">Jamii amount</p><p className="mt-1 font-black text-neutral-900">{formatMoney(Number(purchaseForm.jamiiAmount || 0))}</p></div></div>
+                                    <p className="text-xs text-neutral-500">Minimum purchase: {formatMoney(minimumPurchaseAmount || summary.unitPrice)}. The Jamii amount is configured separately from shares.</p>
                                     <select
                                         value={purchaseForm.paymentMethod}
                                         onChange={(event) =>
@@ -686,103 +618,12 @@ export default function SharesPage() {
                                         placeholder="Payment reference (optional)"
                                         className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
                                     />
-                                </>
-                            )}
-                            {action === "transfer" && (
-                                <>
-                                    <select
-                                        required
-                                        value={transferForm.from}
-                                        onChange={(event) =>
-                                            setTransferForm({
-                                                ...transferForm,
-                                                from: event.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
-                                    >
-                                        <option value="">Transfer from</option>
-                                        {ownership
-                                            .filter((item) => item.sharesOwned > 0)
-                                            .map((item) => (
-                                                <option
-                                                    key={item.groupMemberId}
-                                                    value={String(item.groupMemberId)}
-                                                >
-                                                    {item.memberName} ({item.sharesOwned})
-                                                </option>
-                                            ))}
-                                    </select>
-                                    <select
-                                        required
-                                        value={transferForm.to}
-                                        onChange={(event) =>
-                                            setTransferForm({
-                                                ...transferForm,
-                                                to: event.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
-                                    >
-                                        <option value="">Transfer to</option>
-                                        {members.map((member) => (
-                                            <option key={member.id} value={String(member.id)}>
-                                                {member.name || member.fullName || member.memberNo}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <input
-                                        required
-                                        type="number"
-                                        min="1"
-                                        value={transferForm.quantity}
-                                        onChange={(event) =>
-                                            setTransferForm({
-                                                ...transferForm,
-                                                quantity: event.target.value,
-                                            })
-                                        }
-                                        placeholder="Number of shares"
-                                        className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
-                                    />
-                                    <input
-                                        value={transferForm.reference}
-                                        onChange={(event) =>
-                                            setTransferForm({
-                                                ...transferForm,
-                                                reference: event.target.value,
-                                            })
-                                        }
-                                        placeholder="Transfer reference (optional)"
-                                        className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
-                                    />
+                                    <label className="block text-xs font-bold text-neutral-700">Payment proof *<input required type="file" accept="image/*,application/pdf" onChange={(event) => setProofFile(event.target.files?.[0] || null)} className="mt-1.5 block w-full text-xs font-normal text-neutral-600" /></label>
                                 </>
                             )}
                             {action === "redeem" && (
                                 <>
-                                    <select
-                                        required
-                                        value={redeemForm.memberId}
-                                        onChange={(event) =>
-                                            setRedeemForm({
-                                                ...redeemForm,
-                                                memberId: event.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
-                                    >
-                                        <option value="">Select member</option>
-                                        {ownership
-                                            .filter((item) => item.sharesOwned > 0)
-                                            .map((item) => (
-                                                <option
-                                                    key={item.groupMemberId}
-                                                    value={String(item.groupMemberId)}
-                                                >
-                                                    {item.memberName} ({item.sharesOwned})
-                                                </option>
-                                            ))}
-                                    </select>
+                                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">You are redeeming from your own balance of {currentOwnership?.sharesOwned || 0} shares. This cannot be undone from the ledger.</div>
                                     <input
                                         required
                                         type="number"
