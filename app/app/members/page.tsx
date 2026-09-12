@@ -15,9 +15,11 @@ import {
   Loader2,
   Upload,
   PencilLine,
-  Trash2,
   CheckCircle2,
   Plus,
+  MoreHorizontal,
+  UserCheck,
+  UserX,
 } from 'lucide-react'
 import { memberService, type MemberRoleOption } from '@/lib/api/services'
 
@@ -74,6 +76,29 @@ type BulkMemberRow = {
   error?: string
 }
 
+type ManagedMember = {
+  id: string
+  groupId: string
+  name: string
+  memberNo: string
+  phone: string
+  email: string
+  joinedDate: string
+  role: string
+  status: string
+  firstName: string
+  middleName: string
+  lastName: string
+  nationalId: string
+  address: string
+  occupation: string
+  nextOfKinName: string
+  nextOfKinPhone: string
+  nextOfKinRelationship: string
+}
+
+type MemberEditForm = Omit<ManagedMember, 'id' | 'groupId' | 'name' | 'memberNo' | 'joinedDate' | 'role' | 'status'>
+
 export default function MembersPage() {
   const queryClient = useQueryClient()
   const [groupId, setGroupId] = useState('')
@@ -87,6 +112,11 @@ export default function MembersPage() {
   const [bulkRows, setBulkRows] = useState<BulkMemberRow[]>([])
   const [bulkFileName, setBulkFileName] = useState('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [canManageMembers, setCanManageMembers] = useState(false)
+  const [editingMember, setEditingMember] = useState<ManagedMember | null>(null)
+  const [editForm, setEditForm] = useState<MemberEditForm | null>(null)
+  const [statusMember, setStatusMember] = useState<ManagedMember | null>(null)
+  const [statusSubmitting, setStatusSubmitting] = useState(false)
 
   const [newMem, setNewMem] = useState<SingleMemberForm>({
     firstName: '',
@@ -119,10 +149,35 @@ export default function MembersPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!groupId || typeof window === 'undefined') return
+
+    try {
+      const memberships = JSON.parse(localStorage.getItem('v360_groups') || '[]') as Array<Record<string, unknown>>
+      const membership = memberships.find((item) => {
+        const group = (item.group || item) as Record<string, unknown>
+        return String(group.groupId ?? group.id) === groupId
+      })
+      const roles = Array.isArray(membership?.roles)
+        ? membership.roles.map(String).map((role) => role.toUpperCase())
+        : [String(membership?.role || 'MEMBER').toUpperCase()]
+      const permissions = Array.isArray(membership?.permissions)
+        ? membership.permissions.map(String).map((permission) => permission.toUpperCase())
+        : []
+
+      setCanManageMembers(
+        roles.some((role) => ['GROUP_ADMIN', 'GROUP_CHAIRMAN', 'CHAIRPERSON'].includes(role)) ||
+        permissions.includes('MEMBER_MANAGE'),
+      )
+    } catch {
+      setCanManageMembers(false)
+    }
+  }, [groupId])
+
   const { data: roleData, isLoading: loadingRoles } = useQuery({
     queryKey: ['member-roles'],
     queryFn: () => memberService.getRoles(),
-    enabled: true,
+    enabled: canManageMembers,
     staleTime: 30_000,
   })
 
@@ -138,7 +193,7 @@ export default function MembersPage() {
   const members = useMemo(() => {
     const list = unwrapApiData<Array<Record<string, unknown>>>(memberData)
     if (!list) return []
-    return list.map((member) => {
+    return list.map((member): ManagedMember => {
       const fullName =
         String(member.fullName ?? member.name ?? `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim()) ||
         `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim()
@@ -153,6 +208,15 @@ export default function MembersPage() {
         joinedDate: String(member.joinedDate ?? '—'),
         role: formatRoleLabel(String(member.role ?? 'MEMBER')),
         status: String(member.membershipStatus ?? member.status ?? 'ACTIVE').toUpperCase(),
+        firstName: String(member.firstName ?? ''),
+        middleName: String(member.middleName ?? ''),
+        lastName: String(member.lastName ?? ''),
+        nationalId: String(member.nationalId ?? ''),
+        address: String(member.address ?? ''),
+        occupation: String(member.occupation ?? ''),
+        nextOfKinName: String(member.nextOfKinName ?? ''),
+        nextOfKinPhone: String(member.nextOfKinPhone ?? ''),
+        nextOfKinRelationship: String(member.nextOfKinRelationship ?? ''),
       }
     })
   }, [groupId, memberData])
@@ -365,14 +429,70 @@ export default function MembersPage() {
     }
   }
 
-  const handleDeleteMember = async (memberId: string) => {
+  const openEditMember = (member: ManagedMember) => {
+    setEditingMember(member)
+    setEditForm({
+      firstName: member.firstName,
+      middleName: member.middleName,
+      lastName: member.lastName,
+      phone: member.phone,
+      email: member.email,
+      nationalId: member.nationalId,
+      address: member.address,
+      occupation: member.occupation,
+      nextOfKinName: member.nextOfKinName,
+      nextOfKinPhone: member.nextOfKinPhone,
+      nextOfKinRelationship: member.nextOfKinRelationship,
+    })
+  }
+
+  const handleEditMember = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!editingMember || !editForm) return
+
+    const phone = normalizePhone(editForm.phone)
+    if (!editForm.firstName.trim() || !editForm.lastName.trim() || !phone || phone.length !== 12) {
+      toast.error('Please enter a valid first name, last name, and phone number.')
+      return
+    }
+
+    setIsSubmitting(true)
     try {
-      await memberService.remove(memberId)
-      toast.success('Member deleted successfully.')
+      await memberService.updateProfile(groupId, editingMember.id, {
+        ...editForm,
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName.trim(),
+        middleName: editForm.middleName.trim() || undefined,
+        phone,
+        email: editForm.email.trim() || undefined,
+      })
+      toast.success('Member details updated.')
+      setEditingMember(null)
+      setEditForm(null)
       queryClient.invalidateQueries({ queryKey: ['members', groupId] })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Delete is not available for this endpoint yet.'
-      toast.info(message)
+      const message = error instanceof Error ? error.message : 'Unable to update member details.'
+      toast.error(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const confirmStatusChange = async () => {
+    if (!statusMember) return
+    const nextStatus = statusMember.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+
+    setStatusSubmitting(true)
+    try {
+      await memberService.updateMembershipStatus(groupId, statusMember.id, nextStatus)
+      toast.success(nextStatus === 'ACTIVE' ? 'Member reactivated.' : 'Member deactivated and removed from group access.')
+      setStatusMember(null)
+      queryClient.invalidateQueries({ queryKey: ['members', groupId] })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update membership status.'
+      toast.error(message)
+    } finally {
+      setStatusSubmitting(false)
     }
   }
 
@@ -389,7 +509,7 @@ export default function MembersPage() {
           <p className="mt-1 text-sm text-neutral-500">Add one member at a time or upload a bulk spreadsheet in seconds.</p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        {canManageMembers && <div className="flex flex-wrap gap-3">
           <button
             onClick={() => {
               setMemberAddMode(null)
@@ -400,7 +520,7 @@ export default function MembersPage() {
             <UserPlus size={14} />
             Add Members
           </button>
-        </div>
+        </div>}
       </div>
 
       <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
@@ -440,7 +560,8 @@ export default function MembersPage() {
             >
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
+              <option value="SUSPENDED">Suspended</option>
+              <option value="EXITED">Exited</option>
             </select>
           </div>
         </div>
@@ -464,7 +585,7 @@ export default function MembersPage() {
             <tbody className="divide-y divide-neutral-100">
               {loadingMembers ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-neutral-400">
                     <div className="inline-flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" /> Loading members...
                     </div>
@@ -515,27 +636,33 @@ export default function MembersPage() {
                         >
                           <Eye size={12} /> View
                         </Link>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-lg border border-[#E5E7EB] px-2.5 py-1.5 text-[10px] font-bold text-neutral-700 transition hover:border-[#0B6B50] hover:text-[#0B6B50]"
-                          onClick={() => toast.info('Edit member flow can be connected next once the update endpoint is ready.')}
-                        >
-                          <PencilLine size={12} /> Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMember(member.id)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50"
-                        >
-                          <Trash2 size={12} /> Delete
-                        </button>
+                        {canManageMembers && (
+                          <details className="w-7 [&>summary::-webkit-details-marker]:hidden">
+                            <summary
+                              title="Member actions"
+                              aria-label={`Actions for ${member.name}`}
+                              className="grid h-7 w-7 cursor-pointer list-none place-items-center rounded-lg border border-[#E5E7EB] text-neutral-600 transition hover:border-[#0B6B50] hover:text-[#0B6B50]"
+                            >
+                              <MoreHorizontal size={15} />
+                            </summary>
+                            <div className="mt-1 w-40 rounded-lg border border-[#E5E7EB] bg-white p-1 shadow-lg">
+                              <button type="button" onClick={() => openEditMember(member)} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-semibold text-neutral-700 hover:bg-[#F2F7F4] hover:text-[#0B6B50]">
+                                <PencilLine size={13} /> Edit member
+                              </button>
+                              <button type="button" onClick={() => setStatusMember(member)} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-semibold ${member.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-[#0B6B50] hover:bg-[#F2F7F4]'}`}>
+                                {member.status === 'ACTIVE' ? <UserX size={13} /> : <UserCheck size={13} />}
+                                {member.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}
+                              </button>
+                            </div>
+                          </details>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-neutral-400">
                     {groupId ? 'No members match your search and filters yet.' : 'Select a group to start managing members.'}
                   </td>
                 </tr>
@@ -865,6 +992,124 @@ export default function MembersPage() {
             )}
 
 
+          </div>
+        </div>
+      )}
+
+      {editingMember && editForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/35 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="edit-member-title">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4 border-b border-neutral-100 pb-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Member management</p>
+                <h2 id="edit-member-title" className="mt-1 text-lg font-black text-neutral-900">Edit {editingMember.name}</h2>
+                <p className="mt-1 text-xs text-neutral-500">Member number: {editingMember.memberNo}</p>
+              </div>
+              <button
+                type="button"
+                title="Close edit member form"
+                aria-label="Close edit member form"
+                onClick={() => { setEditingMember(null); setEditForm(null) }}
+                className="grid h-8 w-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditMember} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">First name *</label>
+                  <input value={editForm.firstName} onChange={(event) => setEditForm((current) => current ? { ...current, firstName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Middle name</label>
+                  <input value={editForm.middleName} onChange={(event) => setEditForm((current) => current ? { ...current, middleName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Last name *</label>
+                  <input value={editForm.lastName} onChange={(event) => setEditForm((current) => current ? { ...current, lastName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone number *</label>
+                  <input value={editForm.phone} onChange={(event) => setEditForm((current) => current ? { ...current, phone: event.target.value } : current)} inputMode="tel" placeholder="255712345678" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Email address</label>
+                  <input value={editForm.email} onChange={(event) => setEditForm((current) => current ? { ...current, email: event.target.value } : current)} type="email" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">National ID</label>
+                  <input value={editForm.nationalId} onChange={(event) => setEditForm((current) => current ? { ...current, nationalId: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Occupation</label>
+                  <input value={editForm.occupation} onChange={(event) => setEditForm((current) => current ? { ...current, occupation: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-neutral-700">Address</label>
+                <input value={editForm.address} onChange={(event) => setEditForm((current) => current ? { ...current, address: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+              </div>
+
+              <div className="border-t border-neutral-100 pt-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Next of kin</p>
+                <div className="mt-3 grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Full name</label>
+                    <input value={editForm.nextOfKinName} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone number</label>
+                    <input value={editForm.nextOfKinPhone} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinPhone: event.target.value } : current)} inputMode="tel" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Relationship</label>
+                    <input value={editForm.nextOfKinRelationship} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinRelationship: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4">
+                <button type="button" onClick={() => { setEditingMember(null); setEditForm(null) }} className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70">
+                  {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PencilLine size={14} />}
+                  Save changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {statusMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/35 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="member-status-title">
+          <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-2xl">
+            <div className={`mb-4 grid h-11 w-11 place-items-center rounded-full ${statusMember.status === 'ACTIVE' ? 'bg-red-50 text-red-600' : 'bg-[#E7F2ED] text-[#0B6B50]'}`}>
+              {statusMember.status === 'ACTIVE' ? <UserX size={21} /> : <UserCheck size={21} />}
+            </div>
+            <h2 id="member-status-title" className="text-lg font-black text-neutral-900">
+              {statusMember.status === 'ACTIVE' ? 'Deactivate member?' : 'Reactivate member?'}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-neutral-600">
+              {statusMember.status === 'ACTIVE'
+                ? `${statusMember.name} will no longer be able to select this group at sign-in or access its information. Their member records will be kept.`
+                : `${statusMember.name} will regain access to this group using their existing account.`}
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setStatusMember(null)} disabled={statusSubmitting} className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50 disabled:opacity-70">Cancel</button>
+              <button type="button" onClick={confirmStatusChange} disabled={statusSubmitting} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${statusMember.status === 'ACTIVE' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0B6B50] hover:bg-[#08503C]'}`}>
+                {statusSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : statusMember.status === 'ACTIVE' ? <UserX size={14} /> : <UserCheck size={14} />}
+                {statusMember.status === 'ACTIVE' ? 'Deactivate member' : 'Reactivate member'}
+              </button>
+            </div>
           </div>
         </div>
       )}

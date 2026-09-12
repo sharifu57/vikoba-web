@@ -502,6 +502,10 @@ export const memberService = {
     }),
   update: (id: string, payload: Partial<Member>) =>
     apiPut<Member>(`${API_ENDPOINTS.members}/${id}`, payload, { auth: true }),
+  updateProfile: (groupId: string, groupMemberId: string | number, payload: Partial<Member>) =>
+    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}`, payload, { auth: true }),
+  updateMembershipStatus: (groupId: string, groupMemberId: string | number, status: "ACTIVE" | "SUSPENDED" | "EXITED") =>
+    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/status`, { status }, { auth: true }),
   updateAccess: (groupId: string, groupMemberId: string | number, payload: { roles: string[]; permissions: string[] }) =>
     apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/access`, payload, { auth: true }),
   remove: (id: string) =>

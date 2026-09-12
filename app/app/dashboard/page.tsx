@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useVikobaStore, type Group } from "@/lib/mockStore";
+import { SystemLoader } from "@/components/system-loader";
 import {
   memberService,
   reportService,
@@ -332,9 +333,7 @@ export default function DashboardPage() {
   if (!isHydrated || !accessReady) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="rounded-xl border border-[#E5E7EB] bg-white px-5 py-4 text-sm font-semibold text-neutral-500 shadow-sm">
-          Loading dashboard data...
-        </div>
+        <SystemLoader label="Preparing your dashboard" />
       </div>
     );
   }
@@ -828,33 +827,21 @@ function MemberDashboard({
   error,
 }: MemberDashboardProps) {
   const member = memberOverview?.member;
-  const contributions = memberOverview?.contributions ?? [];
   const loans = memberOverview?.loans ?? [];
   const fines = memberOverview?.fines ?? [];
-  const attendance = memberOverview?.meetingAttendance ?? [];
   const socialFund = memberOverview?.socialFundContributions ?? [];
+  const upcomingMeetings = (memberOverview?.upcomingMeetings ?? []).slice(0, 5);
   const memberName = member?.fullName || [member?.firstName, member?.lastName].filter(Boolean).join(" ") || currentUser.name;
-  const totalContributions = contributions.reduce((sum, item) => sum + Number(item.paidAmount ?? 0), 0);
-  const outstandingContributions = contributions.reduce((sum, item) => sum + Number(item.balance ?? 0), 0);
+  const memberNumber = member?.membershipNumber || member?.memberNo || "Not assigned";
+  const sharesOwned = Math.max(0, Number(memberOverview?.sharesOwned ?? 0));
   const activeLoans = loans.filter((item) => ["APPROVED", "DISBURSED", "ACTIVE"].includes(item.status ?? ""));
-  const activeLoanAmount = activeLoans.reduce((sum, item) => sum + Number(item.totalAmount ?? item.principalAmount ?? 0), 0);
   const unpaidFines = fines
     .filter((item) => item.status !== "PAID" && item.status !== "WAIVED")
     .reduce((sum, item) => sum + Number(item.balance ?? item.amount ?? 0), 0);
-  const attendanceRate = attendance.length
-    ? Math.round((attendance.filter((item) => ["PRESENT", "LATE"].includes(item.attendanceStatus ?? "")).length / attendance.length) * 100)
-    : 0;
   const activities = [
-    ...contributions.map((item) => ({
-      id: `contribution-${item.id}`,
-      label: "Contribution payment",
-      detail: item.status || "Recorded",
-      date: item.paidAt,
-      amount: Number(item.paidAmount ?? 0),
-    })),
     ...socialFund.map((item) => ({
       id: `social-${item.id}`,
-      label: "Jamii fund contribution",
+      label: "Jamii fund payment",
       detail: item.reference || "Recorded",
       date: item.contributionDate,
       amount: Number(item.amount ?? 0),
@@ -876,36 +863,11 @@ function MemberDashboard({
   ]
     .sort((a, b) => Date.parse(b.date ?? "") - Date.parse(a.date ?? ""))
     .slice(0, 5);
-  const personalActions = [
-    {
-      label: "Contribution balance",
-      value: formatCurrency(outstandingContributions, currentGroup.currency),
-      href: member?.id ? `/app/members/${member.id}` : "/app/dashboard",
-      show: outstandingContributions > 0,
-      tone: "bg-amber-100 text-amber-800",
-    },
-    {
-      label: "Active loan",
-      value: formatCurrency(activeLoanAmount, currentGroup.currency),
-      href: member?.id ? `/app/members/${member.id}` : "/app/dashboard",
-      show: activeLoans.length > 0,
-      tone: "bg-[#F4E5C5] text-[#8A5A10]",
-    },
-    {
-      label: "Outstanding fines",
-      value: formatCurrency(unpaidFines, currentGroup.currency),
-      href: member?.id ? `/app/members/${member.id}` : "/app/dashboard",
-      show: unpaidFines > 0,
-      tone: "bg-red-100 text-red-700",
-    },
-  ].filter((item) => item.show).slice(0, 5);
 
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="rounded-xl border border-[#E5E7EB] bg-white px-5 py-4 text-sm font-semibold text-neutral-500 shadow-sm">
-          Loading your member dashboard...
-        </div>
+        <SystemLoader label="Preparing your member dashboard" />
       </div>
     );
   }
@@ -929,7 +891,12 @@ function MemberDashboard({
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-100">My membership</p>
             <h1 className="mt-3 text-3xl font-black">Welcome back, {memberName}</h1>
-            <p className="mt-2 text-sm text-emerald-50">Your activity and balances in {currentGroup.name}.</p>
+            <p className="mt-2 text-sm text-emerald-50">Your member information for {currentGroup.name}.</p>
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-emerald-50">
+              <span>Member no. <strong className="text-white">{memberNumber}</strong></span>
+              <span>Role <strong className="text-white">{member?.role || currentUser.role}</strong></span>
+              <span>Joined <strong className="text-white">{formatDate(member?.joinedDate)}</strong></span>
+            </div>
           </div>
           <span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold">
             {member?.membershipStatus || member?.status || "ACTIVE"}
@@ -939,10 +906,10 @@ function MemberDashboard({
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "My contributions", value: formatCurrency(totalContributions, currentGroup.currency), icon: WalletCards, tone: "text-[#0B6B50]" },
-          { label: "Contribution balance", value: formatCurrency(outstandingContributions, currentGroup.currency), icon: BarChart3, tone: outstandingContributions ? "text-[#D99A2B]" : "text-[#0B6B50]" },
-          { label: "Active loans", value: formatCurrency(activeLoanAmount, currentGroup.currency), icon: HandCoins, tone: activeLoanAmount ? "text-[#EF6C4D]" : "text-[#0B6B50]" },
-          { label: "Attendance", value: `${attendanceRate}%`, icon: CalendarDays, tone: "text-[#0B6B50]" },
+          { label: "My shares", value: `${sharesOwned} shares`, icon: BarChart3, tone: "text-[#0B6B50]" },
+          { label: "Active loans", value: String(activeLoans.length), icon: HandCoins, tone: activeLoans.length ? "text-[#EF6C4D]" : "text-[#0B6B50]" },
+          { label: "Outstanding fines", value: formatCurrency(unpaidFines, currentGroup.currency), icon: AlertCircle, tone: unpaidFines ? "text-[#EF6C4D]" : "text-[#0B6B50]" },
+          { label: "Invited meetings", value: String(upcomingMeetings.length), icon: CalendarDays, tone: "text-[#D99A2B]" },
         ].map((item) => {
           const Icon = item.icon;
           return (
@@ -962,7 +929,7 @@ function MemberDashboard({
           <div className="flex items-center justify-between pb-4">
             <div>
               <h2 className="text-sm font-black text-neutral-800">My recent activity</h2>
-              <p className="text-[10px] text-neutral-400">Your latest five records</p>
+              <p className="text-[10px] text-neutral-400">Your latest five loan, fine, and fund records</p>
             </div>
             {member?.id && (
               <Link href={`/app/members/${member.id}`} className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0B6B50]">
@@ -990,22 +957,29 @@ function MemberDashboard({
         <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between pb-4">
             <div>
-              <h2 className="text-sm font-black text-neutral-800">My actions</h2>
-              <p className="text-[10px] text-neutral-400">Items that need your attention</p>
+              <h2 className="text-sm font-black text-neutral-800">Upcoming meetings</h2>
+              <p className="text-[10px] text-neutral-400">Meetings you are invited to attend</p>
             </div>
-            <CheckCircle2 className="text-[#0B6B50]" size={18} />
+            <CalendarDays className="text-[#0B6B50]" size={18} />
           </div>
 
           <div className="space-y-3">
-            {personalActions.map((item) => (
-              <Link key={item.label} href={item.href} className="flex items-center justify-between gap-3 rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5 transition-colors hover:border-[#E9EFEB] hover:bg-[#F2F7F4]">
-                <span className="text-[10px] font-semibold text-neutral-700">{item.label}</span>
-                <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${item.tone}`}>{item.value}</span>
+            {upcomingMeetings.map((meeting) => (
+              <Link key={meeting.id} href={`/app/meetings/${meeting.id}`} className="flex items-center gap-3 rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5 transition-colors hover:border-[#E9EFEB] hover:bg-[#F2F7F4]">
+                <div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-white text-[#0B6B50] shadow-sm">
+                  <span className="text-sm font-black">{meeting.meetingDate ? new Date(meeting.meetingDate).getDate() : "-"}</span>
+                  <span className="text-[8px] font-bold uppercase">{meeting.meetingDate ? new Date(meeting.meetingDate).toLocaleString("en-GB", { month: "short" }) : ""}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[10px] font-semibold text-neutral-800">{meeting.title || "Group meeting"}</p>
+                  <p className="mt-1 truncate text-[9px] text-neutral-500">{meeting.startTime || "Time not set"} - {meeting.location || "Location not set"}</p>
+                </div>
+                <ArrowRight className="shrink-0 text-[#0B6B50]" size={14} />
               </Link>
             ))}
-            {personalActions.length === 0 && (
+            {upcomingMeetings.length === 0 && (
               <div className="rounded-lg border border-[#E9EFEB] bg-[#F2F7F4] px-3 py-4 text-center text-xs font-semibold text-[#0B6B50]">
-                You are up to date.
+                No upcoming meetings have been scheduled.
               </div>
             )}
           </div>
