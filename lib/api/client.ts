@@ -95,6 +95,13 @@ export function clearVikobaLocalState() {
   localStorage.removeItem(AUTH_STORAGE_KEYS.session);
   localStorage.removeItem("v360_currentGroup");
   localStorage.removeItem("v360_currentGroupId");
+  localStorage.removeItem("v360_currentGroupMemberId");
+  localStorage.removeItem("v360_currentGroupRole");
+  localStorage.removeItem("v360_currentGroupRoles");
+  localStorage.removeItem("v360_currentGroupPermissions");
+  localStorage.removeItem("v360_currentGroupCurrency");
+  localStorage.removeItem("v360_groups");
+  localStorage.removeItem("v360_group_settings");
   localStorage.removeItem("v360_group_setup_complete");
   localStorage.removeItem("v360_group_setup_done");
   localStorage.removeItem("v360_last_activity");

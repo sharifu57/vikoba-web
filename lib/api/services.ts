@@ -131,17 +131,31 @@ export const authService = {
               const grp = (primary as any)?.group ?? primary;
               const settings = (primary as any)?.settings ?? null;
               const groupRole = String((primary as any)?.role || "MEMBER");
+              const groupRoles = Array.isArray((primary as any)?.roles)
+                ? (primary as any).roles.map(String)
+                : [groupRole];
               const groupPermissions = Array.isArray(
                 (primary as any)?.permissions,
               )
                 ? (primary as any).permissions.map(String)
                 : [];
+              const groupMemberId = (primary as any)?.groupMemberId;
 
               localStorage.setItem("v360_currentGroupRole", groupRole);
+              localStorage.setItem(
+                "v360_currentGroupRoles",
+                JSON.stringify(groupRoles),
+              );
               localStorage.setItem(
                 "v360_currentGroupPermissions",
                 JSON.stringify(groupPermissions),
               );
+              if (groupMemberId !== undefined && groupMemberId !== null) {
+                localStorage.setItem(
+                  "v360_currentGroupMemberId",
+                  String(groupMemberId),
+                );
+              }
 
               if (grp && (grp.groupId || grp.id)) {
                 localStorage.setItem("v360_currentGroup", JSON.stringify(grp));
@@ -506,6 +520,18 @@ export type Member360Response = {
   fines?: MemberFine360[];
   meetingAttendance?: MemberAttendance360[];
   socialFundContributions?: SocialFundContribution360[];
+  sharesOwned?: number;
+  upcomingMeetings?: Array<{
+    id: string | number;
+    title?: string;
+    meetingDate?: string;
+    startTime?: string;
+    endTime?: string;
+    location?: string;
+    meetingMode?: string;
+    status?: string;
+    agenda?: string;
+  }>;
 };
 
 export type MemberContribution360 = {
