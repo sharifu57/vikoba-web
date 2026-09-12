@@ -115,13 +115,13 @@ export default function LoansDashboard() {
                 <div className="flex gap-2">
                     <Link
                         href="/app/loans/applications"
-                        className="rounded-lg border border-[#dfe8e2] px-4 py-2.5 text-xs font-bold"
+                        className="rounded-lg border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold"
                     >
                         Review applications ({pending})
                     </Link>
                     <button
                         onClick={() => setOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white"
                     >
                         <PlusCircle size={14} />
                         Apply for loan
@@ -147,7 +147,7 @@ export default function LoansDashboard() {
                 ].map(([t, v]) => (
                     <div
                         key={t}
-                        className="rounded-xl border border-[#dfe8e2] bg-white p-5 shadow-sm"
+                        className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm"
                     >
                         <p className="text-[10px] font-bold uppercase text-neutral-400">
                             {t}
@@ -156,7 +156,7 @@ export default function LoansDashboard() {
                     </div>
                 ))}
             </section>
-            <section className="overflow-hidden rounded-xl border border-[#dfe8e2] bg-white shadow-sm">
+            <section className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b p-4">
                     <h2 className="text-sm font-extrabold">Active loan book</h2>
                     <div className="relative">
@@ -220,7 +220,7 @@ export default function LoansDashboard() {
                                         <td className="p-4">
                                             <div className="h-1.5 w-20 overflow-hidden rounded bg-neutral-100">
                                                 <div
-                                                    className="h-full bg-[#087f5b]"
+                                                    className="h-full bg-[#0B6B50]"
                                                     style={{ width: `${l.progress}%` }}
                                                 />
                                             </div>
@@ -329,7 +329,7 @@ export default function LoansDashboard() {
                             <button
                                 type="submit"
                                 disabled={api.loading}
-                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#087f5b] p-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] p-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {api.loading && <Loader2 size={14} className="animate-spin" />}
                                 {api.loading ? "Submitting application..." : "Submit application"}

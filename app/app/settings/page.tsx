@@ -258,7 +258,7 @@ export default function GroupSettingsPage() {
       )}
 
       <form onSubmit={handleSave} className="flex flex-col gap-6">
-        <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm flex flex-col gap-4">
           <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">VIKOBA Group Profile</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -269,7 +269,7 @@ export default function GroupSettingsPage() {
                 required
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]"
               />
             </div>
             <div>
@@ -277,7 +277,7 @@ export default function GroupSettingsPage() {
               <select
                 value={form.currency}
                 onChange={e => setForm({ ...form, currency: e.target.value })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] text-neutral-600 font-semibold"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] text-neutral-600 font-semibold"
               >
                 <option value="TZS">TZS (Tanzanian Shilling)</option>
                 <option value="KES">KES (Kenyan Shilling)</option>
@@ -291,7 +291,7 @@ export default function GroupSettingsPage() {
                 required
                 value={form.startDate}
                 onChange={e => setForm({ ...form, startDate: e.target.value })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]"
               />
             </div>
             <div>
@@ -301,7 +301,7 @@ export default function GroupSettingsPage() {
                 required
                 value={form.endDate}
                 onChange={e => setForm({ ...form, endDate: e.target.value })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]"
               />
             </div>
             <div>
@@ -311,7 +311,7 @@ export default function GroupSettingsPage() {
                 value={form.phone}
                 onChange={e => setForm({ ...form, phone: e.target.value })}
                 placeholder="+255 712 345 678"
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]"
               />
             </div>
             <div>
@@ -321,28 +321,28 @@ export default function GroupSettingsPage() {
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
                 placeholder="group@vikoba.com"
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4 pb-2 border-b border-neutral-100">
             <div><h3 className="font-extrabold text-neutral-800 text-sm">Fine Rules</h3><p className="mt-1 text-[10px] text-neutral-400">Set the standard amount for every fine type. Automated events, such as meeting absence, use these amounts.</p></div>
-            <button type="button" onClick={() => setFineRules([...fineRules, { code: '', name: '', defaultAmount: '', description: '' }])} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#087f5b] px-3 py-2 text-xs font-bold text-[#087f5b]"><Plus size={14} /> Add fine type</button>
+            <button type="button" onClick={() => setFineRules([...fineRules, { code: '', name: '', defaultAmount: '', description: '' }])} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#0B6B50] px-3 py-2 text-xs font-bold text-[#0B6B50]"><Plus size={14} /> Add fine type</button>
           </div>
           <div className="space-y-3">
             {fineRules.map((rule, index) => <div key={`${rule.id || 'new'}-${index}`} className="grid grid-cols-1 gap-3 rounded-lg bg-neutral-50 p-3 md:grid-cols-[1fr_1fr_140px_auto]">
-              <input required value={rule.name} onChange={e => setFineRules(fineRules.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="Fine type, e.g. Meeting absence" className="rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs outline-none focus:border-[#087f5b]" />
-              <input value={rule.description} onChange={e => setFineRules(fineRules.map((item, i) => i === index ? { ...item, description: e.target.value } : item))} placeholder="When it applies (optional)" className="rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs outline-none focus:border-[#087f5b]" />
-              <input required min={0} inputMode="decimal" type="text" value={rule.defaultAmount} onChange={e => { const value = e.target.value; if (/^\d*(\.\d{0,2})?$/.test(value)) setFineRules(fineRules.map((item, i) => i === index ? { ...item, defaultAmount: value } : item)) }} placeholder="Amount" className="rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs font-bold outline-none focus:border-[#087f5b]" />
+              <input required value={rule.name} onChange={e => setFineRules(fineRules.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="Fine type, e.g. Meeting absence" className="rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs outline-none focus:border-[#0B6B50]" />
+              <input value={rule.description} onChange={e => setFineRules(fineRules.map((item, i) => i === index ? { ...item, description: e.target.value } : item))} placeholder="When it applies (optional)" className="rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs outline-none focus:border-[#0B6B50]" />
+              <input required min={0} inputMode="decimal" type="text" value={rule.defaultAmount} onChange={e => { const value = e.target.value; if (/^\d*(\.\d{0,2})?$/.test(value)) setFineRules(fineRules.map((item, i) => i === index ? { ...item, defaultAmount: value } : item)) }} placeholder="Amount" className="rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs font-bold outline-none focus:border-[#0B6B50]" />
               <button type="button" aria-label={`Remove ${rule.name || 'fine type'}`} onClick={() => { if (rule.id) setRemovedFineTypeIds([...removedFineTypeIds, rule.id]); setFineRules(fineRules.filter((_, i) => i !== index)) }} className="justify-self-end rounded-lg p-2 text-red-600 hover:bg-red-50"><Trash2 size={16} /></button>
             </div>)}
           </div>
         </div>
 
-        <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm flex flex-col gap-4">
           <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Share Rules</h3>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -354,7 +354,7 @@ export default function GroupSettingsPage() {
                 min={0}
                 value={form.minimumSharePurchaseAmount}
                 onChange={e => setForm({ ...form, minimumSharePurchaseAmount: Number(e.target.value) })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-bold"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] font-bold"
               />
             </div>
             <div>
@@ -364,19 +364,19 @@ export default function GroupSettingsPage() {
                 required
                 value={form.sharePrice}
                 onChange={e => setForm({ ...form, sharePrice: Number(e.target.value) })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-bold"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] font-bold"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm flex flex-col gap-4">
           <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Loans & Penalties</h3>
 
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div>
               <label className="block text-xs font-bold text-neutral-700 mb-1.5">Required Loan Guarantors</label>
-              <input type="number" required min={0} value={form.requiredLoanGuarantors} onChange={e => setForm({ ...form, requiredLoanGuarantors: Number(e.target.value) })} className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-semibold" />
+              <input type="number" required min={0} value={form.requiredLoanGuarantors} onChange={e => setForm({ ...form, requiredLoanGuarantors: Number(e.target.value) })} className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] font-semibold" />
             </div>
             <div>
               <label className="block text-xs font-bold text-neutral-700 mb-1.5">Loan Multiplier</label>
@@ -385,7 +385,7 @@ export default function GroupSettingsPage() {
                 required
                 value={form.loanMultiplier}
                 onChange={e => setForm({ ...form, loanMultiplier: Number(e.target.value) })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-semibold"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] font-semibold"
               />
             </div>
             <div>
@@ -395,7 +395,7 @@ export default function GroupSettingsPage() {
                 required
                 value={form.defaultInterestRate}
                 onChange={e => setForm({ ...form, defaultInterestRate: Number(e.target.value) })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-semibold"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] font-semibold"
               />
             </div>
             <div>
@@ -405,7 +405,7 @@ export default function GroupSettingsPage() {
                 required
                 value={form.defaultLoanDurationMonths}
                 onChange={e => setForm({ ...form, defaultLoanDurationMonths: Number(e.target.value) })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-semibold"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] font-semibold"
               />
             </div>
             <div>
@@ -415,17 +415,17 @@ export default function GroupSettingsPage() {
                 required
                 value={form.latePaymentFine}
                 onChange={e => setForm({ ...form, latePaymentFine: Number(e.target.value) })}
-                className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-red-500 font-semibold"
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-red-500 font-semibold"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm flex flex-col gap-4">
           <h3 className="font-extrabold text-neutral-800 text-sm pb-2 border-b border-neutral-100">Jamii Amount</h3>
           <div className="max-w-md">
             <label className="block text-xs font-bold text-neutral-700 mb-1.5">Default Jamii amount for each share purchase</label>
-            <input type="number" required min={0} value={form.jamiiContributionPerSharePayment} onChange={e => setForm({ ...form, jamiiContributionPerSharePayment: Number(e.target.value) })} className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] font-semibold" />
+            <input type="number" required min={0} value={form.jamiiContributionPerSharePayment} onChange={e => setForm({ ...form, jamiiContributionPerSharePayment: Number(e.target.value) })} className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] font-semibold" />
             <p className="mt-1 text-[10px] text-neutral-400">This is separate from the share price. It pre-fills the Jamii amount field when a member buys shares.</p>
           </div>
         </div>
@@ -433,7 +433,7 @@ export default function GroupSettingsPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-[#087f5b] hover:bg-[#066b4c] text-white font-extrabold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full py-3 bg-[#0B6B50] hover:bg-[#08503C] text-white font-extrabold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-70 disabled:cursor-not-allowed"
         >
           <Save size={14} /> {loading ? 'Saving...' : 'Save Group + Settings'}
         </button>

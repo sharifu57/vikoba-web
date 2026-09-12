@@ -176,7 +176,7 @@ export default function DashboardPage() {
   if (!isHydrated) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="rounded-xl border border-[#dfe8e2] bg-white px-5 py-4 text-sm font-semibold text-neutral-500 shadow-sm">
+        <div className="rounded-xl border border-[#E5E7EB] bg-white px-5 py-4 text-sm font-semibold text-neutral-500 shadow-sm">
           Loading dashboard data...
         </div>
       </div>
@@ -225,7 +225,7 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-      <div className="mb-6 rounded-3xl border border-[#dfe8e2] bg-linear-to-r from-[#0b7c5a] via-[#0b8d67] to-[#0f6a52] p-6 text-white shadow-sm">
+      <div className="mb-6 rounded-xl border border-[#0B6B50] bg-[#0B6B50] p-6 text-white shadow-[0_12px_28px_rgba(11,107,80,0.18)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-100">
@@ -246,7 +246,7 @@ export default function DashboardPage() {
               Current KIKOBA group
             </p>
             <div className="mt-2 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-base font-black text-[#0b7c5a]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-base font-black text-[#0B6B50]">
                 {currentGroup.name.substring(0, 1)}
               </div>
               <div>
@@ -327,13 +327,13 @@ export default function DashboardPage() {
           return (
             <div
               key={item.title}
-              className="rounded-2xl border border-[#dfe8e2] bg-white p-4 shadow-sm"
+              className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">
                   {item.title}
                 </p>
-                <div className="rounded-xl bg-[#eaf6ef] p-2 text-[#087f5b]">
+                <div className="rounded-xl bg-[#E7F2ED] p-2 text-[#0B6B50]">
                   <Icon size={16} />
                 </div>
               </div>
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                 <span>{item.meta}</span>
                 <Link
                   href={item.href}
-                  className="inline-flex items-center gap-1 font-bold text-[#087f5b]"
+                  className="inline-flex items-center gap-1 font-bold text-[#0B6B50]"
                 >
                   View <ArrowRight size={10} />
                 </Link>
@@ -355,7 +355,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-        <div className="rounded-2xl border border-[#dfe8e2] bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-black text-neutral-800">
@@ -365,8 +365,8 @@ export default function DashboardPage() {
                 Monthly collection performance
               </p>
             </div>
-            <div className="inline-flex items-center gap-1 rounded-full bg-[#eaf6ef] px-2 py-1 text-[9px] font-bold text-[#087f5b]">
-              <span className="h-2 w-2 rounded-full bg-[#d99521]" /> Shares
+            <div className="inline-flex items-center gap-1 rounded-full bg-[#E7F2ED] px-2 py-1 text-[9px] font-bold text-[#0B6B50]">
+              <span className="h-2 w-2 rounded-full bg-[#D99A2B]" /> Shares
             </div>
           </div>
 
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                 <div className="relative min-h-0 flex-1 border-b border-l border-neutral-200 bg-[linear-gradient(to_bottom,transparent_24%,#f5f5f5_25%,transparent_26%,transparent_49%,#f5f5f5_50%,transparent_51%,transparent_74%,#f5f5f5_75%,transparent_76%)] px-1">
                   <div className="absolute inset-x-0 bottom-0 flex h-full items-end justify-center gap-1">
                     <div
-                      className="w-full min-h-0 rounded-t-lg bg-[#d99521] transition-[height] duration-500"
+                      className="w-full min-h-0 rounded-t-lg bg-[#D99A2B] transition-[height] duration-500"
                       style={{ height: `${(value / maxTrend) * 100}%` }}
                     />
                   </div>
@@ -395,7 +395,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-2xl border border-[#dfe8e2] bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between pb-3">
               <div>
                 <h2 className="text-sm font-black text-neutral-800">
@@ -403,13 +403,13 @@ export default function DashboardPage() {
                 </h2>
                 <p className="text-[10px] text-neutral-400">Weekly assembly</p>
               </div>
-              <CalendarDays className="text-[#087f5b]" size={18} />
+              <CalendarDays className="text-[#0B6B50]" size={18} />
             </div>
 
             {upcomingMeeting ? (
-              <div className="mt-3 rounded-2xl bg-[#f5faf6] p-3">
+              <div className="mt-3 rounded-2xl bg-[#F2F7F4] p-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl bg-white text-[#087f5b] shadow-sm">
+                  <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl bg-white text-[#0B6B50] shadow-sm">
                     <span className="text-lg font-black">
                       {new Date(upcomingMeeting.date).getDate()}
                     </span>
@@ -438,13 +438,13 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="mt-3 rounded-2xl border border-dashed border-[#dfe8e2] p-4 text-center text-xs text-neutral-400">
+              <div className="mt-3 rounded-2xl border border-dashed border-[#E5E7EB] p-4 text-center text-xs text-neutral-400">
                 No upcoming meeting scheduled.
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl border border-[#dfe8e2] bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between pb-3">
               <div>
                 <h2 className="text-sm font-black text-neutral-800">
@@ -452,7 +452,7 @@ export default function DashboardPage() {
                 </h2>
                 <p className="text-[10px] text-neutral-400">Quick summary</p>
               </div>
-              <Landmark className="text-[#087f5b]" size={18} />
+              <Landmark className="text-[#0B6B50]" size={18} />
             </div>
 
             <div className="space-y-3">
@@ -488,7 +488,7 @@ export default function DashboardPage() {
                     className="flex items-center justify-between rounded-xl bg-neutral-50 px-3 py-2"
                   >
                     <div className="flex items-center gap-2 text-neutral-600">
-                      <div className="rounded-lg bg-white p-1.5 text-[#087f5b]">
+                      <div className="rounded-lg bg-white p-1.5 text-[#0B6B50]">
                         <Icon size={12} />
                       </div>
                       <span className="text-[10px] font-semibold">
@@ -507,7 +507,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
-        <div className="rounded-2xl border border-[#dfe8e2] bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between pb-4">
             <div>
               <h2 className="text-sm font-black text-neutral-800">
@@ -519,7 +519,7 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/app/payments"
-              className="inline-flex items-center gap-1 text-[10px] font-bold text-[#087f5b]"
+              className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0B6B50]"
             >
               View ledger <ArrowUpRight size={12} />
             </Link>
@@ -575,7 +575,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#dfe8e2] bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between pb-4">
             <div>
               <h2 className="text-sm font-black text-neutral-800">
@@ -583,7 +583,7 @@ export default function DashboardPage() {
               </h2>
               <p className="text-[10px] text-neutral-400">Priority notices</p>
             </div>
-            <CheckCircle2 className="text-[#087f5b]" size={18} />
+            <CheckCircle2 className="text-[#0B6B50]" size={18} />
           </div>
 
           <div className="space-y-3">

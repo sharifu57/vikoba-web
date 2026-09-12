@@ -121,7 +121,7 @@ export default function MeetingsDashboard() {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="px-4 py-2.5 bg-[#087f5b] hover:bg-[#066b4c] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm self-stretch sm:self-auto"
+          className="px-4 py-2.5 bg-[#0B6B50] hover:bg-[#08503C] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm self-stretch sm:self-auto"
         >
           <PlusCircle size={14} /> Schedule Meeting
         </button>
@@ -132,7 +132,7 @@ export default function MeetingsDashboard() {
         {/* Left 2 Cols: Schedule cards lists */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Upcoming sessions */}
-          <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm">
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm">
             <h3 className="font-extrabold text-neutral-800 text-sm mb-4">Upcoming Scheduled Assemblies</h3>
             <div className="flex flex-col gap-4">
               {upcomingMeetings.map((m) => {
@@ -143,7 +143,7 @@ export default function MeetingsDashboard() {
                 return (
                   <div key={m.id} className="border border-neutral-100 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="bg-[#eaf6ef] text-[#087f5b] w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0">
+                      <div className="bg-[#E7F2ED] text-[#0B6B50] w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0">
                         <span className="text-lg font-black">{dateVal ? new Date(dateVal).getDate() : ""}</span>
                         <span className="text-[7px] font-extrabold uppercase">{dateVal ? new Date(dateVal).toLocaleString(undefined, { month: 'short' }).toUpperCase() : ""}</span>
                       </div>
@@ -155,7 +155,7 @@ export default function MeetingsDashboard() {
                     <div className="flex gap-2 w-full sm:w-auto">
                       <Link
                         href={`/app/meetings/${m.id}`}
-                        className="flex-1 sm:flex-none px-3.5 py-2 bg-[#087f5b] hover:bg-[#066b4c] text-white font-bold rounded-lg text-xs text-center shadow-sm"
+                        className="flex-1 sm:flex-none px-3.5 py-2 bg-[#0B6B50] hover:bg-[#08503C] text-white font-bold rounded-lg text-xs text-center shadow-sm"
                       >
                         Record Attendance
                       </Link>
@@ -170,7 +170,7 @@ export default function MeetingsDashboard() {
           </div>
 
           {/* Past assemblies minutes */}
-          <div className="bg-white border border-[#dfe8e2] rounded-xl p-6 shadow-sm">
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm">
             <h3 className="font-extrabold text-neutral-800 text-sm mb-4">Past Assemblies & Minutes</h3>
             <div className="flex flex-col gap-4">
               {pastMeetings.map((m) => {
@@ -183,7 +183,7 @@ export default function MeetingsDashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="text-xs font-extrabold text-neutral-700">{dateVal ? `${new Date(dateVal).toLocaleDateString()}` : "Assembly"} assembly</span>
-                        <span className="text-[9px] text-[#087f5b] font-bold bg-[#eaf6ef] px-2 py-0.5 rounded ml-2">
+                        <span className="text-[9px] text-[#0B6B50] font-bold bg-[#E7F2ED] px-2 py-0.5 rounded ml-2">
                           Attendance: {(m as any).attendanceRate ?? "-"}%
                         </span>
                       </div>
@@ -205,9 +205,9 @@ export default function MeetingsDashboard() {
         </div>
 
         {/* Right 1 Col: Checklist details */}
-        <div className="bg-[#eff7f1] rounded-xl p-6 border border-[#b9d7c2] h-fit flex flex-col gap-4">
+        <div className="bg-[#F2F7F4] rounded-xl p-6 border border-[#B5D7C5] h-fit flex flex-col gap-4">
           <div className="flex items-center gap-2">
-            <ClipboardList className="text-[#087f5b]" size={20} />
+            <ClipboardList className="text-[#0B6B50]" size={20} />
             <h3 className="font-extrabold text-neutral-800 text-sm">Session Bylaws</h3>
           </div>
           <p className="text-xs text-neutral-600 leading-relaxed">
@@ -229,8 +229,8 @@ export default function MeetingsDashboard() {
 
       {/* Schedule Meeting Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-[#122b1c]/30 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#dfe8e2] rounded-2xl p-6 shadow-2xl max-w-md w-full flex flex-col gap-5">
+        <div className="fixed inset-0 bg-[#10241D]/30 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-2xl max-w-md w-full flex flex-col gap-5">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
               <h3 className="font-extrabold text-neutral-800 text-sm">Schedule Group Assembly</h3>
               <button onClick={() => setModalOpen(false)} className="text-neutral-400 hover:text-neutral-700">
@@ -248,7 +248,7 @@ export default function MeetingsDashboard() {
                     min={todayIso}
                     value={form.date}
                     onChange={e => setForm({ ...form, date: e.target.value })}
-                    className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                    className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                   />
                 </div>
                 <div>
@@ -258,14 +258,14 @@ export default function MeetingsDashboard() {
                     required
                     value={form.time}
                     onChange={e => setForm({ ...form, time: e.target.value })}
-                    className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                    className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 mb-1.5">Meeting type *</label>
-                <select value={form.meetingMode} onChange={e => setForm({ ...form, meetingMode: e.target.value })} className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]">
+                <select value={form.meetingMode} onChange={e => setForm({ ...form, meetingMode: e.target.value })} className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]">
                   <option value="PHYSICAL">Physical meeting</option>
                   <option value="ONLINE">Online meeting</option>
                 </select>
@@ -279,7 +279,7 @@ export default function MeetingsDashboard() {
                   placeholder={form.meetingMode === "ONLINE" ? "https://meet.google.com/..." : "e.g. Community Hall, Mikocheni"}
                   value={form.meetingMode === "ONLINE" ? form.meetingLink : form.location}
                   onChange={e => setForm({ ...form, [form.meetingMode === "ONLINE" ? "meetingLink" : "location"]: e.target.value })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                  className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                 />
               </div>
 
@@ -291,7 +291,7 @@ export default function MeetingsDashboard() {
                   placeholder="Weekly contributions collection, review dividend payout timelines..."
                   value={form.agenda}
                   onChange={e => setForm({ ...form, agenda: e.target.value })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-2.5 text-xs outline-none focus:border-[#087f5b] resize-none"
+                  className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-[#0B6B50] resize-none"
                 />
               </div>
 
@@ -299,14 +299,14 @@ export default function MeetingsDashboard() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 border border-[#dfe8e2] rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-50"
+                  className="px-4 py-2 border border-[#E5E7EB] rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createMeetingMutation.status === 'pending'}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold text-white ${createMeetingMutation.status === 'pending' ? 'bg-neutral-300 cursor-wait' : 'bg-[#087f5b] hover:bg-[#066b4c]'}`}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold text-white ${createMeetingMutation.status === 'pending' ? 'bg-neutral-300 cursor-wait' : 'bg-[#0B6B50] hover:bg-[#08503C]'}`}
                 >
                   {createMeetingMutation.status === 'pending' ? 'Scheduling…' : 'Schedule Session'}
                 </button>

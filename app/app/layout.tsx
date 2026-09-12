@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { clearVikobaLocalState, SESSION_EXPIRED_EVENT } from '@/lib/api/client'
-import { ThemeToggle } from '@/components/brand'
+import { ThemeToggle, VikobaLogo } from '@/components/brand'
 
 // Main Layout component wrapped inside Provider
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -288,16 +288,13 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const pendingLoanApps = useVikobaStore().loans.filter(l => l.status === 'PENDING').length
 
   return (
-    <div className="app-shell flex min-h-screen bg-[#f7f9f7]">
+    <div className="app-shell flex min-h-screen bg-[#F7F7F2]">
       {/* Sidebar container */}
-      <aside className={`sidebar fixed md:sticky top-0 z-50 h-screen w-[260px] bg-white border-r border-[#dfe8e2] px-4 py-5 flex flex-col justify-between shrink-0 transition-all duration-200 ${mobileOpen ? 'left-0 shadow-2xl shadow-emerald-950/20' : '-left-[260px] md:left-0'}`}>
+      <aside className={`sidebar fixed md:sticky top-0 z-50 h-screen w-[260px] bg-white border-r border-[#E5E7EB] px-4 py-5 flex flex-col justify-between shrink-0 transition-all duration-200 ${mobileOpen ? 'left-0 shadow-2xl shadow-emerald-950/20' : '-left-[260px] md:left-0'}`}>
         <div>
           {/* Brand header */}
-          <div className="side-brand flex items-center justify-between pb-5 border-b border-[#dfe8e2]/60 px-2">
-            <Link href="/" className="font-black text-lg flex items-center gap-1">
-              <span className="bg-[#087f5b] text-white rounded-lg w-7 h-7 flex items-center justify-center font-black">V</span>
-              <span>IKOBA<strong className="text-[#087f5b]">360</strong></span>
-            </Link>
+          <div className="side-brand flex items-center justify-between pb-5 border-b border-[#E5E7EB]/60 px-2">
+            <Link href="/"><VikobaLogo compact /></Link>
             <button className="md:hidden text-neutral-500 hover:text-neutral-900" onClick={() => setMobileOpen(false)}>
               <X size={18} />
             </button>
@@ -307,9 +304,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           <div className="relative mt-4 px-1">
             <button
               onClick={() => setGroupDropdownOpen(!groupDropdownOpen)}
-              className="group-switch w-full flex items-center justify-between bg-[#f2f8f3] border border-[#dfece1] hover:border-[#8bc6a7] rounded-xl p-3 text-left transition select-none cursor-pointer"
+              className="group-switch w-full flex items-center justify-between bg-[#F2F7F4] border border-[#E9EFEB] hover:border-[#8FC1A9] rounded-xl p-3 text-left transition select-none cursor-pointer"
             >
-              <div className="group-mark w-7 h-7 rounded-lg bg-[#087f5b] text-white font-extrabold flex items-center justify-center text-xs">
+              <div className="group-mark w-7 h-7 rounded-lg bg-[#0B6B50] text-white font-extrabold flex items-center justify-center text-xs">
                 {currentGroup?.name.substring(0, 1)}
               </div>
               <div className="flex-1 min-width-0 px-2.5">
@@ -320,12 +317,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             </button>
 
             {groupDropdownOpen && (
-              <div className="absolute left-1 right-1 top-[56px] bg-white border border-[#dfe8e2] rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5">
+              <div className="absolute left-1 right-1 top-[56px] bg-white border border-[#E5E7EB] rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5">
                 {groups.map(g => (
                   <button
                     key={g.id}
                     onClick={() => handleGroupSelect(g.id)}
-                    className={`w-full text-left p-2.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-[#f3f8f4] ${g.id === currentGroupId ? 'bg-[#eaf6ef] text-[#087f5b]' : 'text-neutral-600'}`}
+                    className={`w-full text-left p-2.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-[#F2F7F4] ${g.id === currentGroupId ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-neutral-600'}`}
                   >
                     <span>{g.name}</span>
                     <span className="text-[10px] opacity-75 font-normal">{g.currency}</span>
@@ -353,12 +350,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                   key={idx}
                   href={item.path!}
                   onClick={() => setMobileOpen(false)}
-                  className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition font-semibold ${active ? 'bg-[#e6f5eb] text-[#087f5b]' : 'text-[#697a71] hover:bg-[#f3f8f4]'}`}
+                  className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition font-semibold ${active ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-[#697a71] hover:bg-[#F2F7F4]'}`}
                 >
-                  <ItemIcon size={16} className={active ? 'text-[#087f5b]' : 'text-[#8ba093]'} />
+                  <ItemIcon size={16} className={active ? 'text-[#0B6B50]' : 'text-[#8ba093]'} />
                   <span className="flex-1">{item.label}</span>
                   {item.badge === 'applications' && pendingLoanApps > 0 && (
-                    <span className="bg-[#e7833c] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingLoanApps}</span>
+                    <span className="bg-[#EF6C4D] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingLoanApps}</span>
                   )}
                 </Link>
               )
@@ -383,9 +380,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                       key={idx}
                       href={item.path!}
                       onClick={() => setMobileOpen(false)}
-                      className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition font-semibold ${active ? 'bg-[#e6f5eb] text-[#087f5b]' : 'text-[#697a71] hover:bg-[#f3f8f4]'}`}
+                      className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition font-semibold ${active ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-[#697a71] hover:bg-[#F2F7F4]'}`}
                     >
-                      <ItemIcon size={16} className={active ? 'text-[#087f5b]' : 'text-[#8ba093]'} />
+                      <ItemIcon size={16} className={active ? 'text-[#0B6B50]' : 'text-[#8ba093]'} />
                       <span className="flex-1">{item.label}</span>
                     </Link>
                   )
@@ -396,11 +393,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Sidebar Footer settings / logout */}
-        <div className="side-footer pt-3 border-t border-[#dfe8e2]/60 flex flex-col gap-1">
+        <div className="side-footer pt-3 border-t border-[#E5E7EB]/60 flex flex-col gap-1">
           <Link
             href="/app/settings"
             onClick={() => setMobileOpen(false)}
-            className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold ${pathname === '/app/settings' ? 'bg-[#e6f5eb] text-[#087f5b]' : 'text-[#697a71] hover:bg-[#f3f8f4]'}`}
+            className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold ${pathname === '/app/settings' ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-[#697a71] hover:bg-[#F2F7F4]'}`}
           >
             <Settings size={16} />
             <span>Settings</span>
@@ -450,7 +447,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                     setIdleSecondsLeft(60)
                     setShowIdleWarning(false)
                   }}
-                  className="flex-1 bg-[#087f5b] text-white hover:bg-[#066b4d] sm:flex-none"
+                  className="flex-1 bg-[#0B6B50] text-white hover:bg-[#08503C] sm:flex-none"
                 >
                   Stay signed in
                 </Button>
@@ -466,19 +463,19 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       {/* Backdrop for mobile drawer */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-[#122b1c]/30 backdrop-blur-[2px] z-40 md:hidden"
+          className="fixed inset-0 bg-[#10241D]/30 backdrop-blur-[2px] z-40 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Main content viewport */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="app-header bg-white border-b border-[#dfe8e2] h-[68px] px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
+        <header className="app-header bg-white border-b border-[#E5E7EB] h-[68px] px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            <button className="md:hidden text-[#607169] p-1 hover:bg-[#eaf6ef] rounded" onClick={() => setMobileOpen(true)}>
+            <button className="md:hidden text-[#607169] p-1 hover:bg-[#E7F2ED] rounded" onClick={() => setMobileOpen(true)}>
               <Menu size={20} />
             </button>
-            <div className="search-box hidden sm:flex items-center gap-2 px-3 py-1.5 border border-[#dfe8e2] rounded-lg bg-[#fcfdfc] w-64">
+            <div className="search-box hidden sm:flex items-center gap-2 px-3 py-1.5 border border-[#E5E7EB] rounded-lg bg-[#F7F7F2] w-64">
               <Search size={14} className="text-neutral-400" />
               <input
                 type="text"
@@ -490,7 +487,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
           <div className="header-right flex items-center gap-5 relative">
             <ThemeToggle />
-            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#dfe8e2] bg-[#fcfdfc] px-2 py-1.5">
+            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F7F7F2] px-2 py-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{t('common.language')}</span>
               <select
                 value={locale}
@@ -511,18 +508,18 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                   markAllNotificationsRead()
                 }
               }}
-              className="notification-button p-2 text-[#607169] hover:bg-[#f3f8f4] rounded-lg transition relative cursor-pointer select-none"
+              className="notification-button p-2 text-[#607169] hover:bg-[#F2F7F4] rounded-lg transition relative cursor-pointer select-none"
             >
               <Bell size={18} />
               {unreadNotifications.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#e7833c] border border-white" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#EF6C4D] border border-white" />
               )}
             </button>
 
             {notificationsOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
-                <div className="notification-pop absolute right-16 top-11 w-72 bg-white border border-[#dfe8e2] shadow-xl rounded-xl p-4 z-50 flex flex-col gap-2">
+                <div className="notification-pop absolute right-16 top-11 w-72 bg-white border border-[#E5E7EB] shadow-xl rounded-xl p-4 z-50 flex flex-col gap-2">
                   <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
                     <span className="text-xs font-black text-neutral-800">Notifications</span>
                     <span className="text-[10px] text-neutral-400 font-bold">{notifications.length} Total</span>
@@ -546,7 +543,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setShowSignOutDialog(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#dfe8e2] bg-[#f8faf8] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-neutral-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-neutral-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
               >
                 <LogOut size={14} />
                 Logout
@@ -568,7 +565,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <div className="profile-avatar w-8 h-8 rounded-full bg-[#eaf6ef] text-[#087f5b] font-bold text-xs flex items-center justify-center">
+              <div className="profile-avatar w-8 h-8 rounded-full bg-[#E7F2ED] text-[#0B6B50] font-bold text-xs flex items-center justify-center">
                 {user.name.split(' ').map(n => n[0]).join('')}
               </div>
               <div className="hidden lg:flex flex-col">
@@ -585,20 +582,20 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Responsive Mobile Bottom Navigation */}
-        <nav className="bottom-nav fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-[#dfe8e2] md:hidden flex justify-around items-center z-30">
-          <Link href="/app/dashboard" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname === '/app/dashboard' ? 'text-[#087f5b]' : 'text-neutral-400'}`}>
+        <nav className="bottom-nav fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-[#E5E7EB] md:hidden flex justify-around items-center z-30">
+          <Link href="/app/dashboard" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname === '/app/dashboard' ? 'text-[#0B6B50]' : 'text-neutral-400'}`}>
             <LayoutDashboard size={18} />
             <span>Home</span>
           </Link>
-          <Link href="/app/members" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/members') ? 'text-[#087f5b]' : 'text-neutral-400'}`}>
+          <Link href="/app/members" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/members') ? 'text-[#0B6B50]' : 'text-neutral-400'}`}>
             <Users size={18} />
             <span>Members</span>
           </Link>
-          <Link href="/app/contributions" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/contributions') ? 'text-[#087f5b]' : 'text-neutral-400'}`}>
+          <Link href="/app/contributions" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/contributions') ? 'text-[#0B6B50]' : 'text-neutral-400'}`}>
             <WalletCards size={18} />
             <span>Finance</span>
           </Link>
-          <Link href="/app/loans" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/loans') ? 'text-[#087f5b]' : 'text-neutral-400'}`}>
+          <Link href="/app/loans" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/loans') ? 'text-[#0B6B50]' : 'text-neutral-400'}`}>
             <HandCoins size={18} />
             <span>Loans</span>
           </Link>

@@ -1,13 +1,13 @@
 .dark {
-  --background: #0d1420;
-  --foreground: #e8f0f4;
-  --card: #141f2d;
-  --card-foreground: #e8f0f4;
-  --muted: #1b2b3b;
-  --muted-foreground: #a9bac5;
-  --border: #2a4052;
-  --primary-soft: #163746;
-  --secondary: #dce8ee;
+  --background: #10241D;
+  --foreground: #FFFFFF;
+  --card: #17372B;
+  --card-foreground: #FFFFFF;
+  --muted: #1D3D31;
+  --muted-foreground: #CBD5E1;
+  --border: #334155;
+  --primary-soft: #1C4738;
+  --secondary: #D99A2B;
 }
 
 /* Shared auth/app surfaces follow the same theme tokens. */

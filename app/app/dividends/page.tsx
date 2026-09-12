@@ -81,7 +81,7 @@ export default function DividendsPage() {
                     <button
                         disabled={generate.isPending}
                         onClick={() => generate.mutate()}
-                        className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#087f5b] px-4 text-xs font-bold text-white disabled:opacity-50"
+                        className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0B6B50] px-4 text-xs font-bold text-white disabled:opacity-50"
                     >
                         <Sparkles size={15} />
                         {generate.isPending ? "Generating…" : "Generate dividends"}
@@ -117,7 +117,7 @@ export default function DividendsPage() {
                                     <tr key={r.id} className="border-t">
                                         <td className="p-4 font-bold">{r.memberName}</td>
                                         <td className="p-4 text-right">{money(r.contributions || 0)}</td><td className="p-4 text-right">{r.sharesOwned}</td><td className="p-4 text-right text-red-600">{money(r.fineDeduction || 0)}</td>
-                                        <td className="p-4 text-right font-black text-[#087f5b]">
+                                        <td className="p-4 text-right font-black text-[#0B6B50]">
                                             {money(r.amount)}
                                         </td>
                                         <td className="p-4">{r.status}</td>

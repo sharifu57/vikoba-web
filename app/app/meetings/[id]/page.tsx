@@ -138,7 +138,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
     return (
       <div className="max-w-7xl mx-auto px-6 py-12 text-center">
         <h2 className="text-xl font-bold text-neutral-800">Meeting Not Found</h2>
-        <Link href="/app/meetings" className="mt-4 inline-block px-4 py-2 bg-[#087f5b] text-white rounded-lg text-xs">
+        <Link href="/app/meetings" className="mt-4 inline-block px-4 py-2 bg-[#0B6B50] text-white rounded-lg text-xs">
           Back to Meetings
         </Link>
       </div>
@@ -155,7 +155,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
       </Link>
 
       {/* Header Panel */}
-      <div className="bg-white border border-[#dfe8e2] rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
+      <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
         <div>
           <div className="breadcrumb text-xs text-neutral-400 font-bold flex items-center gap-1">
             <span>Meetings</span>
@@ -172,14 +172,14 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
           <button
             onClick={handleMarkAllPresent}
             disabled={attendanceTaken}
-            className={`flex-1 md:flex-none px-4 py-2.5 border border-[#dfe8e2] rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${attendanceTaken ? 'opacity-60 cursor-not-allowed' : 'hover:bg-neutral-50'}`}
+            className={`flex-1 md:flex-none px-4 py-2.5 border border-[#E5E7EB] rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${attendanceTaken ? 'opacity-60 cursor-not-allowed' : 'hover:bg-neutral-50'}`}
           >
             <CheckSquare size={14} /> Mark All Present
           </button>
           <button
             onClick={handleSave}
             disabled={attendanceTaken || isSaving}
-            className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm ${attendanceTaken || isSaving ? 'bg-neutral-300 cursor-wait text-neutral-600' : 'bg-[#087f5b] hover:bg-[#066b4c] text-white'}`}
+            className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm ${attendanceTaken || isSaving ? 'bg-neutral-300 cursor-wait text-neutral-600' : 'bg-[#0B6B50] hover:bg-[#08503C] text-white'}`}
           >
             <Check size={14} strokeWidth={3} /> {isSaving ? 'Saving…' : 'Save Attendance'}
           </button>
@@ -187,7 +187,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
       </div>
 
       {/* Register Checklist table */}
-      <div className="bg-white border border-[#dfe8e2] rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
@@ -208,7 +208,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                   <tr key={item.memberId} className="hover:bg-neutral-50/50">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#eaf6ef] text-[#087f5b] font-bold text-xs flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-[#E7F2ED] text-[#0B6B50] font-bold text-xs flex items-center justify-center">
                           {initials}
                         </div>
                         <div>
@@ -225,7 +225,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                         disabled={item.status === 'ABSENT' || item.status === 'EXCUSED' || attendanceTaken}
                         value={item.arrivalTime}
                         onChange={() => { /* readOnly enforced */ }}
-                        className="border border-[#dfe8e2] rounded p-1.5 text-[11px] outline-none w-24 text-neutral-600 font-semibold disabled:bg-neutral-50 disabled:text-neutral-300"
+                        className="border border-[#E5E7EB] rounded p-1.5 text-[11px] outline-none w-24 text-neutral-600 font-semibold disabled:bg-neutral-50 disabled:text-neutral-300"
                       />
                       {!attendanceTaken && (
                         <button
@@ -250,8 +250,8 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                               key={st}
                               type="button"
                               onClick={() => handleStatusChange(item.memberId, st)}
-                              className={`px-2 py-1 rounded text-[9px] font-bold transition ${active && st === 'PRESENT' ? 'bg-[#087f5b] text-white' :
-                                active && st === 'LATE' ? 'bg-[#d99521] text-white' :
+                              className={`px-2 py-1 rounded text-[9px] font-bold transition ${active && st === 'PRESENT' ? 'bg-[#0B6B50] text-white' :
+                                active && st === 'LATE' ? 'bg-[#D99A2B] text-white' :
                                   active && st === 'ABSENT' ? 'bg-red-600 text-white' :
                                     active && st === 'EXCUSED' ? 'bg-blue-600 text-white' :
                                       'text-neutral-400 hover:text-neutral-700'
@@ -269,7 +269,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                         placeholder="e.g. Funeral excuse"
                         value={item.reason}
                         onChange={e => handleReasonChange(item.memberId, e.target.value)}
-                        className="border border-[#dfe8e2] rounded p-1.5 text-[11px] outline-none w-full max-w-xs text-neutral-600"
+                        className="border border-[#E5E7EB] rounded p-1.5 text-[11px] outline-none w-full max-w-xs text-neutral-600"
                       />
                     </td>
                     <td className="p-4 font-black text-right text-neutral-800">

@@ -395,7 +395,7 @@ export default function MembersPage() {
               setMemberAddMode(null)
               setModalOpen(true)
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#066b4c]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C]"
           >
             <UserPlus size={14} />
             Add Members
@@ -403,7 +403,7 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <div className="mb-6 rounded-2xl border border-[#dfe8e2] bg-white p-4 shadow-sm">
+      <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
@@ -411,7 +411,7 @@ export default function MembersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, phone or member number"
-              className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] py-2.5 pl-10 pr-3 text-xs text-neutral-700 placeholder:text-neutral-400 outline-none transition focus:border-[#087f5b]"
+              className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] py-2.5 pl-10 pr-3 text-xs text-neutral-700 placeholder:text-neutral-400 outline-none transition focus:border-[#0B6B50]"
             />
           </div>
 
@@ -424,7 +424,7 @@ export default function MembersPage() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2 text-xs text-neutral-700 outline-none"
+              className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-xs text-neutral-700 outline-none"
             >
               {roleFilterOptions.map((role) => (
                 <option key={role} value={role}>
@@ -436,7 +436,7 @@ export default function MembersPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2 text-xs text-neutral-700 outline-none"
+              className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-xs text-neutral-700 outline-none"
             >
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
@@ -446,7 +446,7 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[#dfe8e2] bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-xs">
             <thead className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
@@ -475,7 +475,7 @@ export default function MembersPage() {
                   <tr key={member.id} className="hover:bg-neutral-50/70">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eaf6ef] text-xs font-black text-[#087f5b]">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E7F2ED] text-xs font-black text-[#0B6B50]">
                           {member.name
                             .split(' ')
                             .slice(0, 2)
@@ -493,7 +493,7 @@ export default function MembersPage() {
                     <td className="px-4 py-3 text-neutral-600">{member.phone || '—'}</td>
                     <td className="px-4 py-3 text-neutral-600">{member.joinedDate || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-[#edf4f1] px-2.5 py-1 text-[10px] font-bold text-[#0b6c57]">
+                      <span className="rounded-full bg-[#F2F7F4] px-2.5 py-1 text-[10px] font-bold text-[#0B6B50]">
                         {member.role}
                       </span>
                     </td>
@@ -511,13 +511,13 @@ export default function MembersPage() {
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/app/members/${member.id}`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-[#dfe8e2] px-2.5 py-1.5 text-[10px] font-bold text-neutral-700 transition hover:border-[#087f5b] hover:text-[#087f5b]"
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#E5E7EB] px-2.5 py-1.5 text-[10px] font-bold text-neutral-700 transition hover:border-[#0B6B50] hover:text-[#0B6B50]"
                         >
                           <Eye size={12} /> View
                         </Link>
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 rounded-lg border border-[#dfe8e2] px-2.5 py-1.5 text-[10px] font-bold text-neutral-700 transition hover:border-[#087f5b] hover:text-[#087f5b]"
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#E5E7EB] px-2.5 py-1.5 text-[10px] font-bold text-neutral-700 transition hover:border-[#0B6B50] hover:text-[#0B6B50]"
                           onClick={() => toast.info('Edit member flow can be connected next once the update endpoint is ready.')}
                         >
                           <PencilLine size={12} /> Edit
@@ -546,8 +546,8 @@ export default function MembersPage() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10281d]/35 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-2xl rounded-2xl border border-[#dfe8e2] bg-white p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/35 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-2xl rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between border-b border-neutral-100 pb-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Member Management</p>
@@ -561,7 +561,7 @@ export default function MembersPage() {
                       setMemberAddMode(null)
                       setModalOpen(true)
                     }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#066b4c]"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C]"
                   >
                     <UserPlus size={14} />
                     Add Members
@@ -589,9 +589,9 @@ export default function MembersPage() {
                   <button
                     type="button"
                     onClick={() => setMemberAddMode('single')}
-                    className="group rounded-2xl border border-[#dfe8e2] bg-white p-5 text-left transition hover:border-[#087f5b] hover:bg-[#f6faf8] hover:shadow-sm"
+                    className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 text-left transition hover:border-[#0B6B50] hover:bg-[#F7F7F2] hover:shadow-sm"
                   >
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#eaf6ef] text-[#087f5b] transition group-hover:bg-[#087f5b] group-hover:text-white">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7F2ED] text-[#0B6B50] transition group-hover:bg-[#0B6B50] group-hover:text-white">
                       <UserPlus size={22} />
                     </div>
 
@@ -604,7 +604,7 @@ export default function MembersPage() {
                       phone number, email and role.
                     </p>
 
-                    <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#087f5b]">
+                    <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#0B6B50]">
                       Add member →
                     </span>
                   </button>
@@ -613,9 +613,9 @@ export default function MembersPage() {
                   <button
                     type="button"
                     onClick={() => setMemberAddMode('bulk')}
-                    className="group rounded-2xl border border-[#dfe8e2] bg-white p-5 text-left transition hover:border-[#087f5b] hover:bg-[#f6faf8] hover:shadow-sm"
+                    className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 text-left transition hover:border-[#0B6B50] hover:bg-[#F7F7F2] hover:shadow-sm"
                   >
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#eaf6ef] text-[#087f5b] transition group-hover:bg-[#087f5b] group-hover:text-white">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7F2ED] text-[#0B6B50] transition group-hover:bg-[#0B6B50] group-hover:text-white">
                       <FileSpreadsheet size={22} />
                     </div>
 
@@ -628,7 +628,7 @@ export default function MembersPage() {
                       many members at once.
                     </p>
 
-                    <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#087f5b]">
+                    <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#0B6B50]">
                       Upload spreadsheet →
                     </span>
                   </button>
@@ -638,7 +638,7 @@ export default function MembersPage() {
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                    className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     Cancel
                   </button>
@@ -655,7 +655,7 @@ export default function MembersPage() {
                       value={newMem.firstName}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, firstName: e.target.value }))}
                       placeholder="e.g. Juma"
-                      className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
 
@@ -665,7 +665,7 @@ export default function MembersPage() {
                       value={newMem.lastName}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, lastName: e.target.value }))}
                       placeholder="e.g. Majid"
-                      className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
                 </div>
@@ -677,7 +677,7 @@ export default function MembersPage() {
                       value={newMem.phone}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, phone: e.target.value }))}
                       placeholder="255712345678"
-                      className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
 
@@ -686,7 +686,7 @@ export default function MembersPage() {
                     <select
                       value={newMem.role}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, role: e.target.value }))}
-                      className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     >
                       {roleOptions.length ? (
                         roleOptions.map((role) => (
@@ -712,7 +712,7 @@ export default function MembersPage() {
                     onChange={(e) => setNewMem((prev) => ({ ...prev, email: e.target.value }))}
                     type="email"
                     placeholder="juma@example.com"
-                    className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                    className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                   />
                 </div>
 
@@ -720,7 +720,7 @@ export default function MembersPage() {
                   <button
                     type="button"
                     onClick={() => setMemberAddMode(null)}
-                    className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                    className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     ← Back
                   </button>
@@ -732,7 +732,7 @@ export default function MembersPage() {
                         setModalOpen(false)
                         setMemberAddMode(null)
                       }}
-                      className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                      className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                     >
                       Cancel
                     </button>
@@ -740,7 +740,7 @@ export default function MembersPage() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#066b4c] disabled:cursor-not-allowed disabled:opacity-70"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -754,9 +754,9 @@ export default function MembersPage() {
               </form>
             ) : (
               <div className="space-y-5">
-                <div className="rounded-2xl border border-dashed border-[#cfe0d9] bg-[#f6faf8] p-4">
-                  <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#bfd8ce] bg-white px-4 py-5 text-center">
-                    <Upload className="h-7 w-7 text-[#087f5b]" />
+                <div className="rounded-2xl border border-dashed border-[#B5D7C5] bg-[#F7F7F2] p-4">
+                  <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#B5D7C5] bg-white px-4 py-5 text-center">
+                    <Upload className="h-7 w-7 text-[#0B6B50]" />
                     <div>
                       <p className="text-sm font-bold text-neutral-700">Upload CSV or Excel file</p>
                       <p className="mt-1 text-[11px] text-neutral-500">Supported columns: firstName, lastName, phone, email, role</p>
@@ -764,7 +764,7 @@ export default function MembersPage() {
                         href="/members-bulk-upload-template.csv"
                         download
                         onClick={(event) => event.stopPropagation()}
-                        className="mt-2 inline-block text-[11px] font-bold text-[#087f5b] underline underline-offset-2 hover:text-[#066b4c]"
+                        className="mt-2 inline-block text-[11px] font-bold text-[#0B6B50] underline underline-offset-2 hover:text-[#08503C]"
                       >
                         Download sample CSV
                       </a>
@@ -774,9 +774,9 @@ export default function MembersPage() {
                 </div>
 
                 {bulkFileName && (
-                  <div className="flex items-center justify-between rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2 text-xs text-neutral-600">
+                  <div className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-xs text-neutral-600">
                     <span className="inline-flex items-center gap-2">
-                      <FileSpreadsheet className="h-4 w-4 text-[#087f5b]" />
+                      <FileSpreadsheet className="h-4 w-4 text-[#0B6B50]" />
                       {bulkFileName}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-neutral-400">
@@ -786,7 +786,7 @@ export default function MembersPage() {
                 )}
 
                 {bulkRows.length > 0 && (
-                  <div className="max-h-80 overflow-auto rounded-xl border border-[#dfe8e2] bg-[#fafcfb] p-3">
+                  <div className="max-h-80 overflow-auto rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-3">
                     <table className="w-full text-left text-[11px]">
                       <thead className="text-neutral-400">
                         <tr>
@@ -826,7 +826,7 @@ export default function MembersPage() {
                   <button
                     type="button"
                     onClick={() => setMemberAddMode(null)}
-                    className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                    className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     ← Back
                   </button>
@@ -841,7 +841,7 @@ export default function MembersPage() {
                         }
 
                       }
-                      className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                      className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                     >
                       Cancel
                     </button>
@@ -850,7 +850,7 @@ export default function MembersPage() {
                       type="button"
                       onClick={handleBulkUpload}
                       disabled={isSubmitting || !bulkRows.filter((row) => row.valid).length}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#066b4c] disabled:cursor-not-allowed disabled:opacity-70"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />

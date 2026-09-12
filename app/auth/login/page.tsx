@@ -9,16 +9,7 @@ import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { authService } from '@/lib/api/services'
-import { ThemeToggle } from '@/components/brand'
-
-function Logo({ light = false }: { light?: boolean }) {
-  return (
-    <div className={`logo ${light ? 'text-white' : 'text-neutral-900'} font-extrabold text-2xl flex items-center gap-1`}>
-      <span className="bg-primary text-primary-foreground rounded-lg w-8 h-8 flex items-center justify-center font-black">V</span>
-      <span>IKOBA<strong className={light ? 'text-[#a5dec0]' : 'text-primary'}>360</strong></span>
-    </div>
-  )
-}
+import { ThemeToggle, VikobaLogo } from '@/components/brand'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -80,24 +71,24 @@ export default function LoginPage() {
   return (
     <div className="auth-page min-h-screen">
       {/* Left side: Branding & Quote */}
-      <div className="auth-aside bg-secondary text-white p-12 flex flex-col justify-between hidden md:flex">
+      <div className="auth-aside text-white p-12 flex flex-col justify-between hidden md:flex">
         <Link href="/" className="auth-logo inline-block">
-          <Logo light />
+          <VikobaLogo light />
         </Link>
 
         <div className="auth-quote my-auto flex flex-col gap-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/45 text-[#a5dec0] rounded-full text-[10px] font-extrabold uppercase self-start tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/45 text-[#F4E5C5] rounded-full text-[10px] font-extrabold uppercase self-start tracking-wider">
             Built for Togetherness
           </div>
           <h1 className="text-4xl md:text-5xl font-black leading-tight tracking-tight">
-            When everyone sees the picture, <em className="text-[#b7e7ca] font-normal italic">everyone grows.</em>
+            When everyone sees the picture, <em className="text-[#F4E5C5] font-normal italic">everyone grows.</em>
           </h1>
-          <p className="text-[#b3cabe] text-sm leading-relaxed max-w-xs">
+          <p className="text-[#C8D8D1] text-sm leading-relaxed max-w-xs">
             One simple place for the cooperative work that keeps your VIKOBA strong and trusted.
           </p>
         </div>
 
-        <div className="auth-aside-foot text-xs text-[#a5dec0] flex justify-between">
+        <div className="auth-aside-foot text-xs text-[#F4E5C5] flex justify-between">
           <span>VIKOBA360 Platform</span>
           <span className="text-[#779889]">Secure · Simple · Together</span>
         </div>
@@ -141,7 +132,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loginMutation.isPending}
-              className="h-11 w-full bg-primary text-primary-foreground hover:bg-[#066b4c]"
+              className="h-11 w-full bg-primary text-primary-foreground hover:bg-[#08503C]"
             >
               {loginMutation.isPending ? 'Checking phone...' : 'Sign In'}
               <ArrowRight size={14} />
@@ -150,7 +141,7 @@ export default function LoginPage() {
 
           <div className="form-switch text-center text-xs text-neutral-500 mt-2">
             Don't have an account?{' '}
-            <Link href="/auth/register" className="text-primary hover:text-[#066b4c] hover:underline font-bold">
+            <Link href="/auth/register" className="text-primary hover:text-[#08503C] hover:underline font-bold">
               Create One
             </Link>
           </div>

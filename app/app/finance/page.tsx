@@ -174,7 +174,7 @@ export default function FinanceOverviewPage() {
         <button
           onClick={() => setModal(true)}
           disabled={!groupId}
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#066b4c] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#08503C] disabled:opacity-50"
         >
           <PlusCircle size={14} /> Post journal entry
         </button>
@@ -186,7 +186,7 @@ export default function FinanceOverviewPage() {
         ].map((account) => (
           <div
             key={account.code}
-            className={`rounded-xl border p-5 shadow-sm ${account.code === "TOTAL" ? "border-[#087f5b] bg-[#087f5b] text-white" : "border-[#dfe8e2] bg-white"}`}
+            className={`rounded-xl border p-5 shadow-sm ${account.code === "TOTAL" ? "border-[#0B6B50] bg-[#0B6B50] text-white" : "border-[#E5E7EB] bg-white"}`}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -207,7 +207,7 @@ export default function FinanceOverviewPage() {
                 </span>
               </div>
               <div
-                className={`rounded-lg p-2 ${account.code === "TOTAL" ? "bg-white/15" : "bg-[#eaf6ef] text-[#087f5b]"}`}
+                className={`rounded-lg p-2 ${account.code === "TOTAL" ? "bg-white/15" : "bg-[#E7F2ED] text-[#0B6B50]"}`}
               >
                 <Landmark size={16} />
               </div>
@@ -222,7 +222,7 @@ export default function FinanceOverviewPage() {
           {api.error || message}
         </div>
       )}
-      <section className="mb-8 rounded-xl border border-[#dfe8e2] bg-white p-5 shadow-sm">
+      <section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-extrabold text-neutral-800">
             Trial balance
@@ -252,7 +252,7 @@ export default function FinanceOverviewPage() {
           })}
         </div>
       </section>
-      <section className="mb-8 overflow-hidden rounded-xl border border-[#dfe8e2] bg-white shadow-sm">
+      <section className="mb-8 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-neutral-100 p-4">
           <h2 className="text-sm font-extrabold text-neutral-800">
             Chart of accounts
@@ -276,7 +276,7 @@ export default function FinanceOverviewPage() {
             <tbody className="divide-y divide-neutral-50">
               {accounts.map((account) => (
                 <tr key={account.id} className="hover:bg-neutral-50/50">
-                  <td className="p-3 font-bold text-[#087f5b]">
+                  <td className="p-3 font-bold text-[#0B6B50]">
                     {account.code}
                   </td>
                   <td className="p-3 font-semibold text-neutral-700">
@@ -302,10 +302,10 @@ export default function FinanceOverviewPage() {
           </table>
         </div>
       </section>
-      <section className="overflow-hidden rounded-xl border border-[#dfe8e2] bg-white shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-neutral-100 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <BookOpen size={16} className="text-[#087f5b]" />
+            <BookOpen size={16} className="text-[#0B6B50]" />
             <h2 className="text-sm font-extrabold text-neutral-800">
               General transaction ledger
             </h2>
@@ -319,7 +319,7 @@ export default function FinanceOverviewPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search reference or account..."
-              className="w-full rounded-lg border border-[#dfe8e2] p-2.5 pl-9 text-xs outline-none focus:border-[#087f5b]"
+              className="w-full rounded-lg border border-[#E5E7EB] p-2.5 pl-9 text-xs outline-none focus:border-[#0B6B50]"
             />
           </div>
         </div>
@@ -350,7 +350,7 @@ export default function FinanceOverviewPage() {
                     <td className="p-4 font-semibold text-neutral-500">
                       {new Date(line.transactionDate).toLocaleDateString()}
                     </td>
-                    <td className="p-4 font-bold text-[#087f5b]">
+                    <td className="p-4 font-bold text-[#0B6B50]">
                       {line.reference}
                     </td>
                     <td className="p-4 text-neutral-700">{line.description}</td>
@@ -398,8 +398,8 @@ export default function FinanceOverviewPage() {
         </div>
       </section>
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#122b1c]/30 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-lg rounded-2xl border border-[#dfe8e2] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/30 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-lg rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between border-b border-neutral-100 pb-3">
               <div>
                 <h2 className="text-sm font-extrabold text-neutral-800">
@@ -426,7 +426,7 @@ export default function FinanceOverviewPage() {
                       setForm({ ...form, reference: event.target.value })
                     }
                     placeholder="Auto-generated"
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                   />
                 </label>
                 <label className="text-xs font-bold text-neutral-700">
@@ -438,7 +438,7 @@ export default function FinanceOverviewPage() {
                     onChange={(event) =>
                       setForm({ ...form, date: event.target.value })
                     }
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                   />
                 </label>
               </div>
@@ -450,7 +450,7 @@ export default function FinanceOverviewPage() {
                   onChange={(event) =>
                     setForm({ ...form, description: event.target.value })
                   }
-                  className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                  className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                 />
               </label>
               <div className="grid grid-cols-2 gap-4">
@@ -462,7 +462,7 @@ export default function FinanceOverviewPage() {
                     onChange={(event) =>
                       setForm({ ...form, debitAccountId: event.target.value })
                     }
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                   >
                     <option value="">Select account</option>
                     {accountOptions}
@@ -476,7 +476,7 @@ export default function FinanceOverviewPage() {
                     onChange={(event) =>
                       setForm({ ...form, creditAccountId: event.target.value })
                     }
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                   >
                     <option value="">Select account</option>
                     {accountOptions}
@@ -493,18 +493,18 @@ export default function FinanceOverviewPage() {
                   onChange={(event) =>
                     setForm({ ...form, amount: event.target.value })
                   }
-                  className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs font-bold outline-none focus:border-[#087f5b]"
+                  className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs font-bold outline-none focus:border-[#0B6B50]"
                 />
               </label>
               <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4">
                 <button
                   type="button"
                   onClick={() => setModal(false)}
-                  className="rounded-lg border border-[#dfe8e2] px-4 py-2.5 text-xs font-bold text-neutral-600"
+                  className="rounded-lg border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600"
                 >
                   Cancel
                 </button>
-                <button className="rounded-lg bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#066b4c]">
+                <button className="rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#08503C]">
                   Post entry
                 </button>
               </div>

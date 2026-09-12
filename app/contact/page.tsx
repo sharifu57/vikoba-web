@@ -30,22 +30,22 @@ export default function ContactPage() {
       <header className="sticky top-0 bg-background/90 backdrop-blur-xl border-b border-border px-6 py-4 flex items-center justify-between z-40">
         <Link href="/"><VikobaLogo /></Link>
         <nav className="flex items-center gap-6 text-sm font-bold text-neutral-500">
-          <Link href="/features" className="hover:text-[#087f5b]">
+          <Link href="/features" className="hover:text-[#0B6B50]">
             Features
           </Link>
-          <Link href="/pricing" className="hover:text-[#087f5b]">
+          <Link href="/pricing" className="hover:text-[#0B6B50]">
             Pricing
           </Link>
-          <Link href="/about" className="hover:text-[#087f5b]">
+          <Link href="/about" className="hover:text-[#0B6B50]">
             About
           </Link>
-          <Link href="/contact" className="text-[#087f5b]">
+          <Link href="/contact" className="text-[#0B6B50]">
             Contact
           </Link>
         </nav>
         <div className="flex items-center gap-2"><LanguageSwitcher /><ThemeToggle /><Link
           href="/auth/login"
-          className="px-4 py-2 border border-[#dfe8e2] hover:border-[#087f5b] rounded-lg font-bold text-sm text-neutral-700 hover:text-[#087f5b] transition"
+          className="px-4 py-2 border border-[#E5E7EB] hover:border-[#0B6B50] rounded-lg font-bold text-sm text-neutral-700 hover:text-[#0B6B50] transition"
         >Sign In</Link></div>
       </header>
 
@@ -56,11 +56,11 @@ export default function ContactPage() {
         {/* Info panel */}
         <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-left-4 duration-700">
           <div className="flex flex-col gap-4">
-            <span className="text-[#087f5b] text-xs font-bold uppercase tracking-widest">
+            <span className="text-[#0B6B50] text-xs font-bold uppercase tracking-widest">
               Get In Touch
             </span>
             <h1 className="text-4xl md:text-5xl font-black text-neutral-900 tracking-tight leading-tight">
-              We'd love to hear <span className="text-[#087f5b]">from you</span>
+              We'd love to hear <span className="text-[#0B6B50]">from you</span>
             </h1>
             <p className="text-neutral-500 text-sm leading-relaxed max-w-sm">
               Questions about onboarding, training sessions, custom plans, or
@@ -70,7 +70,7 @@ export default function ContactPage() {
 
           <div className="flex flex-col gap-5 text-sm text-neutral-600">
             <div className="flex items-center gap-3">
-              <span className="bg-[#eaf6ef] text-[#087f5b] p-2.5 rounded-lg">
+              <span className="bg-[#E7F2ED] text-[#0B6B50] p-2.5 rounded-lg">
                 <Phone size={16} />
               </span>
               <div>
@@ -81,7 +81,7 @@ export default function ContactPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="bg-[#eaf6ef] text-[#087f5b] p-2.5 rounded-lg">
+              <span className="bg-[#E7F2ED] text-[#0B6B50] p-2.5 rounded-lg">
                 <Mail size={16} />
               </span>
               <div>
@@ -92,7 +92,7 @@ export default function ContactPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="bg-[#eaf6ef] text-[#087f5b] p-2.5 rounded-lg">
+              <span className="bg-[#E7F2ED] text-[#0B6B50] p-2.5 rounded-lg">
                 <MapPin size={16} />
               </span>
               <div>
@@ -111,7 +111,7 @@ export default function ContactPage() {
         <Card className="animate-in fade-in slide-in-from-right-4 duration-700 shadow-xl shadow-primary/5"><CardContent className="p-6 md:p-8">
           {submitted ? (
             <div className="text-center py-12 flex flex-col items-center gap-4">
-              <CheckCircle2 size={54} className="text-[#087f5b]" />
+              <CheckCircle2 size={54} className="text-[#0B6B50]" />
               <h3 className="text-xl font-bold text-neutral-800">
                 Message Sent Successfully!
               </h3>
@@ -121,7 +121,7 @@ export default function ContactPage() {
               </p>
               <button
                 onClick={() => setSubmitted(false)}
-                className="mt-4 px-5 py-2.5 bg-[#087f5b] text-white font-bold rounded-lg text-xs"
+                className="mt-4 px-5 py-2.5 bg-[#0B6B50] text-white font-bold rounded-lg text-xs"
               >
                 Send Another Message
               </button>
@@ -142,7 +142,7 @@ export default function ContactPage() {
                   placeholder="Juma Majid"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full border border-[#dfe8e2] rounded-lg p-3 text-xs outline-none focus:border-[#087f5b] focus:ring-1 focus:ring-[#087f5b]"
+                  className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50] focus:ring-1 focus:ring-[#0B6B50]"
                 />
               </div>
 
@@ -159,7 +159,7 @@ export default function ContactPage() {
                     onChange={(e) =>
                       setForm({ ...form, phone: e.target.value })
                     }
-                    className="w-full border border-[#dfe8e2] rounded-lg p-3 text-xs outline-none focus:border-[#087f5b] focus:ring-1 focus:ring-[#087f5b]"
+                    className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50] focus:ring-1 focus:ring-[#0B6B50]"
                   />
                 </div>
                 <div>
@@ -173,7 +173,7 @@ export default function ContactPage() {
                     onChange={(e) =>
                       setForm({ ...form, email: e.target.value })
                     }
-                    className="w-full border border-[#dfe8e2] rounded-lg p-3 text-xs outline-none focus:border-[#087f5b] focus:ring-1 focus:ring-[#087f5b]"
+                    className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50] focus:ring-1 focus:ring-[#0B6B50]"
                   />
                 </div>
               </div>
@@ -189,7 +189,7 @@ export default function ContactPage() {
                   onChange={(e) =>
                     setForm({ ...form, groupName: e.target.value })
                   }
-                  className="w-full border border-[#dfe8e2] rounded-lg p-3 text-xs outline-none focus:border-[#087f5b] focus:ring-1 focus:ring-[#087f5b]"
+                  className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50] focus:ring-1 focus:ring-[#0B6B50]"
                 />
               </div>
 
@@ -205,13 +205,13 @@ export default function ContactPage() {
                   onChange={(e) =>
                     setForm({ ...form, message: e.target.value })
                   }
-                  className="w-full border border-[#dfe8e2] rounded-lg p-3 text-xs outline-none focus:border-[#087f5b] focus:ring-1 focus:ring-[#087f5b] resize-none"
+                  className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50] focus:ring-1 focus:ring-[#0B6B50] resize-none"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#087f5b] hover:bg-[#066b4c] text-white font-bold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 transition"
+                className="w-full py-3 bg-[#0B6B50] hover:bg-[#08503C] text-white font-bold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 transition"
               >
                 Send Message <Send size={14} />
               </button>
@@ -221,7 +221,7 @@ export default function ContactPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#dfe8e2] bg-white py-8 text-center text-xs text-neutral-400 mt-12">
+      <footer className="border-t border-[#E5E7EB] bg-white py-8 text-center text-xs text-neutral-400 mt-12">
         © 2026 VIKOBA360. All rights reserved. Made in Dar es Salaam, Tanzania.
       </footer>
     </div>

@@ -200,20 +200,20 @@ export default function FinesPage() {
           <button
             type="button"
             onClick={() => setConfigOpen((v) => !v)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#dfe8e2] bg-white px-4 py-2.5 text-xs font-bold text-neutral-700"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-xs font-bold text-neutral-700"
           >
             Configure types
           </button>
           <button
             onClick={() => setOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white"
           >
             <Plus size={15} /> Issue fine
           </button>
         </div>
       </div>
       {configOpen && (
-        <div className="mb-8 rounded-2xl border border-[#dfe8e2] bg-white p-5 shadow-sm">
+        <div className="mb-8 rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-black">Fine types</h2>
@@ -224,7 +224,7 @@ export default function FinesPage() {
             <button
               type="button"
               onClick={() => setConfigForm({ id: "", name: "", code: "", defaultAmount: "", description: "", active: true })}
-              className="rounded-lg border border-[#dfe8e2] px-3 py-2 text-[10px] font-bold"
+              className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-[10px] font-bold"
             >
               New type
             </button>
@@ -233,7 +233,7 @@ export default function FinesPage() {
             <div className="space-y-3">
               {(typeList || []).length ? (
                 typeList.map((type) => (
-                  <div key={type.id} className="flex items-center justify-between rounded-xl border border-[#dfe8e2] bg-neutral-50 p-3">
+                  <div key={type.id} className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-neutral-50 p-3">
                     <div>
                       <p className="text-xs font-bold">{type.name}</p>
                       <p className="text-[10px] text-neutral-400">{type.code || "—"} • {money(Number(type.defaultAmount ?? 0), currency)}</p>
@@ -265,7 +265,7 @@ export default function FinesPage() {
                   </div>
                 ))
               ) : (
-                <div className="rounded-xl border border-dashed border-[#dfe8e2] bg-neutral-50 p-6 text-center text-xs text-neutral-400">
+                <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-neutral-50 p-6 text-center text-xs text-neutral-400">
                   No fine types configured yet.
                 </div>
               )}
@@ -275,14 +275,14 @@ export default function FinesPage() {
                 e.preventDefault();
                 saveType.mutate();
               }}
-              className="space-y-3 rounded-xl border border-[#dfe8e2] bg-neutral-50 p-4"
+              className="space-y-3 rounded-xl border border-[#E5E7EB] bg-neutral-50 p-4"
             >
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Name</label>
                 <input
                   value={configForm.name}
                   onChange={(e) => setConfigForm({ ...configForm, name: e.target.value })}
-                  className="w-full rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
                   placeholder="Late Meeting"
                   required
                 />
@@ -292,7 +292,7 @@ export default function FinesPage() {
                 <input
                   value={configForm.code}
                   onChange={(e) => setConfigForm({ ...configForm, code: e.target.value })}
-                  className="w-full rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
                   placeholder="LATE_MEETING"
                 />
               </div>
@@ -303,7 +303,7 @@ export default function FinesPage() {
                   min="0"
                   value={configForm.defaultAmount}
                   onChange={(e) => setConfigForm({ ...configForm, defaultAmount: e.target.value })}
-                  className="w-full rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
                   placeholder="5000"
                 />
               </div>
@@ -313,7 +313,7 @@ export default function FinesPage() {
                   value={configForm.description}
                   onChange={(e) => setConfigForm({ ...configForm, description: e.target.value })}
                   rows={3}
-                  className="w-full rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
                   placeholder="Optional note for this fine category"
                 />
               </div>
@@ -328,7 +328,7 @@ export default function FinesPage() {
               <button
                 type="submit"
                 disabled={saveType.isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
               >
                 {saveType.isPending && <Loader2 size={14} className="animate-spin" />}
                 {configForm.id ? "Update type" : "Save type"}
@@ -354,7 +354,7 @@ export default function FinesPage() {
         ].map(([a, b]) => (
           <div
             key={a}
-            className="rounded-xl border border-[#dfe8e2] bg-white p-5"
+            className="rounded-xl border border-[#E5E7EB] bg-white p-5"
           >
             <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
               {a}
@@ -363,7 +363,7 @@ export default function FinesPage() {
           </div>
         ))}
       </div>
-      <div className="mb-6 flex items-center rounded-xl border border-[#dfe8e2] bg-white p-4">
+      <div className="mb-6 flex items-center rounded-xl border border-[#E5E7EB] bg-white p-4">
         <Search size={15} className="mr-2 text-neutral-400" />
         <input
           value={search}
@@ -372,7 +372,7 @@ export default function FinesPage() {
           className="w-full text-xs outline-none"
         />
       </div>
-      <div className="overflow-hidden rounded-xl border border-[#dfe8e2] bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -476,7 +476,7 @@ export default function FinesPage() {
         </div>
       </div>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#122b1c]/30 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/30 p-4">
           <form
             onSubmit={submit}
             className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
@@ -555,7 +555,7 @@ export default function FinesPage() {
             />
             <button
               disabled={issue.isPending}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#087f5b] py-3 text-xs font-bold text-white disabled:opacity-50"
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] py-3 text-xs font-bold text-white disabled:opacity-50"
             >
               {issue.isPending && (
                 <Loader2 size={14} className="animate-spin" />

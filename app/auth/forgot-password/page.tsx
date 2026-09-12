@@ -22,10 +22,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="auth-page min-h-screen bg-[#f7f9f7] flex items-center justify-center p-6">
-      <div className="bg-white border border-[#dfe8e2] rounded-2xl p-6 md:p-10 shadow-sm max-w-md w-full flex flex-col gap-6">
+    <div className="auth-page min-h-screen bg-[#F7F7F2] flex items-center justify-center p-6">
+      <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 md:p-10 shadow-sm max-w-md w-full flex flex-col gap-6">
         <div className="text-center flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-full bg-[#eaf6ef] text-[#087f5b] flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-[#E7F2ED] text-[#0B6B50] flex items-center justify-center">
             <KeyRound size={22} />
           </div>
           <h2 className="text-2xl font-black text-neutral-900 tracking-tight mt-2">Forgot Password?</h2>
@@ -48,13 +48,13 @@ export default function ForgotPasswordPage() {
                 placeholder="+255 712 345 678 or juma@example.com" 
                 value={value}
                 onChange={e => setValue(e.target.value)}
-                className="w-full border border-[#dfe8e2] rounded-lg p-3 text-xs outline-none focus:border-[#087f5b]"
+                className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50]"
               />
             </div>
 
             <button 
               type="submit"
-              className="w-full py-3 bg-[#087f5b] hover:bg-[#066b4c] text-white font-extrabold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 transition"
+              className="w-full py-3 bg-[#0B6B50] hover:bg-[#08503C] text-white font-extrabold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 transition"
             >
               Send OTP Code <ArrowRight size={14} />
             </button>
@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <div className="text-center text-xs">
-          <Link href="/auth/login" className="text-[#087f5b] hover:text-[#066b4c] hover:underline font-bold">
+          <Link href="/auth/login" className="text-[#0B6B50] hover:text-[#08503C] hover:underline font-bold">
             Back to Sign In
           </Link>
         </div>
