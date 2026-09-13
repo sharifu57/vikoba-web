@@ -27,6 +27,8 @@ export type Loan = {
   progress: number;
   consentAcceptedAt?: string;
   guarantors?: LoanGuarantorOption[];
+  approvalSteps?: { stepOrder: number; role: string; label: string; approvedAt?: string | null; approvedByMemberId?: number | null }[];
+  approvalEvents?: { stepOrder: number; action: string; actorMemberId: number; reason?: string | null; actedAt: string }[];
 };
 export type LoanGuarantorOption = { id: number; name: string; phone?: string; address?: string; membershipNumber?: string; status?: string; available: boolean; reason?: string };
 export type LoanApplicationContext = { groupMemberId: number; name: string; nationalId?: string; phone?: string; address?: string; membershipNumber: string; sharesValue: number; loanMultiplier: number; maximumLoan: number; requiredGuarantors: number; defaultDurationMonths: number; maxDurationMonths: number; groupEndDate?: string | null; interestRate: number; guarantors: LoanGuarantorOption[] };
@@ -130,6 +132,8 @@ export function useLoans() {
           ),
         ),
       ),
+    returnForReview: (g: string, id: number, reason: string) => run(async () => unbox(await apiPost<Envelope<Loan>>(`${base(g)}/${id}/return`, { rejectionReason: reason }, { auth: true }))),
+    cancel: (g: string, id: number, reason: string) => run(async () => unbox(await apiPost<Envelope<Loan>>(`${base(g)}/${id}/cancel`, { rejectionReason: reason }, { auth: true }))),
     disburse: (g: string, id: number) =>
       run(async () =>
         unbox(

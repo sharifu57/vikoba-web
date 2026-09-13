@@ -44,6 +44,7 @@ export default function GroupSettingsPage() {
   const [sharePriceAmount, setSharePriceAmount] = useState('5000')
   const [approvalSteps, setApprovalSteps] = useState(defaultApprovalSteps)
   const [expenseApprovalSteps, setExpenseApprovalSteps] = useState([{ role: 'ACCOUNTANT', label: 'Accountant review' }])
+  const [loanApprovalSteps, setLoanApprovalSteps] = useState([{ role: 'GROUP_CHAIRMAN', label: 'Chair review' }, { role: 'ACCOUNTANT', label: 'Accountant and disbursement' }])
   const [fineRules, setFineRules] = useState<FineRule[]>(defaultFineRules)
   const [removedFineTypeIds, setRemovedFineTypeIds] = useState<Array<string | number>>([])
 
@@ -94,6 +95,9 @@ export default function GroupSettingsPage() {
         defaultAmount: String(type.defaultAmount ?? ''), description: type.description || '',
       })))
     }).catch(() => { /* Fine rules will be created when settings are saved. */ })
+    apiGet<{ data: { role: string; label: string }[] }>(`/api/loans/group/${groupId}/approval-config`, undefined, { auth: true })
+      .then(response => { if (response.data?.length) setLoanApprovalSteps(response.data) })
+      .catch(() => toast.error('Unable to load loan approval workflow.'))
     apiGet<{ data: { role: string; label: string }[] }>(`/api/expenses/group/${groupId}/approval-config`, undefined, { auth: true })
       .then(response => { if (response.data?.length) setExpenseApprovalSteps(response.data) })
       .catch(() => toast.error('Unable to load expense approval workflow.'))
@@ -151,6 +155,11 @@ export default function GroupSettingsPage() {
     }
     if (!expenseApprovalSteps.length || new Set(expenseApprovalSteps.map(step => step.role)).size !== expenseApprovalSteps.length) {
       toast.error('Choose at least one expense approval step and use each role only once.')
+      return
+    }
+
+    if (!loanApprovalSteps.length || new Set(loanApprovalSteps.map(step => step.role)).size !== loanApprovalSteps.length) {
+      toast.error('Choose at least one loan approval step and use each role only once.')
       return
     }
 
@@ -227,6 +236,7 @@ export default function GroupSettingsPage() {
       if (/^\d+$/.test(String(groupId))) {
         await Promise.all([
           apiPut(`/api/expenses/group/${groupId}/approval-config`, expenseApprovalSteps, { auth: true }),
+          apiPut(`/api/loans/group/${groupId}/approval-config`, loanApprovalSteps, { auth: true }),
           ...removedFineTypeIds.map((id) => fineService.deleteType(String(groupId), id)),
           ...fineRules.filter(rule => rule.name.trim()).map((rule) => {
           const payload = { code: rule.code || rule.name, name: rule.name, defaultAmount: Number(rule.defaultAmount || 0), description: rule.description, active: true }
@@ -406,6 +416,18 @@ export default function GroupSettingsPage() {
         </div>
 
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
+            <div><h3 className="font-extrabold text-neutral-800">Loan approval workflow</h3><p className="text-xs text-neutral-600">Starts after guarantors accept. The last approval creates the member loan and repayment schedule. Existing applications keep their steps.</p></div>
+            {loanApprovalSteps.map((step, index) => <div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border bg-white p-2">
+              <span className="w-14 text-xs font-bold text-neutral-500">Step {index + 1}</span>
+              <NativeSelect aria-label={`Loan reviewer for step ${index + 1}`} value={step.role} onChange={e => setLoanApprovalSteps(current => current.map((item, i) => i === index ? { ...item, role: e.target.value } : item))}>{approvalRoles.map(role => <option key={role} value={role}>{role.replaceAll('_', ' ')}</option>)}</NativeSelect>
+              <Input aria-label={`Loan step ${index + 1} label`} value={step.label} onChange={e => setLoanApprovalSteps(current => current.map((item, i) => i === index ? { ...item, label: e.target.value } : item))} className="min-w-36 flex-1" />
+              <Button type="button" variant="outline" size="sm" disabled={index === 0} onClick={() => setLoanApprovalSteps(current => { const next = [...current]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; return next })}>Up</Button>
+              <Button type="button" variant="outline" size="sm" disabled={index === loanApprovalSteps.length - 1} onClick={() => setLoanApprovalSteps(current => { const next = [...current]; [next[index], next[index + 1]] = [next[index + 1], next[index]]; return next })}>Down</Button>
+              <Button type="button" variant="outline" size="sm" disabled={loanApprovalSteps.length === 1} onClick={() => setLoanApprovalSteps(current => current.filter((_, i) => i !== index))}><Trash2 size={14} /></Button>
+            </div>)}
+            <Button type="button" variant="outline" size="sm" disabled={loanApprovalSteps.length >= 10} onClick={() => setLoanApprovalSteps(current => [...current, { role: approvalRoles.find(role => !current.some(step => step.role === role)) || 'GROUP_ADMIN', label: 'Loan approval' }])}><Plus size={14} /> Add loan approval step</Button>
+          </div>
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
             <div><h3 className="font-extrabold text-neutral-800">Expense approval workflow</h3><p className="text-xs text-neutral-600">New expenses wait for these reviewers in order. Existing requests keep their saved steps.</p></div>
             {expenseApprovalSteps.map((step, index) => <div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2">
