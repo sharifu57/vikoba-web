@@ -42,6 +42,8 @@ export type SharePurchaseRequestRecord = {
   approvalSteps?: Array<{ role: string; label: string; approvedAt?: string | null; approvedBy?: number | null; skipped: boolean }>;
   currentStepRole?: string | null;
   currentStepLabel?: string | null;
+  canApprove?: boolean;
+  canReject?: boolean;
 };
 
 export const authService = {
@@ -525,6 +527,8 @@ export const groupService = {
 };
 
 export const memberService = {
+  getMyAccess: (groupId: string) =>
+    apiGet<ApiResponse<Member>>(`${API_ENDPOINTS.members}/group/${groupId}/my-access`, undefined, { auth: true }),
   list: (groupId?: string) => {
     if (!groupId) {
       return apiGet<Member[]>(API_ENDPOINTS.members, undefined, { auth: true });

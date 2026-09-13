@@ -9,7 +9,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { sharePurchaseRequestService, type SharePurchaseRequestRecord } from '@/lib/api/services'
+import { memberService, sharePurchaseRequestService, type SharePurchaseRequestRecord } from '@/lib/api/services'
+import { resolveActiveGroupId } from '@/lib/api/active-group'
+import { useVikobaStore } from '@/lib/mockStore'
+import { apiGet, apiPost } from '@/lib/api/client'
+import type { ExpenseRecord } from '@/hooks/useExpenses'
 
 type Filter = 'ALL' | SharePurchaseRequestRecord['status']
 type Proof = { url: string; name: string; mimeType: string }
@@ -25,10 +29,14 @@ function displayTime(value?: string | null) {
 function money(value: number) { return `TZS ${Number(value || 0).toLocaleString('en-TZ')}` }
 
 export default function WorkflowsPage() {
+  const { currentGroupId } = useVikobaStore()
   const [groupId, setGroupId] = useState('')
   const [memberId, setMemberId] = useState('')
-  const [roles, setRoles] = useState<string[]>([])
   const [requests, setRequests] = useState<SharePurchaseRequestRecord[]>([])
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>([])
+  const [expenseActingId, setExpenseActingId] = useState<number | null>(null)
+  const [rejectingExpense, setRejectingExpense] = useState<ExpenseRecord | null>(null)
+  const [expenseReason, setExpenseReason] = useState('')
   const [filter, setFilter] = useState<Filter>('PENDING')
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
@@ -38,20 +46,23 @@ export default function WorkflowsPage() {
   const [rejectReason, setRejectReason] = useState('')
 
   useEffect(() => {
-    const id = localStorage.getItem('v360_currentGroupId') || ''
+    const id = /^\d+$/.test(currentGroupId) ? currentGroupId : resolveActiveGroupId(localStorage) || ''
     setGroupId(id)
-    try {
-      const groups = JSON.parse(localStorage.getItem('v360_groups') || '[]') as Array<Record<string, unknown>>
-      const selected = groups.find(item => String((item.group as Record<string, unknown> | undefined)?.groupId ?? item.groupId ?? item.id) === id)
-      setMemberId(String(selected?.groupMemberId ?? localStorage.getItem('v360_currentGroupMemberId') ?? ''))
-      setRoles(Array.isArray(selected?.roles) ? selected.roles.map(String) : [String(selected?.role || '')])
-    } catch { /* Access is also checked by the API. */ }
-  }, [])
+  }, [currentGroupId])
 
   const refresh = useCallback(async () => {
     if (!groupId) { setLoading(false); return }
     setLoading(true)
-    try { setRequests(unwrap(await sharePurchaseRequestService.list(groupId, null)) || []) }
+    try {
+      const [requestsResponse, accessResponse, expensesResponse] = await Promise.all([
+        sharePurchaseRequestService.list(groupId, null),
+        memberService.getMyAccess(groupId),
+        apiGet<{ data: ExpenseRecord[] }>(`/api/expenses/group/${groupId}`, undefined, { auth: true }),
+      ])
+      setRequests(unwrap(requestsResponse) || [])
+      setExpenses(unwrap(expensesResponse) || [])
+      setMemberId(String(unwrap(accessResponse)?.id ?? ''))
+    }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to load approvals') }
     finally { setLoading(false) }
   }, [groupId])
@@ -104,12 +115,46 @@ export default function WorkflowsPage() {
     finally { setProofLoadingId(null) }
   }
 
+  const approveExpense = async (expense: ExpenseRecord) => {
+    if (expenseActingId !== null) return
+    setExpenseActingId(expense.id)
+    try {
+      await apiPost(`/api/expenses/group/${groupId}/${expense.id}/approve`, {}, { auth: true })
+      toast.success('Expense approval recorded.')
+      await refresh()
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to approve expense') }
+    finally { setExpenseActingId(null) }
+  }
+  const rejectExpense = async () => {
+    if (!rejectingExpense || !expenseReason.trim() || expenseActingId !== null) return
+    setExpenseActingId(rejectingExpense.id)
+    try {
+      await apiPost(`/api/expenses/group/${groupId}/${rejectingExpense.id}/reject`, { reason: expenseReason.trim() }, { auth: true })
+      toast.success('Expense rejected.')
+      setRejectingExpense(null)
+      setExpenseReason('')
+      await refresh()
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to reject expense') }
+    finally { setExpenseActingId(null) }
+  }
+
   return <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div><div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary"><ShieldCheck className="size-5" /> Group approvals</div><h1 className="text-3xl font-black tracking-tight text-foreground">Approval workflows</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Follow each share purchase from proof submission through every approval step. Only the assigned reviewer can approve the current step.</p></div>
+      <div><div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary"><ShieldCheck className="size-5" /> Group approvals</div><h1 className="text-3xl font-black tracking-tight text-foreground">Approval workflows</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Review share purchases and expenses through their configured approval steps.</p></div>
       <Button variant="outline" onClick={() => void refresh()} disabled={loading}><RefreshCw className={loading ? 'animate-spin' : ''} /> Refresh</Button>
     </div>
 
+    <section className="space-y-3"><h2 className="text-xl font-bold text-foreground">Expense approvals</h2>
+      {expenses.filter(expense => expense.status === 'PENDING' && expense.canApprove).length === 0
+        ? <Card><CardContent className="p-5 pt-5 text-sm text-muted-foreground">No expenses currently require your approval.</CardContent></Card>
+        : expenses.filter(expense => expense.status === 'PENDING' && expense.canApprove).map(expense =>
+          <Card key={expense.id}><CardContent className="space-y-3 p-5 pt-5">
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold text-foreground">{expense.description}</p><p className="text-sm text-muted-foreground">{expense.reference} · {expense.categoryName} · {expense.expenseDate}</p></div><p className="font-bold text-primary">{money(expense.amount)}</p></div>
+            <ol className="space-y-1 text-sm">{(expense.approvalSteps || []).map((step, index) => <li key={index} className={step.approvedAt ? 'text-emerald-700' : 'text-muted-foreground'}>{step.approvedAt ? '✓' : '○'} {step.label}{step.approvedAt ? ` · ${displayTime(step.approvedAt)}` : ''}</li>)}</ol>
+            <div className="flex gap-2"><Button disabled={expenseActingId !== null} onClick={() => void approveExpense(expense)}>{expenseActingId === expense.id && <Loader2 className="animate-spin" />} Approve step</Button><Button variant="destructive" disabled={expenseActingId !== null} onClick={() => { setRejectingExpense(expense); setExpenseReason('') }}>Reject</Button></div>
+          </CardContent></Card>)}
+    </section>
+    <h2 className="text-xl font-bold text-foreground">Share purchase approvals</h2>
     <div className="grid gap-3 sm:grid-cols-3">
       {([['PENDING', 'Awaiting review', Clock3], ['APPROVED', 'Completed', CheckCircle2], ['REJECTED', 'Rejected', XCircle]] as const).map(([status, label, Icon]) => <Card key={status} className="border-border shadow-sm"><CardContent className="flex items-center justify-between p-4 pt-4"><div><p className="text-xs font-semibold text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-black text-foreground">{counts[status]}</p></div><Icon className={`size-6 ${status === 'APPROVED' ? 'text-emerald-700' : status === 'REJECTED' ? 'text-red-700' : 'text-amber-600'}`} /></CardContent></Card>)}
     </div>
@@ -122,7 +167,8 @@ export default function WorkflowsPage() {
       <div className="space-y-4">{visible.map(request => {
         const own = String(request.groupMemberId) === memberId
         const role = request.currentStepRole
-        const canReview = request.status === 'PENDING' && !own && !!role && (roles.includes(role) || (role === 'GROUP_CHAIRMAN' && roles.includes('CHAIRPERSON')) || (role === 'CHAIRPERSON' && roles.includes('GROUP_CHAIRMAN')))
+        const canApprove = request.status === 'PENDING' && request.canApprove === true
+        const canReject = request.status === 'PENDING' && request.canReject === true
         const steps = request.approvalSteps || []
         return <Card key={request.id} className="overflow-hidden border-border shadow-[0_8px_28px_rgba(16,36,29,0.08)]">
           <CardContent className="space-y-5 p-5 pt-5 sm:p-6 sm:pt-6">
@@ -141,12 +187,13 @@ export default function WorkflowsPage() {
             {request.status === 'APPROVED' && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">Completed {displayTime(request.reviewedAt)}. Shares have been recorded.</p>}
             {request.status === 'PENDING' && <p className="text-sm font-semibold text-amber-800">{own ? 'Your request is awaiting independent review.' : `Next reviewer: ${request.currentStepLabel || 'group approver'}`}</p>}
             {request.proofText && <p className="rounded-lg border border-border bg-card p-3 text-sm text-foreground">{request.proofText}</p>}
-            <div className="flex flex-wrap gap-2 border-t border-border pt-4">{request.hasProofFile && <Button variant="outline" disabled={proofLoadingId !== null} onClick={() => void openProof(request)}>{proofLoadingId === request.id ? <Loader2 className="animate-spin" /> : <FileText />} View payment proof</Button>}{canReview && <><Button disabled={actingId !== null} onClick={() => void approve(request)}>{actingId === request.id ? <Loader2 className="animate-spin" /> : <Check />} Approve step</Button><Button variant="destructive" disabled={actingId !== null} onClick={() => { setRejecting(request); setRejectReason('') }}><X /> Reject request</Button></>}</div>
+            <div className="flex flex-wrap gap-2 border-t border-border pt-4">{request.hasProofFile && <Button variant="outline" disabled={proofLoadingId !== null} onClick={() => void openProof(request)}>{proofLoadingId === request.id ? <Loader2 className="animate-spin" /> : <FileText />} View payment proof</Button>}{canApprove && <Button disabled={actingId !== null} onClick={() => void approve(request)}>{actingId === request.id ? <Loader2 className="animate-spin" /> : <Check />} Approve step</Button>}{canReject && <Button variant="destructive" disabled={actingId !== null} onClick={() => { setRejecting(request); setRejectReason('') }}><X /> Reject request</Button>}</div>
           </CardContent>
         </Card>
       })}</div>}
 
     <Dialog open={rejecting !== null} onOpenChange={open => { if (!open && actingId === null) setRejecting(null) }}><DialogContent><DialogHeader><DialogTitle>Reject share purchase?</DialogTitle><DialogDescription>The member will see this reason in the workflow history.</DialogDescription></DialogHeader><div className="space-y-2"><Label htmlFor="rejection-reason">Reason for rejection</Label><Textarea id="rejection-reason" value={rejectReason} onChange={event => setRejectReason(event.target.value)} placeholder="Explain why this payment proof cannot be accepted" maxLength={500} required /></div><DialogFooter><Button variant="outline" onClick={() => setRejecting(null)} disabled={actingId !== null}>Cancel</Button><Button variant="destructive" onClick={() => void reject()} disabled={actingId !== null || !rejectReason.trim()}>{actingId !== null && <Loader2 className="animate-spin" />} Reject request</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={rejectingExpense !== null} onOpenChange={open => { if (!open && expenseActingId === null) setRejectingExpense(null) }}><DialogContent><DialogHeader><DialogTitle>Reject expense?</DialogTitle><DialogDescription>The expense will not count toward group totals or final break calculations.</DialogDescription></DialogHeader><div className="space-y-2"><Label htmlFor="expense-rejection-reason">Reason for rejection</Label><Textarea id="expense-rejection-reason" value={expenseReason} onChange={event => setExpenseReason(event.target.value)} maxLength={500} required /></div><DialogFooter><Button variant="outline" onClick={() => setRejectingExpense(null)} disabled={expenseActingId !== null}>Cancel</Button><Button variant="destructive" onClick={() => void rejectExpense()} disabled={expenseActingId !== null || !expenseReason.trim()}>{expenseActingId !== null && <Loader2 className="animate-spin" />} Reject expense</Button></DialogFooter></DialogContent></Dialog>
     <Dialog open={proof !== null} onOpenChange={open => { if (!open) setProof(null) }}><DialogContent className="sm:max-w-4xl"><DialogHeader><DialogTitle>Payment proof</DialogTitle><DialogDescription>{proof?.name}</DialogDescription></DialogHeader>{proof?.mimeType.startsWith('image/') ? <img src={proof.url} alt={proof.name} className="max-h-[70vh] max-w-full object-contain" /> : proof?.mimeType === 'application/pdf' ? <iframe src={proof.url} title={proof.name} className="h-[70vh] w-full" /> : <p>Preview unavailable. Download the file to view it.</p>}{proof && <a href={proof.url} download={proof.name} className="text-sm font-semibold text-primary underline">Download proof</a>}</DialogContent></Dialog>
   </main>
 }

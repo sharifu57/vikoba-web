@@ -4,7 +4,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Pencil, PlusCircle, Search, Trash2, X } from "lucide-react";
 import { groupService, type Group } from "@/lib/api/services";
 import {
@@ -46,6 +46,8 @@ export default function ExpensesPage() {
   const [editing, setEditing] = useState<ExpenseRecord | null>(null);
   const [form, setForm] = useState<ExpenseInput>(blankForm());
   const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitInFlight = useRef(false);
 
   useEffect(() => {
     const resolve = async () => {
@@ -108,7 +110,7 @@ export default function ExpensesPage() {
     }).format(amount || 0);
   const visible = useMemo(
     () =>
-      expenses.filter((item) =>
+      expenses.filter((item) => item.status !== "PENDING" &&
         [
           item.categoryName,
           item.description,
@@ -121,7 +123,6 @@ export default function ExpensesPage() {
   const approved = expenses.filter(
     (item) => item.status === "APPROVED" || item.status === "PAID",
   );
-  const pending = expenses.filter((item) => item.status === "PENDING");
   const edit = (expense: ExpenseRecord) => {
     setEditing(expense);
     setForm({
@@ -132,22 +133,22 @@ export default function ExpensesPage() {
       amount: expense.amount,
       expenseDate: expense.expenseDate,
       receiptNumber: expense.receiptNumber,
-      status: expense.status,
-      rejectionReason: expense.rejectionReason,
     });
     setModalOpen(true);
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!groupId || !form.categoryId || !form.description || !form.amount || form.amount <= 0)
+    if (submitInFlight.current || !groupId || !form.categoryId || !form.description || !form.amount || form.amount <= 0)
       return;
+    submitInFlight.current = true;
+    setIsSubmitting(true);
     try {
       if (editing) await update(groupId, editing.id, form);
       else await create(groupId, form);
       setMessage(
         editing
           ? "Expense updated successfully."
-          : "Expense recorded successfully.",
+          : "Expense submitted to the approval workflow.",
       );
       setModalOpen(false);
       setEditing(null);
@@ -155,6 +156,9 @@ export default function ExpensesPage() {
       await refresh();
     } catch {
       /* hook error is visible */
+    } finally {
+      submitInFlight.current = false;
+      setIsSubmitting(false);
     }
   };
   const deleteExpense = async (expense: ExpenseRecord) => {
@@ -189,7 +193,7 @@ export default function ExpensesPage() {
             Group Expenses
           </h1>
           <p className="mt-1 text-xs text-neutral-400">
-            Record, update, and retain every group expenditure.
+            Approved expenses appear here after workflow review.
           </p>
         </div>
         <Button
@@ -200,19 +204,13 @@ export default function ExpensesPage() {
           <PlusCircle size={14} /> Record Expense
         </Button>
       </header>
-      <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="mb-8 grid grid-cols-2 gap-4">
         {[
           [
             "Settled expenses",
             money(approved.reduce((sum, item) => sum + item.amount, 0)),
             "text-neutral-800",
           ],
-          [
-            "Pending approval",
-            money(pending.reduce((sum, item) => sum + item.amount, 0)),
-            "text-amber-600",
-          ],
-          ["Awaiting action", `${pending.length} items`, "text-[#0B6B50]"],
           [
             "This month",
             money(
@@ -297,6 +295,7 @@ export default function ExpensesPage() {
                     </TableCell>
                     <TableCell className="max-w-72 p-4 text-neutral-600">
                       {expense.description}
+                      {expense.status === "REJECTED" && expense.rejectionReason && <p className="mt-1 text-xs text-red-700">Rejected: {expense.rejectionReason}</p>}
                     </TableCell>
                     <TableCell className="p-4 text-right font-black text-neutral-800">
                       {money(expense.amount)}
@@ -315,6 +314,7 @@ export default function ExpensesPage() {
                       <div className="flex justify-center gap-1">
                         <Button
                           onClick={() => edit(expense)}
+                          disabled={expense.status === "APPROVED" || expense.status === "PAID"}
                           className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-[#0B6B50]"
                           title="Edit expense"
                         >
@@ -322,6 +322,7 @@ export default function ExpensesPage() {
                         </Button>
                         <Button
                           onClick={() => deleteExpense(expense)}
+                          disabled={expense.status === "APPROVED" || expense.status === "PAID"}
                           className="rounded p-1.5 text-neutral-500 hover:bg-red-50 hover:text-red-600"
                           title="Delete expense"
                         >
@@ -336,7 +337,7 @@ export default function ExpensesPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                     {groupId
-                      ? "No expense records."
+                      ? "No approved expenses yet. Pending expenses are reviewed in Approval workflows."
                       : "Select a group to view expenses."}
                   </TableCell>
                 </TableRow>
@@ -353,6 +354,7 @@ export default function ExpensesPage() {
                 {editing ? "Edit Expense" : "Record Outbound Expense"}
               </h2>
               <Button
+                disabled={isSubmitting}
                 onClick={() => setModalOpen(false)}
                 className="text-neutral-400 hover:text-neutral-700"
               >
@@ -425,38 +427,18 @@ export default function ExpensesPage() {
                   />
                 </label>
               </div>
-              {editing && (
-                <label className="block text-xs font-bold text-neutral-700">
-                  Status
-                  <NativeSelect
-                    value={form.status || "PENDING"}
-                    onChange={(event) =>
-                      setForm({ ...form, status: event.target.value })
-                    }
-                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs outline-none focus:border-[#0B6B50]"
-                  >
-                    {[
-                      "PENDING",
-                      "APPROVED",
-                      "PAID",
-                      "REJECTED",
-                      "CANCELLED",
-                    ].map((status) => (
-                      <option key={status}>{status}</option>
-                    ))}
-                  </NativeSelect>
-                </label>
-              )}
               <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4">
                 <Button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setModalOpen(false)}
                   className="rounded-lg border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-500"
                 >
                   Cancel
                 </Button>
-                <Button className="rounded-lg bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white hover:bg-[#08503C]">
-                  {editing ? "Save changes" : "Record expense"}
+                <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting} className="rounded-lg bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white hover:bg-[#08503C]">
+                  {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                  {isSubmitting ? (editing ? "Saving changes..." : "Recording expense...") : (editing ? "Save changes" : "Record expense")}
                 </Button>
               </div>
             </form>

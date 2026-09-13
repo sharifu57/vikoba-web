@@ -24,6 +24,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { clearVikobaLocalState, refreshSessionIfNeeded, SESSION_EXPIRED_EVENT, SESSION_IDLE_TIMEOUT_MS } from '@/lib/api/client'
 import { ThemeToggle, VikobaLogo } from '@/components/brand'
+import { memberService, type Member } from '@/lib/api/services'
+import { resolveActiveGroupId } from '@/lib/api/active-group'
 
 // Main Layout component wrapped inside Provider
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -45,6 +47,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [showIdleWarning, setShowIdleWarning] = useState(false)
   const [idleSecondsLeft, setIdleSecondsLeft] = useState(60)
+  const [groupRoles, setGroupRoles] = useState<string[]>([])
   const [user, setUser] = useState({
     id: null,
     name: 'User',
@@ -89,7 +92,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       if (storedGroup) {
         try {
           const parsedGroup = JSON.parse(storedGroup)
-          const groupId = String(parsedGroup?.id ?? parsedGroup?.groupId ?? currentGroupId)
+          const groupId = resolveActiveGroupId(localStorage) || ''
           const groupName = parsedGroup?.groupName || parsedGroup?.name || 'My Group'
 
           if (groupId) {
@@ -100,6 +103,10 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             const selectedMembership = Array.isArray(storedGroups)
               ? storedGroups.find((item: any) => String(item?.group?.groupId ?? item?.groupId ?? item?.id) === groupId)
               : null
+            const cachedRoles = Array.isArray(selectedMembership?.roles)
+              ? selectedMembership.roles.map(String)
+              : selectedMembership?.role ? [String(selectedMembership.role)] : []
+            setGroupRoles(cachedRoles)
             if (selectedMembership?.role) {
               setUser((previous) => ({ ...previous, role: String(selectedMembership.role) }))
             }
@@ -120,6 +127,35 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       }
     }
   }, [currentGroupId])
+
+  useEffect(() => {
+    const groupId = resolveActiveGroupId(localStorage) || ''
+    if (!/^\d+$/.test(groupId)) return
+    let active = true
+    const refreshGroupAccess = () => {
+      void memberService.getMyAccess(groupId).then(response => {
+        const access = response.data as Member | undefined
+        if (!active || !access) return
+        const nextRoles = access.roles?.map(String) || [String(access.role || 'MEMBER')]
+        const nextPermissions = access.permissions?.map(String) || []
+        setGroupRoles(nextRoles)
+        setUser(previous => ({ ...previous, role: String(access.role || nextRoles[0] || 'MEMBER') }))
+        localStorage.setItem('v360_currentGroupMemberId', String(access.id))
+        localStorage.setItem('v360_currentGroupRole', String(access.role || nextRoles[0] || 'MEMBER'))
+        localStorage.setItem('v360_currentGroupRoles', JSON.stringify(nextRoles))
+        localStorage.setItem('v360_currentGroupPermissions', JSON.stringify(nextPermissions))
+        try {
+          const groups = JSON.parse(localStorage.getItem('v360_groups') || '[]') as Array<Record<string, unknown>>
+          const updated = groups.map(item => String((item.group as Record<string, unknown> | undefined)?.groupId ?? item.groupId ?? item.id) === groupId
+            ? { ...item, groupMemberId: access.id, role: access.role, roles: nextRoles, permissions: nextPermissions } : item)
+          localStorage.setItem('v360_groups', JSON.stringify(updated))
+        } catch { /* The live response remains authoritative. */ }
+      }).catch(() => { /* Keep cached access until the API is reachable. */ })
+    }
+    refreshGroupAccess()
+    window.addEventListener('vikoba:access-updated', refreshGroupAccess)
+    return () => { active = false; window.removeEventListener('vikoba:access-updated', refreshGroupAccess) }
+  }, [currentGroupId, pathname])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -145,6 +181,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   }, [pathname, router])
 
   const handleGroupSelect = (id: string) => {
+    if (!/^\d+$/.test(id)) return
     setCurrentGroupId(id)
     setGroupDropdownOpen(false)
   }
@@ -378,7 +415,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
             {groupDropdownOpen && (
               <div className="absolute left-1 right-1 top-[56px] bg-white border border-[#E5E7EB] rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5">
-                {groups.map(g => (
+                {groups.filter(g => /^\d+$/.test(g.id)).map(g => (
                   <Button
                     key={g.id}
                     onClick={() => handleGroupSelect(g.id)}
@@ -422,7 +459,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             })}
 
             {/* Admin sub-menu if Admin */}
-            {['Administrator', 'GROUP_ADMIN', 'GROUP_CHAIRMAN'].includes(user.role) && (
+            {groupRoles.some(role => ['GROUP_ADMIN', 'GROUP_CHAIRMAN', 'CHAIRPERSON'].includes(role)) && (
               <>
                 {adminItems.map((item, idx) => {
                   if (item.isHeader) {
@@ -629,7 +666,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               </div>
               <div className="hidden lg:flex flex-col">
                 <span className="font-bold text-neutral-800 text-xs">{user.name}</span>
-                <span className="text-[10px] text-neutral-400 font-semibold uppercase">{user.role}</span>
+                <span className="max-w-64 text-[10px] font-semibold text-neutral-600" title={groupRoles.join(', ')}>{(groupRoles.length ? groupRoles : [user.role]).map(role => role.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase())).join(' · ')}</span>
               </div>
             </div>
           </div>

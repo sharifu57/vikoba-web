@@ -73,7 +73,7 @@ export default function UsersAdministrationPage() {
   });
   const updateAccess = useMutation({
     mutationFn: () => memberService.updateAccess(groupId, selectedMember!.id, access),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["members", groupId] }); setAccessOpen(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["members", groupId] }); window.dispatchEvent(new Event("vikoba:access-updated")); setAccessOpen(false); },
   });
   const add = useMutation({
     mutationFn: () =>
