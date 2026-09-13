@@ -1,5 +1,9 @@
 "use client";
 
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Loader2, Pencil, PlusCircle, Search, Trash2, X } from "lucide-react";
 import { groupService, type Group } from "@/lib/api/services";
@@ -188,13 +192,13 @@ export default function ExpensesPage() {
             Record, update, and retain every group expenditure.
           </p>
         </div>
-        <button
+        <Button
           onClick={openCreate}
           disabled={!groupId}
           className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#08503C] disabled:opacity-50"
         >
           <PlusCircle size={14} /> Record Expense
-        </button>
+        </Button>
       </header>
       <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
@@ -247,7 +251,7 @@ export default function ExpensesPage() {
             className="absolute left-3 top-3 text-neutral-400"
             size={14}
           />
-          <input
+          <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search category, reference or description..."
@@ -257,88 +261,88 @@ export default function ExpensesPage() {
       </div>
       <section className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
-                <th className="p-4">Reference</th>
-                <th className="p-4">Category</th>
-                <th className="p-4">Description</th>
-                <th className="p-4 text-right">Amount</th>
-                <th className="p-4">Expense date</th>
-                <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-50">
+          <Table className="w-full text-left text-xs">
+            <TableHeader>
+              <TableRow className="border-b border-neutral-100 bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
+                <TableHead className="p-4">Reference</TableHead>
+                <TableHead className="p-4">Category</TableHead>
+                <TableHead className="p-4">Description</TableHead>
+                <TableHead className="p-4 text-right">Amount</TableHead>
+                <TableHead className="p-4">Expense date</TableHead>
+                <TableHead className="p-4 text-center">Status</TableHead>
+                <TableHead className="p-4 text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-neutral-50">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="p-10 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                     <Loader2 className="mr-2 inline animate-spin" size={16} />{" "}
                     Loading expenses…
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 visible.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-neutral-50/50">
-                    <td className="p-4 font-bold text-[#0B6B50]">
+                  <TableRow key={expense.id} className="hover:bg-neutral-50/50">
+                    <TableCell className="p-4 font-bold text-[#0B6B50]">
                       {expense.reference}
                       <span className="mt-0.5 block text-[10px] font-medium text-neutral-400">
                         {expense.receiptNumber || "No receipt"}
                       </span>
-                    </td>
-                    <td className="p-4">
+                    </TableCell>
+                    <TableCell className="p-4">
                       <span className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] font-bold text-neutral-700">
                         {expense.categoryName}
                       </span>
-                    </td>
-                    <td className="max-w-72 p-4 text-neutral-600">
+                    </TableCell>
+                    <TableCell className="max-w-72 p-4 text-neutral-600">
                       {expense.description}
-                    </td>
-                    <td className="p-4 text-right font-black text-neutral-800">
+                    </TableCell>
+                    <TableCell className="p-4 text-right font-black text-neutral-800">
                       {money(expense.amount)}
-                    </td>
-                    <td className="p-4 font-semibold text-neutral-500">
+                    </TableCell>
+                    <TableCell className="p-4 font-semibold text-neutral-500">
                       {expense.expenseDate}
-                    </td>
-                    <td className="p-4 text-center">
+                    </TableCell>
+                    <TableCell className="p-4 text-center">
                       <span
                         className={`rounded px-2 py-0.5 text-[9px] font-extrabold ${statusClass(expense.status)}`}
                       >
                         {pretty(expense.status)}
                       </span>
-                    </td>
-                    <td className="p-4">
+                    </TableCell>
+                    <TableCell className="p-4">
                       <div className="flex justify-center gap-1">
-                        <button
+                        <Button
                           onClick={() => edit(expense)}
                           className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-[#0B6B50]"
                           title="Edit expense"
                         >
                           <Pencil size={14} />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => deleteExpense(expense)}
                           className="rounded p-1.5 text-neutral-500 hover:bg-red-50 hover:text-red-600"
                           title="Delete expense"
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
               {!loading && !visible.length && (
-                <tr>
-                  <td colSpan={7} className="p-10 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                     {groupId
                       ? "No expense records."
                       : "Select a group to view expenses."}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </section>
       {modalOpen && (
@@ -348,18 +352,18 @@ export default function ExpensesPage() {
               <h2 className="text-sm font-extrabold text-neutral-800">
                 {editing ? "Edit Expense" : "Record Outbound Expense"}
               </h2>
-              <button
+              <Button
                 onClick={() => setModalOpen(false)}
                 className="text-neutral-400 hover:text-neutral-700"
               >
                 <X size={18} />
-              </button>
+              </Button>
             </div>
             <form onSubmit={submit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <label className="text-xs font-bold text-neutral-700">
                   Category
-                  <select
+                  <NativeSelect
                     required
                     value={form.categoryId || ""}
                     onChange={(event) => { const selected = expenseCategories.find(category => category.id === Number(event.target.value)); setForm({ ...form, categoryId: selected?.id, categoryName: selected?.name }); }
@@ -370,11 +374,11 @@ export default function ExpensesPage() {
                     {expenseCategories.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </label>
                 <label className="text-xs font-bold text-neutral-700">
                   Amount ({currency})
-                  <input
+                  <Input
                     type="number"
                     required
                     min="1"
@@ -388,7 +392,7 @@ export default function ExpensesPage() {
               </div>
               <label className="block text-xs font-bold text-neutral-700">
                 Description
-                <input
+                <Input
                   required
                   value={form.description || ""}
                   onChange={(event) =>
@@ -400,7 +404,7 @@ export default function ExpensesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <label className="text-xs font-bold text-neutral-700">
                   Expense date
-                  <input
+                  <Input
                     type="date"
                     required
                     value={form.expenseDate || ""}
@@ -412,7 +416,7 @@ export default function ExpensesPage() {
                 </label>
                 <label className="text-xs font-bold text-neutral-700">
                   Receipt number
-                  <input
+                  <Input
                     value={form.receiptNumber || ""}
                     onChange={(event) =>
                       setForm({ ...form, receiptNumber: event.target.value })
@@ -424,7 +428,7 @@ export default function ExpensesPage() {
               {editing && (
                 <label className="block text-xs font-bold text-neutral-700">
                   Status
-                  <select
+                  <NativeSelect
                     value={form.status || "PENDING"}
                     onChange={(event) =>
                       setForm({ ...form, status: event.target.value })
@@ -440,20 +444,20 @@ export default function ExpensesPage() {
                     ].map((status) => (
                       <option key={status}>{status}</option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </label>
               )}
               <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4">
-                <button
+                <Button
                   type="button"
                   onClick={() => setModalOpen(false)}
                   className="rounded-lg border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-500"
                 >
                   Cancel
-                </button>
-                <button className="rounded-lg bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white hover:bg-[#08503C]">
+                </Button>
+                <Button className="rounded-lg bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white hover:bg-[#08503C]">
                   {editing ? "Save changes" : "Record expense"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

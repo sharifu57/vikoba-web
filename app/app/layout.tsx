@@ -1,5 +1,7 @@
 'use client'
 
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -20,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { clearVikobaLocalState, SESSION_EXPIRED_EVENT } from '@/lib/api/client'
+import { clearVikobaLocalState, refreshSessionIfNeeded, SESSION_EXPIRED_EVENT, SESSION_IDLE_TIMEOUT_MS } from '@/lib/api/client'
 import { ThemeToggle, VikobaLogo } from '@/components/brand'
 
 // Main Layout component wrapped inside Provider
@@ -33,7 +35,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
-  const IDLE_TIMEOUT_MS = 15 * 60 * 1000
   const IDLE_WARNING_MS = 60 * 1000
   const pathname = usePathname()
   const router = useRouter()
@@ -163,58 +164,95 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return
 
     let idleTimer: number | undefined
-    let warningTimer: number | undefined
+    let logoutTimer: number | undefined
     let countdownTimer: number | undefined
     let lastPersistedActivity = 0
+    let warningActive = false
 
     const clearIdleTimers = () => {
-      if (idleTimer) window.clearTimeout(idleTimer)
-      if (warningTimer) window.clearTimeout(warningTimer)
-      if (countdownTimer) window.clearInterval(countdownTimer)
+      window.clearTimeout(idleTimer)
+      window.clearTimeout(logoutTimer)
+      window.clearInterval(countdownTimer)
     }
 
-    const beginWarning = () => {
+    const signOutForInactivity = () => {
+      clearIdleTimers()
+      clearVikobaLocalState()
+      localStorage.setItem('v360_session_expired', String(Date.now()))
+      setShowIdleWarning(false)
+      router.replace('/auth/login?reason=session-expired')
+    }
+
+    const beginWarning = (lastActivity: number) => {
+      if (warningActive) return
+      const deadline = lastActivity + SESSION_IDLE_TIMEOUT_MS
+      if (Date.now() >= deadline) {
+        signOutForInactivity()
+        return
+      }
+      warningActive = true
       setShowIdleWarning(true)
-      setIdleSecondsLeft(Math.ceil(IDLE_WARNING_MS / 1000))
+      setIdleSecondsLeft(Math.ceil((deadline - Date.now()) / 1000))
       countdownTimer = window.setInterval(() => {
-        setIdleSecondsLeft((seconds) => Math.max(0, seconds - 1))
+        setIdleSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)))
       }, 1000)
-      warningTimer = window.setTimeout(() => {
-        clearIdleTimers()
-        handleSignOut()
-      }, IDLE_WARNING_MS)
+      logoutTimer = window.setTimeout(signOutForInactivity, deadline - Date.now())
     }
 
     const scheduleIdleLogout = (lastActivity = Date.now()) => {
       clearIdleTimers()
+      warningActive = false
       setShowIdleWarning(false)
       const elapsed = Math.max(0, Date.now() - lastActivity)
-      const remaining = IDLE_TIMEOUT_MS - elapsed
+      const remaining = SESSION_IDLE_TIMEOUT_MS - elapsed
 
       if (remaining <= 0) {
-        beginWarning()
+        signOutForInactivity()
         return
       }
-
-      idleTimer = window.setTimeout(beginWarning, remaining)
+      if (remaining <= IDLE_WARNING_MS) {
+        beginWarning(lastActivity)
+      } else {
+        idleTimer = window.setTimeout(() => beginWarning(lastActivity), remaining - IDLE_WARNING_MS)
+      }
     }
 
     const recordActivity = () => {
-      if (showIdleWarning) return
+      if (warningActive) return
       const now = Date.now()
-      if (now - lastPersistedActivity > 10000) {
-        lastPersistedActivity = now
-        localStorage.setItem('v360_last_activity', String(now))
+      const previous = Number(localStorage.getItem('v360_last_activity'))
+      if (previous > 0 && now - previous >= SESSION_IDLE_TIMEOUT_MS) {
+        signOutForInactivity()
+        return
       }
+      if (now - lastPersistedActivity < 1000) return
+      lastPersistedActivity = now
+      localStorage.setItem('v360_last_activity', String(now))
       scheduleIdleLogout(now)
+    }
+
+    const continueSession = () => {
+      const now = Date.now()
+      const previous = Number(localStorage.getItem('v360_last_activity'))
+      if (previous > 0 && now - previous >= SESSION_IDLE_TIMEOUT_MS) {
+        signOutForInactivity()
+        return
+      }
+      lastPersistedActivity = now
+      localStorage.setItem('v360_last_activity', String(now))
+      scheduleIdleLogout(now)
+      void refreshSessionIfNeeded()
     }
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === 'v360_last_activity' && event.newValue) {
         scheduleIdleLogout(Number(event.newValue))
       }
-      if (event.key === 'v360_session_expired') {
-        handleSignOut()
+      if (event.key === 'v360_session_expired' && event.newValue) {
+        clearIdleTimers()
+        clearVikobaLocalState()
+        setShowIdleWarning(false)
+        router.replace('/auth/login?reason=session-expired')
       }
     }
 
@@ -225,21 +263,42 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       router.replace('/auth/login?reason=session-expired')
     }
 
+    const checkActiveSession = () => {
+      const lastActivity = Number(localStorage.getItem('v360_last_activity'))
+      if (!warningActive && Number.isFinite(lastActivity) && Date.now() - lastActivity < SESSION_IDLE_TIMEOUT_MS) {
+        void refreshSessionIfNeeded()
+      }
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      const lastActivity = Number(localStorage.getItem('v360_last_activity'))
+      scheduleIdleLogout(Number.isFinite(lastActivity) && lastActivity > 0 ? lastActivity : Date.now())
+      checkActiveSession()
+    }
+
     const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
     activityEvents.forEach((event) => window.addEventListener(event, recordActivity, { passive: true }))
     window.addEventListener('storage', handleStorage)
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+    window.addEventListener('vikoba:continue-session', continueSession)
+    document.addEventListener('visibilitychange', handleVisibility)
+    const refreshInterval = window.setInterval(checkActiveSession, 30_000)
 
     const storedActivity = Number(localStorage.getItem('v360_last_activity') || Date.now())
     scheduleIdleLogout(storedActivity)
+    checkActiveSession()
 
     return () => {
       clearIdleTimers()
+      window.clearInterval(refreshInterval)
       activityEvents.forEach((event) => window.removeEventListener(event, recordActivity))
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+      window.removeEventListener('vikoba:continue-session', continueSession)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [router, showIdleWarning])
+  }, [router])
 
   const unreadNotifications = notifications.filter(n => !n.read)
 
@@ -254,6 +313,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
     { label: 'Finance Management', isHeader: true },
     { label: 'Shares (Hisa)', path: '/app/shares', icon: BarChart3 },
+    { label: 'Approval Workflows', path: '/app/workflows', icon: ShieldCheck },
     { label: 'Payments Received', path: '/app/payments', icon: CreditCard },
     { label: 'Expenses logged', path: '/app/expenses', icon: CreditCard },
     { label: 'Ledger Accounts', path: '/app/finance', icon: WalletCards },
@@ -295,14 +355,14 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           {/* Brand header */}
           <div className="side-brand flex items-center justify-between pb-5 border-b border-[#E5E7EB]/60 px-2">
             <Link href="/"><VikobaLogo compact /></Link>
-            <button className="md:hidden text-neutral-500 hover:text-neutral-900" onClick={() => setMobileOpen(false)}>
+            <Button className="md:hidden text-neutral-500 hover:text-neutral-900" onClick={() => setMobileOpen(false)}>
               <X size={18} />
-            </button>
+            </Button>
           </div>
 
           {/* Group Switcher dropdown */}
           <div className="relative mt-4 px-1">
-            <button
+            <Button
               onClick={() => setGroupDropdownOpen(!groupDropdownOpen)}
               className="group-switch w-full flex items-center justify-between bg-[#F2F7F4] border border-[#E9EFEB] hover:border-[#8FC1A9] rounded-xl p-3 text-left transition select-none cursor-pointer"
             >
@@ -314,19 +374,19 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 <span className="text-xs font-bold text-neutral-800 block truncate">{currentGroup?.name}</span>
               </div>
               <ChevronDown size={14} className="text-neutral-500" />
-            </button>
+            </Button>
 
             {groupDropdownOpen && (
               <div className="absolute left-1 right-1 top-[56px] bg-white border border-[#E5E7EB] rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5">
                 {groups.map(g => (
-                  <button
+                  <Button
                     key={g.id}
                     onClick={() => handleGroupSelect(g.id)}
                     className={`w-full text-left p-2.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-[#F2F7F4] ${g.id === currentGroupId ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-neutral-600'}`}
                   >
                     <span>{g.name}</span>
                     <span className="text-[10px] opacity-75 font-normal">{g.currency}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -402,14 +462,15 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             <Settings size={16} />
             <span>Settings</span>
           </Link>
-          <button
+          <Button
             type="button"
             onClick={() => setShowSignOutDialog(true)}
-            className="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 text-left w-full transition"
+            variant="destructive"
+            className="flex w-full items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-xs font-bold text-red-700 shadow-sm transition hover:bg-red-100"
           >
             <LogOut size={16} />
             <span>Sign Out</span>
-          </button>
+          </Button>
           <Dialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
             <DialogContent>
               <DialogHeader className="space-y-3">
@@ -442,10 +503,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 <Button
                   type="button"
                   onClick={() => {
-                    const now = Date.now()
-                    localStorage.setItem('v360_last_activity', String(now))
-                    setIdleSecondsLeft(60)
-                    setShowIdleWarning(false)
+                    window.dispatchEvent(new Event('vikoba:continue-session'))
                   }}
                   className="flex-1 bg-[#0B6B50] text-white hover:bg-[#08503C] sm:flex-none"
                 >
@@ -472,12 +530,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="app-header bg-white border-b border-[#E5E7EB] h-[68px] px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            <button className="md:hidden text-[#607169] p-1 hover:bg-[#E7F2ED] rounded" onClick={() => setMobileOpen(true)}>
+            <Button className="md:hidden text-[#607169] p-1 hover:bg-[#E7F2ED] rounded" onClick={() => setMobileOpen(true)}>
               <Menu size={20} />
-            </button>
+            </Button>
             <div className="search-box hidden sm:flex items-center gap-2 px-3 py-1.5 border border-[#E5E7EB] rounded-lg bg-[#F7F7F2] w-64">
               <Search size={14} className="text-neutral-400" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search code, member, transaction..."
                 className="bg-transparent border-0 outline-none text-xs w-full text-neutral-700"
@@ -489,7 +547,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
             <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F7F7F2] px-2 py-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{t('common.language')}</span>
-              <select
+              <NativeSelect
                 value={locale}
                 onChange={(e) => setLocale(e.target.value as Locale)}
                 className="bg-transparent text-xs font-semibold text-neutral-700 outline-none cursor-pointer"
@@ -497,11 +555,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               >
                 <option value="sw">{t('common.swahili')}</option>
                 <option value="en">{t('common.english')}</option>
-              </select>
+              </NativeSelect>
             </div>
 
             {/* Notifications Hub */}
-            <button
+            <Button
               onClick={() => {
                 setNotificationsOpen(!notificationsOpen)
                 if (!notificationsOpen && unreadNotifications.length > 0) {
@@ -514,7 +572,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               {unreadNotifications.length > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#EF6C4D] border border-white" />
               )}
-            </button>
+            </Button>
 
             {notificationsOpen && (
               <>
@@ -540,14 +598,15 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
             {/* Profile widget */}
             <div className="profile flex items-center gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowSignOutDialog(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-neutral-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                variant="destructive"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 shadow-sm transition hover:bg-red-100"
               >
                 <LogOut size={14} />
                 Logout
-              </button>
+              </Button>
               <Dialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
                 <DialogContent>
                   <DialogHeader className="space-y-3">
@@ -599,13 +658,13 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             <HandCoins size={18} />
             <span>Loans</span>
           </Link>
-          <button
+          <Button
             onClick={() => setMobileOpen(true)}
             className="flex flex-col items-center justify-center gap-1 text-[9px] font-bold text-neutral-400"
           >
             <MoreHorizontal size={18} />
             <span>More</span>
-          </button>
+          </Button>
         </nav>
       </div>
     </div>

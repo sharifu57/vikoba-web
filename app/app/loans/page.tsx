@@ -1,4 +1,8 @@
 "use client";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useEffect, useMemo, useState, FormEvent } from "react";
 import Link from "next/link";
 import { Loader2, PlusCircle, Search, Eye, Landmark, X } from "lucide-react";
@@ -119,13 +123,13 @@ export default function LoansDashboard() {
                     >
                         Review applications ({pending})
                     </Link>
-                    <button
+                    <Button
                         onClick={() => setOpen(true)}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white"
                     >
                         <PlusCircle size={14} />
                         Apply for loan
-                    </button>
+                    </Button>
                 </div>
             </header>
             {(message || api.error) && (
@@ -164,7 +168,7 @@ export default function LoansDashboard() {
                             className="absolute left-3 top-2.5 text-neutral-400"
                             size={14}
                         />
-                        <input
+                        <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search borrower or loan..."
@@ -173,51 +177,51 @@ export default function LoansDashboard() {
                     </div>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                        <thead>
-                            <tr className="bg-neutral-50 text-[9px] uppercase text-neutral-400">
-                                <th className="p-4">Borrower</th>
-                                <th className="p-4">Loan</th>
-                                <th className="p-4 text-right">Total</th>
-                                <th className="p-4 text-right">Paid</th>
-                                <th className="p-4 text-right">Outstanding</th>
-                                <th className="p-4">Progress</th>
-                                <th className="p-4"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <Table className="w-full text-left text-xs">
+                        <TableHeader>
+                            <TableRow className="bg-neutral-50 text-[9px] uppercase text-neutral-400">
+                                <TableHead className="p-4">Borrower</TableHead>
+                                <TableHead className="p-4">Loan</TableHead>
+                                <TableHead className="p-4 text-right">Total</TableHead>
+                                <TableHead className="p-4 text-right">Paid</TableHead>
+                                <TableHead className="p-4 text-right">Outstanding</TableHead>
+                                <TableHead className="p-4">Progress</TableHead>
+                                <TableHead className="p-4"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {api.loading ? (
-                                <tr>
-                                    <td colSpan={7} className="p-10 text-center">
+                                <TableRow>
+                                    <TableCell colSpan={7} className="p-10 text-center">
                                         <Loader2 className="inline animate-spin" size={16} />{" "}
                                         Loading loans...
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             ) : (
                                 active.map((l) => (
-                                    <tr key={l.id} className="border-t">
-                                        <td className="p-4 font-bold">
+                                    <TableRow key={l.id} className="border-t">
+                                        <TableCell className="p-4 font-bold">
                                             {l.memberName}
                                             <span className="block text-[10px] font-medium text-neutral-400">
                                                 {l.membershipNumber}
                                             </span>
-                                        </td>
-                                        <td className="p-4">
+                                        </TableCell>
+                                        <TableCell className="p-4">
                                             {l.loanProductName}
                                             <span className="block text-[10px] text-neutral-400">
                                                 {l.loanNumber} · {l.durationMonths} months
                                             </span>
-                                        </td>
-                                        <td className="p-4 text-right">
+                                        </TableCell>
+                                        <TableCell className="p-4 text-right">
                                             {fmt(l.totalAmount, currency)}
-                                        </td>
-                                        <td className="p-4 text-right text-emerald-600">
+                                        </TableCell>
+                                        <TableCell className="p-4 text-right text-emerald-600">
                                             {fmt(l.totalPaid, currency)}
-                                        </td>
-                                        <td className="p-4 text-right font-black text-red-500">
+                                        </TableCell>
+                                        <TableCell className="p-4 text-right font-black text-red-500">
                                             {fmt(l.remainingBalance, currency)}
-                                        </td>
-                                        <td className="p-4">
+                                        </TableCell>
+                                        <TableCell className="p-4">
                                             <div className="h-1.5 w-20 overflow-hidden rounded bg-neutral-100">
                                                 <div
                                                     className="h-full bg-[#0B6B50]"
@@ -225,8 +229,8 @@ export default function LoansDashboard() {
                                                 />
                                             </div>
                                             <span className="text-[10px]">{l.progress}%</span>
-                                        </td>
-                                        <td className="p-4">
+                                        </TableCell>
+                                        <TableCell className="p-4">
                                             <Link
                                                 href={`/app/loans/${l.id}`}
                                                 className="inline-flex items-center gap-1 rounded border px-2 py-1 text-[10px] font-bold"
@@ -234,19 +238,19 @@ export default function LoansDashboard() {
                                                 <Eye size={12} />
                                                 Schedule
                                             </Link>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))
                             )}
                             {!api.loading && !active.length && (
-                                <tr>
-                                    <td colSpan={7} className="p-10 text-center text-neutral-400">
+                                <TableRow>
+                                    <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                                         No active loans.
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             )}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
             </section>
             {open && (
@@ -254,14 +258,14 @@ export default function LoansDashboard() {
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
                         <div className="mb-5 flex justify-between border-b pb-3">
                             <h2 className="text-sm font-extrabold">Loan application</h2>
-                            <button onClick={() => setOpen(false)}>
+                            <Button onClick={() => setOpen(false)}>
                                 <X size={18} />
-                            </button>
+                            </Button>
                         </div>
                         <form onSubmit={submit} className="space-y-4">
                             <label className="block text-xs font-bold">
                                 Applicant
-                                <select
+                                <NativeSelect
                                     required
                                     value={f.memberId}
                                     onChange={(e) => setF({ ...f, memberId: e.target.value })}
@@ -276,12 +280,12 @@ export default function LoansDashboard() {
                                             ({m.membershipNumber || m.memberNo})
                                         </option>
                                     ))}
-                                </select>
+                                </NativeSelect>
                             </label>
                             <div className="grid grid-cols-2 gap-4">
                                 <label className="text-xs font-bold">
                                     Product
-                                    <select
+                                    <NativeSelect
                                         value={f.productId}
                                         onChange={(e) => setF({ ...f, productId: e.target.value })}
                                         className="mt-1 w-full rounded-lg border p-2.5"
@@ -292,11 +296,11 @@ export default function LoansDashboard() {
                                                 {p.name} ({p.interestRate}%)
                                             </option>
                                         ))}
-                                    </select>
+                                    </NativeSelect>
                                 </label>
                                 <label className="text-xs font-bold">
                                     Amount
-                                    <input
+                                    <Input
                                         type="number"
                                         required
                                         min="1"
@@ -308,7 +312,7 @@ export default function LoansDashboard() {
                             </div>
                             <label className="block text-xs font-bold">
                                 Repayment period (months)
-                                <input
+                                <Input
                                     type="number"
                                     min="1"
                                     value={f.duration}
@@ -319,21 +323,21 @@ export default function LoansDashboard() {
                             </label>
                             <label className="block text-xs font-bold">
                                 Purpose
-                                <input
+                                <Input
                                     required
                                     value={f.purpose}
                                     onChange={(e) => setF({ ...f, purpose: e.target.value })}
                                     className="mt-1 w-full rounded-lg border p-2.5"
                                 />
                             </label>
-                            <button
+                            <Button
                                 type="submit"
                                 disabled={api.loading}
                                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] p-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {api.loading && <Loader2 size={14} className="animate-spin" />}
                                 {api.loading ? "Submitting application..." : "Submit application"}
-                            </button>
+                            </Button>
                         </form>
                     </div>
                 </div>

@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -21,7 +23,7 @@ export default function ResetPasswordPage() {
       setError('Passwords do not match.')
       return
     }
-    
+
     setError('')
     setSuccess(true)
     setTimeout(() => {
@@ -43,7 +45,7 @@ export default function ResetPasswordPage() {
         </div>
 
         {error && <div className="p-3 text-xs bg-red-50 text-red-600 rounded-lg text-center font-bold">{error}</div>}
-        
+
         {success ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <CheckCircle2 size={42} className="text-[#0B6B50]" />
@@ -54,10 +56,10 @@ export default function ResetPasswordPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-bold text-neutral-700 mb-1.5">New Password *</label>
-              <input 
-                type="password" 
+              <Input
+                type="password"
                 required
-                placeholder="••••••••" 
+                placeholder="••••••••"
                 value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
                 className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50]"
@@ -66,22 +68,22 @@ export default function ResetPasswordPage() {
 
             <div>
               <label className="block text-xs font-bold text-neutral-700 mb-1.5">Confirm New Password *</label>
-              <input 
-                type="password" 
+              <Input
+                type="password"
                 required
-                placeholder="••••••••" 
+                placeholder="••••••••"
                 value={form.confirmPassword}
                 onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
                 className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50]"
               />
             </div>
 
-            <button 
+            <Button
               type="submit"
               className="w-full py-3 bg-[#0B6B50] hover:bg-[#08503C] text-white font-extrabold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 transition"
             >
               Update Password <ArrowRight size={14} />
-            </button>
+            </Button>
           </form>
         )}
 

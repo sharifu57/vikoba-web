@@ -1,4 +1,10 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, Plus, Search, X } from "lucide-react";
@@ -197,19 +203,19 @@ export default function FinesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => setConfigOpen((v) => !v)}
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-xs font-bold text-neutral-700"
           >
             Configure types
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setOpen(true)}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white"
           >
             <Plus size={15} /> Issue fine
-          </button>
+          </Button>
         </div>
       </div>
       {configOpen && (
@@ -221,13 +227,13 @@ export default function FinesPage() {
                 Configure penalties for this group and assign them when issuing a fine.
               </p>
             </div>
-            <button
+            <Button
               type="button"
               onClick={() => setConfigForm({ id: "", name: "", code: "", defaultAmount: "", description: "", active: true })}
               className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-[10px] font-bold"
             >
               New type
-            </button>
+            </Button>
           </div>
           <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-3">
@@ -239,7 +245,7 @@ export default function FinesPage() {
                       <p className="text-[10px] text-neutral-400">{type.code || "—"} • {money(Number(type.defaultAmount ?? 0), currency)}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setConfigForm({
                           id: String(type.id ?? ""),
@@ -252,15 +258,15 @@ export default function FinesPage() {
                         className="rounded bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"
                       >
                         Edit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         disabled={deleteType.isPending}
                         onClick={() => deleteType.mutate(type.id ?? "")}
                         className="rounded bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-50"
                       >
                         Disable
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))
@@ -279,7 +285,7 @@ export default function FinesPage() {
             >
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Name</label>
-                <input
+                <Input
                   value={configForm.name}
                   onChange={(e) => setConfigForm({ ...configForm, name: e.target.value })}
                   className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
@@ -289,7 +295,7 @@ export default function FinesPage() {
               </div>
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Code</label>
-                <input
+                <Input
                   value={configForm.code}
                   onChange={(e) => setConfigForm({ ...configForm, code: e.target.value })}
                   className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
@@ -298,7 +304,7 @@ export default function FinesPage() {
               </div>
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Default amount</label>
-                <input
+                <Input
                   type="number"
                   min="0"
                   value={configForm.defaultAmount}
@@ -309,7 +315,7 @@ export default function FinesPage() {
               </div>
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Description</label>
-                <textarea
+                <Textarea
                   value={configForm.description}
                   onChange={(e) => setConfigForm({ ...configForm, description: e.target.value })}
                   rows={3}
@@ -318,21 +324,21 @@ export default function FinesPage() {
                 />
               </div>
               <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
-                <input
+                <Checkbox
                   type="checkbox"
                   checked={configForm.active}
                   onChange={(e) => setConfigForm({ ...configForm, active: e.target.checked })}
                 />
                 Active for group
               </label>
-              <button
+              <Button
                 type="submit"
                 disabled={saveType.isPending}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
               >
                 {saveType.isPending && <Loader2 size={14} className="animate-spin" />}
                 {configForm.id ? "Update type" : "Save type"}
-              </button>
+              </Button>
             </form>
           </div>
         </div>
@@ -365,7 +371,7 @@ export default function FinesPage() {
       </div>
       <div className="mb-6 flex items-center rounded-xl border border-[#E5E7EB] bg-white p-4">
         <Search size={15} className="mr-2 text-neutral-400" />
-        <input
+        <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search member, type, or reference..."
@@ -374,30 +380,30 @@ export default function FinesPage() {
       </div>
       <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b bg-neutral-50 text-[9px] uppercase text-neutral-400">
-                <th className="p-4">Member</th>
-                <th className="p-4">Type / reference</th>
-                <th className="p-4 text-right">Amount</th>
-                <th className="p-4 text-right">Balance</th>
-                <th className="p-4">Issued</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className="w-full text-left text-xs">
+            <TableHeader>
+              <TableRow className="border-b bg-neutral-50 text-[9px] uppercase text-neutral-400">
+                <TableHead className="p-4">Member</TableHead>
+                <TableHead className="p-4">Type / reference</TableHead>
+                <TableHead className="p-4 text-right">Amount</TableHead>
+                <TableHead className="p-4 text-right">Balance</TableHead>
+                <TableHead className="p-4">Issued</TableHead>
+                <TableHead className="p-4">Status</TableHead>
+                <TableHead className="p-4 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {(finesQ.isLoading || membersQ.isLoading) && (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                <TableRow>
+                  <TableCell colSpan={7} className="p-12 text-center">
                     <Loader2 className="mx-auto animate-spin" size={20} />
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
               {!finesQ.isLoading &&
                 visible.map((f) => (
-                  <tr key={f.id} className="border-b border-neutral-50">
-                    <td className="p-4 font-bold">
+                  <TableRow key={f.id} className="border-b border-neutral-50">
+                    <TableCell className="p-4 font-bold">
                       {f.memberName ||
                         members.find(
                           (m) =>
@@ -408,31 +414,31 @@ export default function FinesPage() {
                       <span className="block text-[10px] font-normal text-neutral-400">
                         {f.membershipNumber || ""}
                       </span>
-                    </td>
-                    <td className="p-4">
+                    </TableCell>
+                    <TableCell className="p-4">
                       <span className="font-semibold">
                         {f.fineTypeName || f.type || "Penalty"}
                       </span>
                       <span className="block text-[10px] text-neutral-400">
                         {f.reference || "—"}
                       </span>
-                    </td>
-                    <td className="p-4 text-right font-bold">
+                    </TableCell>
+                    <TableCell className="p-4 text-right font-bold">
                       {money(Number(f.amount), currency)}
-                    </td>
-                    <td className="p-4 text-right font-black text-red-600">
+                    </TableCell>
+                    <TableCell className="p-4 text-right font-black text-red-600">
                       {money(Number(f.balance ?? f.amount), currency)}
-                    </td>
-                    <td className="p-4">{f.fineDate || "—"}</td>
-                    <td className="p-4">
+                    </TableCell>
+                    <TableCell className="p-4">{f.fineDate || "—"}</TableCell>
+                    <TableCell className="p-4">
                       <span className="rounded bg-red-50 px-2 py-1 text-[9px] font-extrabold">
                         {f.status || "UNPAID"}
                       </span>
-                    </td>
-                    <td className="p-4 text-right">
+                    </TableCell>
+                    <TableCell className="p-4 text-right">
                       {["UNPAID", "PARTIAL"].includes(f.status || "UNPAID") && (
                         <>
-                          <button
+                          <Button
                             onClick={() => {
                               const n = window.prompt(
                                 "Payment amount",
@@ -447,8 +453,8 @@ export default function FinesPage() {
                             className="mr-1 rounded bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"
                           >
                             Pay
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             onClick={() =>
                               update.mutate({
                                 id: String(f.id),
@@ -458,21 +464,21 @@ export default function FinesPage() {
                             className="rounded border px-2 py-1 text-[10px] font-bold"
                           >
                             Waive
-                          </button>
+                          </Button>
                         </>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
               {!finesQ.isLoading && !visible.length && (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="p-12 text-center text-neutral-400">
                     No fines found for this group.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
       {open && (
@@ -488,12 +494,12 @@ export default function FinesPage() {
                   Saved to the member ledger.
                 </p>
               </div>
-              <button type="button" onClick={() => setOpen(false)}>
+              <Button type="button" onClick={() => setOpen(false)}>
                 <X size={18} />
-              </button>
+              </Button>
             </div>
             <label className="mb-1 block text-xs font-bold">Member</label>
-            <select
+            <NativeSelect
               required
               value={form.groupMemberId}
               onChange={(e) =>
@@ -508,13 +514,13 @@ export default function FinesPage() {
                   {m.memberNo || m.membershipNumber || ""})
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-xs font-bold">
                   Fine type
                 </label>
-                <select
+                <NativeSelect
                   value={form.fineTypeId}
                   onChange={(e) =>
                     setForm({ ...form, fineTypeId: e.target.value })
@@ -530,13 +536,13 @@ export default function FinesPage() {
                       {t.name}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-bold">
                   Amount ({currency})
                 </label>
-                <input
+                <Input
                   required
                   min="1"
                   type="number"
@@ -547,13 +553,13 @@ export default function FinesPage() {
               </div>
             </div>
             <label className="mb-1 mt-4 block text-xs font-bold">Reason</label>
-            <textarea
+            <Textarea
               value={form.reason}
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
               rows={3}
               className="w-full rounded-lg border p-2.5 text-xs"
             />
-            <button
+            <Button
               disabled={issue.isPending}
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] py-3 text-xs font-bold text-white disabled:opacity-50"
             >
@@ -561,7 +567,7 @@ export default function FinesPage() {
                 <Loader2 size={14} className="animate-spin" />
               )}
               <Check size={14} /> Save fine to member ledger
-            </button>
+            </Button>
             {issue.isError && (
               <p className="mt-3 text-xs text-red-600">
                 {(issue.error as Error).message}

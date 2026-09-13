@@ -1,5 +1,9 @@
 "use client";
 
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
@@ -171,13 +175,13 @@ export default function FinanceOverviewPage() {
             Track balanced journal entries and live account positions.
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setModal(true)}
           disabled={!groupId}
           className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#08503C] disabled:opacity-50"
         >
           <PlusCircle size={14} /> Post journal entry
-        </button>
+        </Button>
       </header>
       <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
@@ -262,44 +266,44 @@ export default function FinanceOverviewPage() {
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
-                <th className="p-3">Code</th>
-                <th className="p-3">Account</th>
-                <th className="p-3">Type</th>
-                <th className="p-3 text-right">Debit</th>
-                <th className="p-3 text-right">Credit</th>
-                <th className="p-3 text-right">Balance</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-50">
+          <Table className="w-full text-left text-xs">
+            <TableHeader>
+              <TableRow className="bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
+                <TableHead className="p-3">Code</TableHead>
+                <TableHead className="p-3">Account</TableHead>
+                <TableHead className="p-3">Type</TableHead>
+                <TableHead className="p-3 text-right">Debit</TableHead>
+                <TableHead className="p-3 text-right">Credit</TableHead>
+                <TableHead className="p-3 text-right">Balance</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-neutral-50">
               {accounts.map((account) => (
-                <tr key={account.id} className="hover:bg-neutral-50/50">
-                  <td className="p-3 font-bold text-[#0B6B50]">
+                <TableRow key={account.id} className="hover:bg-neutral-50/50">
+                  <TableCell className="p-3 font-bold text-[#0B6B50]">
                     {account.code}
-                  </td>
-                  <td className="p-3 font-semibold text-neutral-700">
+                  </TableCell>
+                  <TableCell className="p-3 font-semibold text-neutral-700">
                     {account.name}
-                  </td>
-                  <td className="p-3">
+                  </TableCell>
+                  <TableCell className="p-3">
                     <span className="rounded bg-neutral-100 px-2 py-0.5 text-[9px] font-bold text-neutral-600">
                       {account.type}
                     </span>
-                  </td>
-                  <td className="p-3 text-right text-emerald-600">
+                  </TableCell>
+                  <TableCell className="p-3 text-right text-emerald-600">
                     {cash(account.debit, currency)}
-                  </td>
-                  <td className="p-3 text-right text-red-500">
+                  </TableCell>
+                  <TableCell className="p-3 text-right text-red-500">
                     {cash(account.credit, currency)}
-                  </td>
-                  <td className="p-3 text-right font-black text-neutral-800">
+                  </TableCell>
+                  <TableCell className="p-3 text-right font-black text-neutral-800">
                     {cash(account.balance, currency)}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </section>
       <section className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
@@ -315,7 +319,7 @@ export default function FinanceOverviewPage() {
               size={14}
               className="absolute left-3 top-3 text-neutral-400"
             />
-            <input
+            <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search reference or account..."
@@ -324,77 +328,77 @@ export default function FinanceOverviewPage() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
-                <th className="p-4">Date</th>
-                <th className="p-4">Reference</th>
-                <th className="p-4">Description</th>
-                <th className="p-4">Account</th>
-                <th className="p-4 text-right">Debit</th>
-                <th className="p-4 text-right">Credit</th>
-                <th className="p-4 text-right">Position</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-50">
+          <Table className="w-full text-left text-xs">
+            <TableHeader>
+              <TableRow className="border-b border-neutral-100 bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
+                <TableHead className="p-4">Date</TableHead>
+                <TableHead className="p-4">Reference</TableHead>
+                <TableHead className="p-4">Description</TableHead>
+                <TableHead className="p-4">Account</TableHead>
+                <TableHead className="p-4 text-right">Debit</TableHead>
+                <TableHead className="p-4 text-right">Credit</TableHead>
+                <TableHead className="p-4 text-right">Position</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-neutral-50">
               {api.loading ? (
-                <tr>
-                  <td colSpan={7} className="p-10 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                     <Loader2 className="mr-2 inline animate-spin" size={16} />{" "}
                     Loading ledger...
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 visible.map((line) => (
-                  <tr key={line.id} className="hover:bg-neutral-50/50">
-                    <td className="p-4 font-semibold text-neutral-500">
+                  <TableRow key={line.id} className="hover:bg-neutral-50/50">
+                    <TableCell className="p-4 font-semibold text-neutral-500">
                       {new Date(line.transactionDate).toLocaleDateString()}
-                    </td>
-                    <td className="p-4 font-bold text-[#0B6B50]">
+                    </TableCell>
+                    <TableCell className="p-4 font-bold text-[#0B6B50]">
                       {line.reference}
-                    </td>
-                    <td className="p-4 text-neutral-700">{line.description}</td>
-                    <td className="p-4">
+                    </TableCell>
+                    <TableCell className="p-4 text-neutral-700">{line.description}</TableCell>
+                    <TableCell className="p-4">
                       <span className="font-bold text-neutral-700">
                         {line.accountCode}
                       </span>
                       <span className="ml-1 text-neutral-400">
                         {line.accountName}
                       </span>
-                    </td>
-                    <td className="p-4 text-right font-bold text-emerald-600">
+                    </TableCell>
+                    <TableCell className="p-4 text-right font-bold text-emerald-600">
                       {line.debit > 0 && (
                         <span className="inline-flex items-center gap-0.5">
                           <ArrowDownRight size={12} />
                           {cash(line.debit, currency)}
                         </span>
                       )}
-                    </td>
-                    <td className="p-4 text-right font-bold text-red-500">
+                    </TableCell>
+                    <TableCell className="p-4 text-right font-bold text-red-500">
                       {line.credit > 0 && (
                         <span className="inline-flex items-center gap-0.5">
                           <ArrowUpRight size={12} />
                           {cash(line.credit, currency)}
                         </span>
                       )}
-                    </td>
-                    <td className="p-4 text-right font-black text-neutral-800">
+                    </TableCell>
+                    <TableCell className="p-4 text-right font-black text-neutral-800">
                       {cash(line.balance, currency)}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
               {!api.loading && !visible.length && (
-                <tr>
-                  <td colSpan={7} className="p-10 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                     {groupId
                       ? "No journal entries have been posted."
                       : "Select a group to view its ledger."}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </section>
       {modal && (
@@ -409,18 +413,18 @@ export default function FinanceOverviewPage() {
                   The same amount is debited and credited.
                 </p>
               </div>
-              <button
+              <Button
                 onClick={() => setModal(false)}
                 className="text-neutral-400 hover:text-neutral-700"
               >
                 <X size={18} />
-              </button>
+              </Button>
             </div>
             <form onSubmit={submit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <label className="text-xs font-bold text-neutral-700">
                   Reference
-                  <input
+                  <Input
                     value={form.reference}
                     onChange={(event) =>
                       setForm({ ...form, reference: event.target.value })
@@ -431,7 +435,7 @@ export default function FinanceOverviewPage() {
                 </label>
                 <label className="text-xs font-bold text-neutral-700">
                   Date &amp; time
-                  <input
+                  <Input
                     type="datetime-local"
                     required
                     value={form.date}
@@ -444,7 +448,7 @@ export default function FinanceOverviewPage() {
               </div>
               <label className="block text-xs font-bold text-neutral-700">
                 Description
-                <input
+                <Input
                   required
                   value={form.description}
                   onChange={(event) =>
@@ -456,7 +460,7 @@ export default function FinanceOverviewPage() {
               <div className="grid grid-cols-2 gap-4">
                 <label className="text-xs font-bold text-neutral-700">
                   Debit account
-                  <select
+                  <NativeSelect
                     required
                     value={form.debitAccountId}
                     onChange={(event) =>
@@ -466,11 +470,11 @@ export default function FinanceOverviewPage() {
                   >
                     <option value="">Select account</option>
                     {accountOptions}
-                  </select>
+                  </NativeSelect>
                 </label>
                 <label className="text-xs font-bold text-neutral-700">
                   Credit account
-                  <select
+                  <NativeSelect
                     required
                     value={form.creditAccountId}
                     onChange={(event) =>
@@ -480,12 +484,12 @@ export default function FinanceOverviewPage() {
                   >
                     <option value="">Select account</option>
                     {accountOptions}
-                  </select>
+                  </NativeSelect>
                 </label>
               </div>
               <label className="block text-xs font-bold text-neutral-700">
                 Amount ({currency})
-                <input
+                <Input
                   type="number"
                   required
                   min="1"
@@ -497,16 +501,16 @@ export default function FinanceOverviewPage() {
                 />
               </label>
               <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4">
-                <button
+                <Button
                   type="button"
                   onClick={() => setModal(false)}
                   className="rounded-lg border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600"
                 >
                   Cancel
-                </button>
-                <button className="rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#08503C]">
+                </Button>
+                <Button className="rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#08503C]">
                   Post entry
-                </button>
+                </Button>
               </div>
             </form>
           </div>

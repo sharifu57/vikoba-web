@@ -1,5 +1,6 @@
 "use client";
 
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useVikobaStore, type Group } from "@/lib/mockStore";
@@ -729,52 +730,52 @@ export default function DashboardPage() {
           </div>
 
           <div className="overflow-hidden rounded-xl border border-neutral-100">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-neutral-50 text-neutral-500">
-                <tr>
-                  <th className="px-3 py-2 font-bold">Date</th>
-                  <th className="px-3 py-2 font-bold">Member</th>
-                  <th className="px-3 py-2 font-bold">Type</th>
-                  <th className="px-3 py-2 font-bold text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table className="w-full text-left text-xs">
+              <TableHeader className="bg-neutral-50 text-neutral-500">
+                <TableRow>
+                  <TableHead className="px-3 py-2 font-bold">Date</TableHead>
+                  <TableHead className="px-3 py-2 font-bold">Member</TableHead>
+                  <TableHead className="px-3 py-2 font-bold">Type</TableHead>
+                  <TableHead className="px-3 py-2 font-bold text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {groupPayments.map((payment, index) => {
                   const memberName = payment.memberName || "Group payment";
                   return (
-                    <tr
+                    <TableRow
                       key={`${payment.reference}-${index}`}
                       className="border-t border-neutral-100"
                     >
-                      <td className="px-3 py-2 text-neutral-600">
+                      <TableCell className="px-3 py-2 text-neutral-600">
                         {formatDate(payment.date)}
-                      </td>
-                      <td className="px-3 py-2 font-semibold text-neutral-800">
+                      </TableCell>
+                      <TableCell className="px-3 py-2 font-semibold text-neutral-800">
                         {memberName}
-                      </td>
-                      <td className="px-3 py-2">
+                      </TableCell>
+                      <TableCell className="px-3 py-2">
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">
                           {payment.type || "OTHER"}
                         </span>
-                      </td>
-                      <td className="px-3 py-2 text-right font-black text-neutral-800">
+                      </TableCell>
+                      <TableCell className="px-3 py-2 text-right font-black text-neutral-800">
                         {formatCurrency(payment.amount, currentGroup.currency)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
                 {groupPayments.length === 0 && (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={4}
                       className="px-3 py-5 text-center text-neutral-400"
                     >
                       No payments logged yet.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
 

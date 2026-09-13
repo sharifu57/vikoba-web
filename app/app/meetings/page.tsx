@@ -1,5 +1,8 @@
 "use client"
 
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -163,12 +166,12 @@ export default function MeetingsDashboard() {
           <p className="mt-1 text-sm text-neutral-500">Plan group sessions, keep members informed, and record attendance with confidence.</p>
         </div>
         {canManageMeetings ? (
-          <button
+          <Button
             onClick={() => setModalOpen(true)}
             className="inline-flex items-center justify-center gap-2 self-stretch rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C] sm:self-auto"
           >
             <PlusCircle size={15} /> Schedule meeting
-          </button>
+          </Button>
         ) : (
           <span className="inline-flex items-center gap-2 self-stretch rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-xs font-bold text-neutral-500 sm:self-auto">
             <ShieldCheck size={14} className="text-[#0B6B50]" /> View-only access
@@ -303,21 +306,21 @@ export default function MeetingsDashboard() {
           <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto border border-[#E5E7EB] bg-white p-5 shadow-2xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="schedule-meeting-title">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
               <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Meeting planner</p><h3 id="schedule-meeting-title" className="mt-1 text-lg font-black text-neutral-900">Schedule a group meeting</h3></div>
-              <button type="button" title="Close meeting planner" aria-label="Close meeting planner" onClick={() => setModalOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700">
+              <Button type="button" title="Close meeting planner" aria-label="Close meeting planner" onClick={() => setModalOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700">
                 <X size={18} />
-              </button>
+              </Button>
             </div>
 
             <form onSubmit={handleSchedule} className="mt-5 flex flex-col gap-5">
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-neutral-700">Meeting title</label>
-                <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. September savings review" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-2.5 text-xs text-neutral-800 outline-none transition focus:border-[#0B6B50]" />
+                <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. September savings review" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-2.5 text-xs text-neutral-800 outline-none transition focus:border-[#0B6B50]" />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 mb-1.5">Session Date *</label>
-                  <input
+                  <Input
                     type="date"
                     required
                     min={todayIso}
@@ -328,7 +331,7 @@ export default function MeetingsDashboard() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 mb-1.5">Start Time *</label>
-                  <input
+                  <Input
                     type="time"
                     required
                     value={form.time}
@@ -338,27 +341,27 @@ export default function MeetingsDashboard() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 mb-1.5">End time</label>
-                  <input type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-2.5 text-xs outline-none focus:border-[#0B6B50]" />
+                  <Input type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-2.5 text-xs outline-none focus:border-[#0B6B50]" />
                 </div>
               </div>
 
               <div>
                 <label className="mb-2 block text-xs font-bold text-neutral-700">Meeting format *</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setForm({ ...form, meetingMode: "PHYSICAL", meetingLink: "" })} className={`flex items-start gap-3 border p-3 text-left transition ${form.meetingMode === "PHYSICAL" ? "border-[#0B6B50] bg-[#F2F7F4]" : "border-[#E5E7EB] bg-white hover:border-[#B5D7C5]"}`}>
+                  <Button type="button" onClick={() => setForm({ ...form, meetingMode: "PHYSICAL", meetingLink: "" })} className={`flex items-start gap-3 border p-3 text-left transition ${form.meetingMode === "PHYSICAL" ? "border-[#0B6B50] bg-[#F2F7F4]" : "border-[#E5E7EB] bg-white hover:border-[#B5D7C5]"}`}>
                     <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${form.meetingMode === "PHYSICAL" ? "bg-[#0B6B50] text-white" : "bg-neutral-100 text-neutral-500"}`}><MapPin size={17} /></span>
                     <span><span className="block text-xs font-bold text-neutral-800">Physical</span><span className="mt-1 block text-[10px] leading-4 text-neutral-500">Meet at a shared location.</span></span>
-                  </button>
-                  <button type="button" onClick={() => setForm({ ...form, meetingMode: "ONLINE", location: "" })} className={`flex items-start gap-3 border p-3 text-left transition ${form.meetingMode === "ONLINE" ? "border-[#0B6B50] bg-[#F2F7F4]" : "border-[#E5E7EB] bg-white hover:border-[#B5D7C5]"}`}>
+                  </Button>
+                  <Button type="button" onClick={() => setForm({ ...form, meetingMode: "ONLINE", location: "" })} className={`flex items-start gap-3 border p-3 text-left transition ${form.meetingMode === "ONLINE" ? "border-[#0B6B50] bg-[#F2F7F4]" : "border-[#E5E7EB] bg-white hover:border-[#B5D7C5]"}`}>
                     <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${form.meetingMode === "ONLINE" ? "bg-[#0B6B50] text-white" : "bg-neutral-100 text-neutral-500"}`}><Video size={17} /></span>
                     <span><span className="block text-xs font-bold text-neutral-800">Online</span><span className="mt-1 block text-[10px] leading-4 text-neutral-500">Share a secure meeting link.</span></span>
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 mb-1.5">{form.meetingMode === "ONLINE" ? "Meeting link *" : "Location *"}</label>
-                <input
+                <Input
                   type={form.meetingMode === "ONLINE" ? "url" : "text"}
                   required
                   placeholder={form.meetingMode === "ONLINE" ? "https://meet.google.com/..." : "e.g. Community Hall, Mikocheni"}
@@ -371,7 +374,7 @@ export default function MeetingsDashboard() {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 mb-1.5">Assembly Agenda *</label>
-                <textarea
+                <Textarea
                   required
                   rows={3}
                   placeholder="Weekly contributions collection, review dividend payout timelines..."
@@ -382,20 +385,20 @@ export default function MeetingsDashboard() {
               </div>
 
               <div className="flex gap-3 justify-end pt-3 border-t border-neutral-100">
-                <button
+                <Button
                   type="button"
                   onClick={() => setModalOpen(false)}
                   className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-500 transition hover:bg-neutral-50"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
                   disabled={createMeetingMutation.status === 'pending'}
                   className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition ${createMeetingMutation.status === 'pending' ? 'cursor-wait bg-neutral-300' : 'bg-[#0B6B50] hover:bg-[#08503C]'}`}
                 >
                   {createMeetingMutation.status === 'pending' ? <><Loader2 size={14} className="animate-spin" /> Scheduling...</> : <><CalendarDays size={14} /> Schedule meeting</>}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

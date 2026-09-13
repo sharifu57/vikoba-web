@@ -1,5 +1,10 @@
 'use client'
 
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -230,20 +235,20 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
 
         {canManageAttendance ? (
           <div className="flex gap-2 w-full md:w-auto">
-            <button
+            <Button
               onClick={handleMarkAllPresent}
               disabled={attendanceTaken}
               className={`flex-1 md:flex-none px-4 py-2.5 border border-[#E5E7EB] rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${attendanceTaken ? 'opacity-60 cursor-not-allowed' : 'hover:bg-neutral-50'}`}
             >
               <CheckSquare size={14} /> Mark All Present
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
               disabled={attendanceTaken || isSaving}
               className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm ${attendanceTaken || isSaving ? 'bg-neutral-300 cursor-wait text-neutral-600' : 'bg-[#0B6B50] hover:bg-[#08503C] text-white'}`}
             >
               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} strokeWidth={3} />} {isSaving ? 'Saving...' : 'Save Attendance'}
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="inline-flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-neutral-50 px-3 py-2 text-xs font-bold text-neutral-500"><ShieldCheck size={14} className="text-[#0B6B50]" /> Attendance is restricted</div>
@@ -255,24 +260,24 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
       {/* Register Checklist table */}
       <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-neutral-50/70 text-neutral-400 uppercase text-[9px] tracking-wider border-b border-neutral-100">
-                <th className="p-4 font-bold">Member</th>
-                <th className="p-4 font-bold">Arrival Time</th>
-                <th className="p-4 font-bold text-center">Toggled Status</th>
-                <th className="p-4 font-bold">Exempt Reason / Remarks</th>
-                <th className="p-4 font-bold text-right">Auto Fine Issued</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-50">
+          <Table className="w-full text-left border-collapse text-xs">
+            <TableHeader>
+              <TableRow className="bg-neutral-50/70 text-neutral-400 uppercase text-[9px] tracking-wider border-b border-neutral-100">
+                <TableHead className="p-4 font-bold">Member</TableHead>
+                <TableHead className="p-4 font-bold">Arrival Time</TableHead>
+                <TableHead className="p-4 font-bold text-center">Toggled Status</TableHead>
+                <TableHead className="p-4 font-bold">Exempt Reason / Remarks</TableHead>
+                <TableHead className="p-4 font-bold text-right">Auto Fine Issued</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-neutral-50">
               {register.map(item => {
                 const member = members.find(m => m.id === item.memberId)
                 const initials = (member?.name || member?.fullName || 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 3)
                 const fineAmount = item.status === 'ABSENT' ? fineAmounts.absent : item.status === 'LATE' ? fineAmounts.late : 0
                 return (
-                  <tr key={item.memberId} className="hover:bg-neutral-50/50">
-                    <td className="p-4">
+                  <TableRow key={item.memberId} className="hover:bg-neutral-50/50">
+                    <TableCell className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#E7F2ED] text-[#0B6B50] font-bold text-xs flex items-center justify-center">
                           {initials}
@@ -282,9 +287,9 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                           <span className="text-[9px] text-neutral-400 block mt-0.5">{member?.memberNo ?? member?.membershipNumber ?? ''}</span>
                         </div>
                       </div>
-                    </td>
-                    <td className="p-4 flex items-center gap-2">
-                      <input
+                    </TableCell>
+                    <TableCell className="p-4 flex items-center gap-2">
+                      <Input
                         type="time"
                         readOnly
                         placeholder="--:--"
@@ -294,7 +299,7 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                         className="border border-[#E5E7EB] rounded p-1.5 text-[11px] outline-none w-24 text-neutral-600 font-semibold disabled:bg-neutral-50 disabled:text-neutral-300"
                       />
                       {!attendanceTaken && canManageAttendance && (
-                        <button
+                        <Button
                           type="button"
                           onClick={() => {
                             const now = new Date()
@@ -304,15 +309,15 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                             setRegister(updated)
                           }}
                           className="px-2 py-1 text-[11px] bg-neutral-50 border border-neutral-100 rounded text-neutral-600"
-                        >Now</button>
+                        >Now</Button>
                       )}
-                    </td>
-                    <td className="p-4 text-center">
+                    </TableCell>
+                    <TableCell className="p-4 text-center">
                       <div className="inline-flex rounded-lg border border-neutral-100 p-0.5 gap-0.5 bg-neutral-50/50">
                         {(['PRESENT', 'LATE', 'ABSENT', 'EXCUSED'] as const).map(st => {
                           const active = item.status === st
                           return (
-                            <button
+                            <Button
                               key={st}
                               type="button"
                               disabled={attendanceTaken || !canManageAttendance}
@@ -325,13 +330,13 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                                 }`}
                             >
                               {st}
-                            </button>
+                            </Button>
                           )
                         })}
                       </div>
-                    </td>
-                    <td className="p-4">
-                      <input
+                    </TableCell>
+                    <TableCell className="p-4">
+                      <Input
                         type="text"
                         placeholder="e.g. Funeral excuse"
                         value={item.reason}
@@ -339,19 +344,19 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
                         disabled={attendanceTaken || !canManageAttendance}
                         className="border border-[#E5E7EB] rounded p-1.5 text-[11px] outline-none w-full max-w-xs text-neutral-600 disabled:bg-neutral-50 disabled:text-neutral-400"
                       />
-                    </td>
-                    <td className="p-4 font-black text-right text-neutral-800">
+                    </TableCell>
+                    <TableCell className="p-4 font-black text-right text-neutral-800">
                       {(Number(fineAmount ?? 0) > 0) ? (
                         <span className="text-red-500">+{currency} {Number(fineAmount ?? 0).toLocaleString()}</span>
                       ) : (
                         <span className="text-neutral-300">—</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
@@ -363,8 +368,8 @@ export default function MeetingAttendancePage({ params }: { params: Promise<{ id
 
         {canManageMinutes ? (
           <div className="mt-4">
-            <textarea value={minutesDraft} onChange={(event) => setMinutesDraft(event.target.value)} rows={8} placeholder="Record the discussion, resolutions, assigned actions, and any next steps..." className="w-full resize-y rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-3 text-sm text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><label className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-600"><input type="checkbox" checked={minutesApproved} onChange={(event) => setMinutesApproved(event.target.checked)} className="h-4 w-4 accent-[#0B6B50]" /> Mark these minutes as approved</label><button type="button" onClick={handleSaveMinutes} disabled={isSavingMinutes || !minutesDraft.trim()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-60">{isSavingMinutes ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{isSavingMinutes ? 'Saving...' : 'Save minutes'}</button></div>
+            <Textarea value={minutesDraft} onChange={(event) => setMinutesDraft(event.target.value)} rows={8} placeholder="Record the discussion, resolutions, assigned actions, and any next steps..." className="w-full resize-y rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-3 text-sm text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><label className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-600"><Checkbox type="checkbox" checked={minutesApproved} onChange={(event) => setMinutesApproved(event.target.checked)} className="h-4 w-4 accent-[#0B6B50]" /> Mark these minutes as approved</label><Button type="button" onClick={handleSaveMinutes} disabled={isSavingMinutes || !minutesDraft.trim()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-60">{isSavingMinutes ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{isSavingMinutes ? 'Saving...' : 'Save minutes'}</Button></div>
           </div>
         ) : minutes?.content ? (
           <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-neutral-700">{minutes.content}</p>

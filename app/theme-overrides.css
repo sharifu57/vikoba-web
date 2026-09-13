@@ -5,7 +5,9 @@
   --card-foreground: #FFFFFF;
   --muted: #1D3D31;
   --muted-foreground: #CBD5E1;
-  --border: #334155;
+  --border: #52685E;
+  --input: #789185;
+  --destructive: #FF8A80;
   --primary-soft: #1C4738;
   --secondary: #D99A2B;
 }
@@ -21,4 +23,4 @@
 .dark .panel, .dark .dash-kpi, .dark .preview-card, .dark .price-card, .dark .feature-card { background: var(--card) !important; border-color: var(--border) !important; color: var(--foreground); }
 
 /* Keep the primary action readable in every theme. */
-.bg-primary, .button-primary, [data-slot="button"]:not([data-variant="ghost"]):not([data-variant="link"]) { color: var(--primary-foreground) !important; }
+.bg-primary, .button-primary, [data-slot="button"][data-variant="default"] { color: var(--primary-foreground) !important; }

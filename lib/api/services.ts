@@ -39,6 +39,9 @@ export type SharePurchaseRequestRecord = {
   reviewedAt?: string;
   accountantApprovedAt?: string;
   chairApprovedAt?: string;
+  approvalSteps?: Array<{ role: string; label: string; approvedAt?: string | null; approvedBy?: number | null; skipped: boolean }>;
+  currentStepRole?: string | null;
+  currentStepLabel?: string | null;
 };
 
 export const authService = {
@@ -275,6 +278,7 @@ export type GroupProfileSettingsPayload = {
   startDate?: string | null;
   endDate?: string | null;
   settings?: GroupSettingsPayload;
+  shareApprovalSteps?: Array<{ role: string; label: string }>;
 };
 
 export type VikobaGroupCreateResponse = {
@@ -291,6 +295,7 @@ export type VikobaGroupCreateResponse = {
 export type GroupWithSettingsResponse = {
   group?: VikobaGroupCreateResponse | null;
   settings?: GroupSettingsPayload | null;
+  shareApprovalSteps?: Array<{ role: string; label: string }>;
 };
 
 export type Member = {
@@ -512,6 +517,10 @@ export const groupService = {
       },
     );
   },
+  updateProfileAndSettings: (id: string, payload: GroupProfileSettingsPayload) =>
+    apiPut<ApiResponse<GroupWithSettingsResponse>>(
+      `${API_ENDPOINTS.groups}/${id}/settings`, payload, { auth: true },
+    ),
   remove: (id: string) => apiDelete(`${API_ENDPOINTS.groups}/${id}`),
 };
 
@@ -560,10 +569,16 @@ export const memberService = {
 };
 
 export const sharePurchaseRequestService = {
-  list: (groupId: string, status = "PENDING") =>
+  listMine: (groupId: string) =>
+    apiGet<ApiResponse<SharePurchaseRequestRecord[]>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}/mine`,
+      undefined,
+      { auth: true },
+    ),
+  list: (groupId: string, status: string | null = "PENDING") =>
     apiGet<ApiResponse<SharePurchaseRequestRecord[]>>(
       `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}`,
-      { status },
+      status ? { status } : undefined,
       { auth: true },
     ),
   submit: (groupId: string, formData: FormData) =>

@@ -1,5 +1,9 @@
 'use client'
 
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -510,7 +514,7 @@ export default function MembersPage() {
         </div>
 
         {canManageMembers && <div className="flex flex-wrap gap-3">
-          <button
+          <Button
             onClick={() => {
               setMemberAddMode(null)
               setModalOpen(true)
@@ -519,7 +523,7 @@ export default function MembersPage() {
           >
             <UserPlus size={14} />
             Add Members
-          </button>
+          </Button>
         </div>}
       </div>
 
@@ -527,7 +531,7 @@ export default function MembersPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
-            <input
+            <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, phone or member number"
@@ -541,7 +545,7 @@ export default function MembersPage() {
               <span>Filters</span>
             </div>
 
-            <select
+            <NativeSelect
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
               className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-xs text-neutral-700 outline-none"
@@ -551,9 +555,9 @@ export default function MembersPage() {
                   {role === 'ALL' ? 'All Roles' : role}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
 
-            <select
+            <NativeSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-xs text-neutral-700 outline-none"
@@ -562,39 +566,39 @@ export default function MembersPage() {
               <option value="ACTIVE">Active</option>
               <option value="SUSPENDED">Suspended</option>
               <option value="EXITED">Exited</option>
-            </select>
+            </NativeSelect>
           </div>
         </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-xs">
-            <thead className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
-              <tr>
-                <th className="px-4 py-3">Member</th>
-                <th className="px-4 py-3">Member No</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">Joined</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
+          <Table className="min-w-full text-left text-xs">
+            <TableHeader className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+              <TableRow>
+                <TableHead className="px-4 py-3">Member</TableHead>
+                <TableHead className="px-4 py-3">Member No</TableHead>
+                <TableHead className="px-4 py-3">Phone</TableHead>
+                <TableHead className="px-4 py-3">Joined</TableHead>
+                <TableHead className="px-4 py-3">Role</TableHead>
+                <TableHead className="px-4 py-3">Status</TableHead>
+                <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
 
-            <tbody className="divide-y divide-neutral-100">
+            <TableBody className="divide-y divide-neutral-100">
               {loadingMembers ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="px-4 py-12 text-center text-neutral-400">
                     <div className="inline-flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" /> Loading members...
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : filteredMembers.length ? (
                 filteredMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-neutral-50/70">
-                    <td className="px-4 py-3">
+                  <TableRow key={member.id} className="hover:bg-neutral-50/70">
+                    <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E7F2ED] text-xs font-black text-[#0B6B50]">
                           {member.name
@@ -609,16 +613,16 @@ export default function MembersPage() {
                           <p className="text-[10px] text-neutral-400">{member.email || 'No email added'}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-neutral-600">{member.memberNo}</td>
-                    <td className="px-4 py-3 text-neutral-600">{member.phone || '—'}</td>
-                    <td className="px-4 py-3 text-neutral-600">{member.joinedDate || '—'}</td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 font-semibold text-neutral-600">{member.memberNo}</TableCell>
+                    <TableCell className="px-4 py-3 text-neutral-600">{member.phone || '—'}</TableCell>
+                    <TableCell className="px-4 py-3 text-neutral-600">{member.joinedDate || '—'}</TableCell>
+                    <TableCell className="px-4 py-3">
                       <span className="rounded-full bg-[#F2F7F4] px-2.5 py-1 text-[10px] font-bold text-[#0B6B50]">
                         {member.role}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <span
                         className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${member.status === 'ACTIVE'
                           ? 'bg-emerald-50 text-emerald-700'
@@ -627,8 +631,8 @@ export default function MembersPage() {
                       >
                         {member.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/app/members/${member.id}`}
@@ -646,29 +650,29 @@ export default function MembersPage() {
                               <MoreHorizontal size={15} />
                             </summary>
                             <div className="mt-1 w-40 rounded-lg border border-[#E5E7EB] bg-white p-1 shadow-lg">
-                              <button type="button" onClick={() => openEditMember(member)} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-semibold text-neutral-700 hover:bg-[#F2F7F4] hover:text-[#0B6B50]">
+                              <Button type="button" onClick={() => openEditMember(member)} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-semibold text-neutral-700 hover:bg-[#F2F7F4] hover:text-[#0B6B50]">
                                 <PencilLine size={13} /> Edit member
-                              </button>
-                              <button type="button" onClick={() => setStatusMember(member)} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-semibold ${member.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-[#0B6B50] hover:bg-[#F2F7F4]'}`}>
+                              </Button>
+                              <Button type="button" onClick={() => setStatusMember(member)} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-semibold ${member.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-[#0B6B50] hover:bg-[#F2F7F4]'}`}>
                                 {member.status === 'ACTIVE' ? <UserX size={13} /> : <UserCheck size={13} />}
                                 {member.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}
-                              </button>
+                              </Button>
                             </div>
                           </details>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="px-4 py-12 text-center text-neutral-400">
                     {groupId ? 'No members match your search and filters yet.' : 'Select a group to start managing members.'}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
@@ -683,7 +687,7 @@ export default function MembersPage() {
                 </h3> */}
 
                 <div className="flex flex-wrap gap-3">
-                  <button
+                  <Button
                     onClick={() => {
                       setMemberAddMode(null)
                       setModalOpen(true)
@@ -692,12 +696,12 @@ export default function MembersPage() {
                   >
                     <UserPlus size={14} />
                     Add Members
-                  </button>
+                  </Button>
                 </div>
               </div>
-              <button type="button" onClick={() => setModalOpen(false)} className="rounded-full p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+              <Button type="button" onClick={() => setModalOpen(false)} className="rounded-full p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
                 <X size={18} />
-              </button>
+              </Button>
             </div>
 
             {memberAddMode === null ? (
@@ -713,7 +717,7 @@ export default function MembersPage() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   {/* Single Member */}
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMemberAddMode('single')}
                     className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 text-left transition hover:border-[#0B6B50] hover:bg-[#F7F7F2] hover:shadow-sm"
@@ -734,10 +738,10 @@ export default function MembersPage() {
                     <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#0B6B50]">
                       Add member →
                     </span>
-                  </button>
+                  </Button>
 
                   {/* Bulk Import */}
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMemberAddMode('bulk')}
                     className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 text-left transition hover:border-[#0B6B50] hover:bg-[#F7F7F2] hover:shadow-sm"
@@ -758,17 +762,17 @@ export default function MembersPage() {
                     <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#0B6B50]">
                       Upload spreadsheet →
                     </span>
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="flex justify-end border-t border-neutral-100 pt-4">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setModalOpen(false)}
                     className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : memberAddMode === 'single' ? (
@@ -778,7 +782,7 @@ export default function MembersPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">First Name *</label>
-                    <input
+                    <Input
                       value={newMem.firstName}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, firstName: e.target.value }))}
                       placeholder="e.g. Juma"
@@ -788,7 +792,7 @@ export default function MembersPage() {
 
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Last Name *</label>
-                    <input
+                    <Input
                       value={newMem.lastName}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, lastName: e.target.value }))}
                       placeholder="e.g. Majid"
@@ -800,7 +804,7 @@ export default function MembersPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone Number *</label>
-                    <input
+                    <Input
                       value={newMem.phone}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, phone: e.target.value }))}
                       placeholder="255712345678"
@@ -810,7 +814,7 @@ export default function MembersPage() {
 
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Role</label>
-                    <select
+                    <NativeSelect
                       value={newMem.role}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, role: e.target.value }))}
                       className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
@@ -828,13 +832,13 @@ export default function MembersPage() {
                           <option value="LOAN_OFFICER">Loan Officer</option>
                         </>
                       )}
-                    </select>
+                    </NativeSelect>
                   </div>
                 </div>
 
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">Email Address</label>
-                  <input
+                  <Input
                     value={newMem.email}
                     onChange={(e) => setNewMem((prev) => ({ ...prev, email: e.target.value }))}
                     type="email"
@@ -844,16 +848,16 @@ export default function MembersPage() {
                 </div>
 
                 <div className="flex justify-between gap-3 border-t border-neutral-100 pt-4">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMemberAddMode(null)}
                     className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     ← Back
-                  </button>
+                  </Button>
 
                   <div className="flex gap-3">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setModalOpen(false)
@@ -862,9 +866,9 @@ export default function MembersPage() {
                       className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                     >
                       Cancel
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="submit"
                       disabled={isSubmitting}
                       className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70"
@@ -875,7 +879,7 @@ export default function MembersPage() {
                         <Plus size={14} />
                       )}
                       Save Member
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </form>
@@ -896,7 +900,7 @@ export default function MembersPage() {
                         Download sample CSV
                       </a>
                     </div>
-                    <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleBulkFile} className="hidden" />
+                    <Input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleBulkFile} className="hidden" />
                   </label>
                 </div>
 
@@ -914,24 +918,24 @@ export default function MembersPage() {
 
                 {bulkRows.length > 0 && (
                   <div className="max-h-80 overflow-auto rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-3">
-                    <table className="w-full text-left text-[11px]">
-                      <thead className="text-neutral-400">
-                        <tr>
-                          <th className="pb-2 font-bold">Name</th>
-                          <th className="pb-2 font-bold">Phone</th>
-                          <th className="pb-2 font-bold">Role</th>
-                          <th className="pb-2 font-bold">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table className="w-full text-left text-[11px]">
+                      <TableHeader className="text-neutral-400">
+                        <TableRow>
+                          <TableHead className="pb-2 font-bold">Name</TableHead>
+                          <TableHead className="pb-2 font-bold">Phone</TableHead>
+                          <TableHead className="pb-2 font-bold">Role</TableHead>
+                          <TableHead className="pb-2 font-bold">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {bulkRows.map((row, index) => (
-                          <tr key={`${row.phone}-${index}`} className="border-t border-neutral-100">
-                            <td className="py-2 pr-2 font-medium text-neutral-700">
+                          <TableRow key={`${row.phone}-${index}`} className="border-t border-neutral-100">
+                            <TableCell className="py-2 pr-2 font-medium text-neutral-700">
                               {row.firstName} {row.lastName}
-                            </td>
-                            <td className="py-2 pr-2 text-neutral-600">{row.phone || '—'}</td>
-                            <td className="py-2 pr-2 text-neutral-600">{formatRoleLabel(row.role)}</td>
-                            <td className="py-2">
+                            </TableCell>
+                            <TableCell className="py-2 pr-2 text-neutral-600">{row.phone || '—'}</TableCell>
+                            <TableCell className="py-2 pr-2 text-neutral-600">{formatRoleLabel(row.role)}</TableCell>
+                            <TableCell className="py-2">
                               {row.valid ? (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
                                   <CheckCircle2 className="h-3 w-3" /> Valid
@@ -941,25 +945,25 @@ export default function MembersPage() {
                                   {row.error}
                                 </span>
                               )}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
 
                 <div className="flex justify-between gap-3 border-t border-neutral-100 pt-4">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMemberAddMode(null)}
                     className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     ← Back
-                  </button>
+                  </Button>
 
                   <div className="flex gap-3">
-                    <button
+                    <Button
                       type="button"
                       onClick={
                         () => {
@@ -971,9 +975,9 @@ export default function MembersPage() {
                       className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                     >
                       Cancel
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="button"
                       onClick={handleBulkUpload}
                       disabled={isSubmitting || !bulkRows.filter((row) => row.valid).length}
@@ -985,7 +989,7 @@ export default function MembersPage() {
                         <Upload size={14} />
                       )}
                       Upload Members
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1005,7 +1009,7 @@ export default function MembersPage() {
                 <h2 id="edit-member-title" className="mt-1 text-lg font-black text-neutral-900">Edit {editingMember.name}</h2>
                 <p className="mt-1 text-xs text-neutral-500">Member number: {editingMember.memberNo}</p>
               </div>
-              <button
+              <Button
                 type="button"
                 title="Close edit member form"
                 aria-label="Close edit member form"
@@ -1013,50 +1017,50 @@ export default function MembersPage() {
                 className="grid h-8 w-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
               >
                 <X size={18} />
-              </button>
+              </Button>
             </div>
 
             <form onSubmit={handleEditMember} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">First name *</label>
-                  <input value={editForm.firstName} onChange={(event) => setEditForm((current) => current ? { ...current, firstName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  <Input value={editForm.firstName} onChange={(event) => setEditForm((current) => current ? { ...current, firstName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">Middle name</label>
-                  <input value={editForm.middleName} onChange={(event) => setEditForm((current) => current ? { ...current, middleName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  <Input value={editForm.middleName} onChange={(event) => setEditForm((current) => current ? { ...current, middleName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">Last name *</label>
-                  <input value={editForm.lastName} onChange={(event) => setEditForm((current) => current ? { ...current, lastName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  <Input value={editForm.lastName} onChange={(event) => setEditForm((current) => current ? { ...current, lastName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone number *</label>
-                  <input value={editForm.phone} onChange={(event) => setEditForm((current) => current ? { ...current, phone: event.target.value } : current)} inputMode="tel" placeholder="255712345678" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  <Input value={editForm.phone} onChange={(event) => setEditForm((current) => current ? { ...current, phone: event.target.value } : current)} inputMode="tel" placeholder="255712345678" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">Email address</label>
-                  <input value={editForm.email} onChange={(event) => setEditForm((current) => current ? { ...current, email: event.target.value } : current)} type="email" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  <Input value={editForm.email} onChange={(event) => setEditForm((current) => current ? { ...current, email: event.target.value } : current)} type="email" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">National ID</label>
-                  <input value={editForm.nationalId} onChange={(event) => setEditForm((current) => current ? { ...current, nationalId: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  <Input value={editForm.nationalId} onChange={(event) => setEditForm((current) => current ? { ...current, nationalId: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">Occupation</label>
-                  <input value={editForm.occupation} onChange={(event) => setEditForm((current) => current ? { ...current, occupation: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  <Input value={editForm.occupation} onChange={(event) => setEditForm((current) => current ? { ...current, occupation: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                 </div>
               </div>
 
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-neutral-700">Address</label>
-                <input value={editForm.address} onChange={(event) => setEditForm((current) => current ? { ...current, address: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                <Input value={editForm.address} onChange={(event) => setEditForm((current) => current ? { ...current, address: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
               </div>
 
               <div className="border-t border-neutral-100 pt-4">
@@ -1064,25 +1068,25 @@ export default function MembersPage() {
                 <div className="mt-3 grid gap-4 md:grid-cols-3">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Full name</label>
-                    <input value={editForm.nextOfKinName} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                    <Input value={editForm.nextOfKinName} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone number</label>
-                    <input value={editForm.nextOfKinPhone} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinPhone: event.target.value } : current)} inputMode="tel" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                    <Input value={editForm.nextOfKinPhone} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinPhone: event.target.value } : current)} inputMode="tel" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Relationship</label>
-                    <input value={editForm.nextOfKinRelationship} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinRelationship: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                    <Input value={editForm.nextOfKinRelationship} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinRelationship: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4">
-                <button type="button" onClick={() => { setEditingMember(null); setEditForm(null) }} className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70">
+                <Button type="button" onClick={() => { setEditingMember(null); setEditForm(null) }} className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50">Cancel</Button>
+                <Button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70">
                   {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PencilLine size={14} />}
                   Save changes
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -1104,11 +1108,11 @@ export default function MembersPage() {
                 : `${statusMember.name} will regain access to this group using their existing account.`}
             </p>
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setStatusMember(null)} disabled={statusSubmitting} className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50 disabled:opacity-70">Cancel</button>
-              <button type="button" onClick={confirmStatusChange} disabled={statusSubmitting} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${statusMember.status === 'ACTIVE' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0B6B50] hover:bg-[#08503C]'}`}>
+              <Button type="button" onClick={() => setStatusMember(null)} disabled={statusSubmitting} className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50 disabled:opacity-70">Cancel</Button>
+              <Button type="button" onClick={confirmStatusChange} disabled={statusSubmitting} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${statusMember.status === 'ACTIVE' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0B6B50] hover:bg-[#08503C]'}`}>
                 {statusSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : statusMember.status === 'ACTIVE' ? <UserX size={14} /> : <UserCheck size={14} />}
                 {statusMember.status === 'ACTIVE' ? 'Deactivate member' : 'Reactivate member'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

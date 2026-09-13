@@ -1,5 +1,7 @@
 'use client'
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -42,22 +44,22 @@ export default function ForgotPasswordPage() {
           <form onSubmit={handleSend} className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-bold text-neutral-700 mb-1.5">Phone number or Email</label>
-              <input 
-                type="text" 
+              <Input
+                type="text"
                 required
-                placeholder="+255 712 345 678 or juma@example.com" 
+                placeholder="+255 712 345 678 or juma@example.com"
                 value={value}
                 onChange={e => setValue(e.target.value)}
                 className="w-full border border-[#E5E7EB] rounded-lg p-3 text-xs outline-none focus:border-[#0B6B50]"
               />
             </div>
 
-            <button 
+            <Button
               type="submit"
               className="w-full py-3 bg-[#0B6B50] hover:bg-[#08503C] text-white font-extrabold rounded-lg text-xs mt-2 flex items-center justify-center gap-2 transition"
             >
               Send OTP Code <ArrowRight size={14} />
-            </button>
+            </Button>
           </form>
         )}
 
