@@ -101,6 +101,15 @@ export default function ExpensesPage() {
   };
   useEffect(() => {
     refresh();
+    const update = () => { if (document.visibilityState === "visible") void refresh(); };
+    const timer = window.setInterval(update, 30_000);
+    window.addEventListener("focus", update);
+    window.addEventListener("vikoba:approval-updated", update);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", update);
+      window.removeEventListener("vikoba:approval-updated", update);
+    };
   }, [groupId]);
   const money = (amount: number) =>
     new Intl.NumberFormat("en-TZ", {
@@ -110,7 +119,7 @@ export default function ExpensesPage() {
     }).format(amount || 0);
   const visible = useMemo(
     () =>
-      expenses.filter((item) => item.status !== "PENDING" &&
+      expenses.filter((item) =>
         [
           item.categoryName,
           item.description,
@@ -143,17 +152,17 @@ export default function ExpensesPage() {
     submitInFlight.current = true;
     setIsSubmitting(true);
     try {
-      if (editing) await update(groupId, editing.id, form);
-      else await create(groupId, form);
+      const saved = editing ? await update(groupId, editing.id, form) : await create(groupId, form);
       setMessage(
         editing
-          ? "Expense updated successfully."
-          : "Expense submitted to the approval workflow.",
+          ? `Expense updated. Waiting for ${saved.currentStepLabel || "the assigned reviewer"}.`
+          : `Expense submitted. Waiting for ${saved.currentStepLabel || "the assigned reviewer"}.`,
       );
       setModalOpen(false);
       setEditing(null);
       setForm(blankForm(expenseCategories[0]));
       await refresh();
+      window.dispatchEvent(new Event("vikoba:approval-updated"));
     } catch {
       /* hook error is visible */
     } finally {
@@ -193,7 +202,7 @@ export default function ExpensesPage() {
             Group Expenses
           </h1>
           <p className="mt-1 text-xs text-neutral-400">
-            Approved expenses appear here after workflow review.
+            Track each expense from submission through approval.
           </p>
         </div>
         <Button
@@ -204,13 +213,14 @@ export default function ExpensesPage() {
           <PlusCircle size={14} /> Record Expense
         </Button>
       </header>
-      <section className="mb-8 grid grid-cols-2 gap-4">
+      <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[
           [
             "Settled expenses",
             money(approved.reduce((sum, item) => sum + item.amount, 0)),
             "text-neutral-800",
           ],
+          ["Pending approval", `${expenses.filter(item => item.status === "PENDING").length} expenses`, "text-amber-700"],
           [
             "This month",
             money(
@@ -309,6 +319,7 @@ export default function ExpensesPage() {
                       >
                         {pretty(expense.status)}
                       </span>
+                      {expense.status === "PENDING" && <span className="mt-1 block text-[10px] font-medium text-amber-800">Waiting for {expense.currentStepLabel || "reviewer"}</span>}
                     </TableCell>
                     <TableCell className="p-4">
                       <div className="flex justify-center gap-1">
@@ -337,7 +348,7 @@ export default function ExpensesPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                     {groupId
-                      ? "No approved expenses yet. Pending expenses are reviewed in Approval workflows."
+                      ? "No expenses recorded yet."
                       : "Select a group to view expenses."}
                   </TableCell>
                 </TableRow>

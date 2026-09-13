@@ -34,6 +34,7 @@ export default function WorkflowsPage() {
   const [memberId, setMemberId] = useState('')
   const [requests, setRequests] = useState<SharePurchaseRequestRecord[]>([])
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([])
+  const [expenseLoadError, setExpenseLoadError] = useState<string | null>(null)
   const [expenseActingId, setExpenseActingId] = useState<number | null>(null)
   const [rejectingExpense, setRejectingExpense] = useState<ExpenseRecord | null>(null)
   const [expenseReason, setExpenseReason] = useState('')
@@ -54,19 +55,26 @@ export default function WorkflowsPage() {
     if (!groupId) { setLoading(false); return }
     setLoading(true)
     try {
-      const [requestsResponse, accessResponse, expensesResponse] = await Promise.all([
+      const [requestsResponse, accessResponse, expensesResponse] = await Promise.allSettled([
         sharePurchaseRequestService.list(groupId, null),
         memberService.getMyAccess(groupId),
         apiGet<{ data: ExpenseRecord[] }>(`/api/expenses/group/${groupId}`, undefined, { auth: true }),
       ])
-      setRequests(unwrap(requestsResponse) || [])
-      setExpenses(unwrap(expensesResponse) || [])
-      setMemberId(String(unwrap(accessResponse)?.id ?? ''))
+      if (requestsResponse.status === 'fulfilled') setRequests(unwrap(requestsResponse.value) || [])
+      else setRequests([])
+      if (expensesResponse.status === 'fulfilled') { setExpenses(unwrap(expensesResponse.value) || []); setExpenseLoadError(null) }
+      else { setExpenses([]); setExpenseLoadError(expensesResponse.reason instanceof Error ? expensesResponse.reason.message : 'Unable to load expense approvals') }
+      if (accessResponse.status === 'fulfilled') setMemberId(String(unwrap(accessResponse.value)?.id ?? ''))
     }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to load approvals') }
     finally { setLoading(false) }
   }, [groupId])
   useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => {
+    const update = () => void refresh()
+    window.addEventListener('vikoba:approval-inbox-changed', update)
+    return () => window.removeEventListener('vikoba:approval-inbox-changed', update)
+  }, [refresh])
   useEffect(() => () => { if (proof) URL.revokeObjectURL(proof.url) }, [proof])
 
   const counts = useMemo(() => ({
@@ -76,6 +84,8 @@ export default function WorkflowsPage() {
     REJECTED: requests.filter(request => request.status === 'REJECTED').length,
   }), [requests])
   const visible = useMemo(() => requests.filter(request => filter === 'ALL' || request.status === filter), [requests, filter])
+  const assignedCount = expenses.filter(expense => expense.status === 'PENDING' && expense.canApprove).length
+    + requests.filter(request => request.status === 'PENDING' && request.canApprove).length
 
   const approve = async (request: SharePurchaseRequestRecord) => {
     if (actingId !== null) return
@@ -85,6 +95,7 @@ export default function WorkflowsPage() {
       toast.success(response.status === 'APPROVED' ? 'Share purchase fully approved.' : `Step approved. Next: ${response.currentStepLabel || 'reviewer'}.`)
       if (response.status === 'APPROVED') setFilter('APPROVED')
       await refresh()
+      window.dispatchEvent(new Event('vikoba:approval-updated'))
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to approve request') }
     finally { setActingId(null) }
   }
@@ -100,6 +111,7 @@ export default function WorkflowsPage() {
       setFilter('REJECTED')
       toast.success('Request rejected. The reason is now visible in its history.')
       await refresh()
+      window.dispatchEvent(new Event('vikoba:approval-updated'))
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to reject request') }
     finally { setActingId(null) }
   }
@@ -122,6 +134,7 @@ export default function WorkflowsPage() {
       await apiPost(`/api/expenses/group/${groupId}/${expense.id}/approve`, {}, { auth: true })
       toast.success('Expense approval recorded.')
       await refresh()
+      window.dispatchEvent(new Event('vikoba:approval-updated'))
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to approve expense') }
     finally { setExpenseActingId(null) }
   }
@@ -134,24 +147,27 @@ export default function WorkflowsPage() {
       setRejectingExpense(null)
       setExpenseReason('')
       await refresh()
+      window.dispatchEvent(new Event('vikoba:approval-updated'))
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to reject expense') }
     finally { setExpenseActingId(null) }
   }
 
   return <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
-      <div><div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary"><ShieldCheck className="size-5" /> Group approvals</div><h1 className="text-3xl font-black tracking-tight text-foreground">Approval workflows</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Review share purchases and expenses through their configured approval steps.</p></div>
+      <div><div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary"><ShieldCheck className="size-5" /> Group approvals</div><h1 className="flex items-center gap-3 text-3xl font-black tracking-tight text-foreground">Approval workflows {assignedCount > 0 && <Badge className="bg-amber-600 text-white">{assignedCount} assigned to you</Badge>}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Review share purchases and expenses through their configured approval steps.</p></div>
       <Button variant="outline" onClick={() => void refresh()} disabled={loading}><RefreshCw className={loading ? 'animate-spin' : ''} /> Refresh</Button>
     </div>
 
     <section className="space-y-3"><h2 className="text-xl font-bold text-foreground">Expense approvals</h2>
-      {expenses.filter(expense => expense.status === 'PENDING' && expense.canApprove).length === 0
-        ? <Card><CardContent className="p-5 pt-5 text-sm text-muted-foreground">No expenses currently require your approval.</CardContent></Card>
-        : expenses.filter(expense => expense.status === 'PENDING' && expense.canApprove).map(expense =>
+      {loading ? <Card><CardContent className="flex items-center gap-2 p-5 pt-5 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Loading expense approvals…</CardContent></Card>
+        : expenseLoadError ? <Card><CardContent className="p-5 pt-5 text-sm text-red-700">Unable to load expense approvals: {expenseLoadError}</CardContent></Card>
+        : expenses.filter(expense => expense.status === 'PENDING').length === 0
+        ? <Card><CardContent className="p-5 pt-5 text-sm text-muted-foreground">No pending expense approvals in this group.</CardContent></Card>
+        : expenses.filter(expense => expense.status === 'PENDING').map(expense =>
           <Card key={expense.id}><CardContent className="space-y-3 p-5 pt-5">
-            <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold text-foreground">{expense.description}</p><p className="text-sm text-muted-foreground">{expense.reference} · {expense.categoryName} · {expense.expenseDate}</p></div><p className="font-bold text-primary">{money(expense.amount)}</p></div>
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold text-foreground">{expense.description}</p><p className="text-sm text-muted-foreground">{expense.reference} · {expense.categoryName} · {expense.expenseDate}</p><p className="mt-1 text-sm font-medium text-amber-800">Waiting for {expense.currentStepLabel || 'assigned reviewer'}</p></div><p className="font-bold text-primary">{money(expense.amount)}</p></div>
             <ol className="space-y-1 text-sm">{(expense.approvalSteps || []).map((step, index) => <li key={index} className={step.approvedAt ? 'text-emerald-700' : 'text-muted-foreground'}>{step.approvedAt ? '✓' : '○'} {step.label}{step.approvedAt ? ` · ${displayTime(step.approvedAt)}` : ''}</li>)}</ol>
-            <div className="flex gap-2"><Button disabled={expenseActingId !== null} onClick={() => void approveExpense(expense)}>{expenseActingId === expense.id && <Loader2 className="animate-spin" />} Approve step</Button><Button variant="destructive" disabled={expenseActingId !== null} onClick={() => { setRejectingExpense(expense); setExpenseReason('') }}>Reject</Button></div>
+            {expense.canApprove ? <div className="flex gap-2"><Button disabled={expenseActingId !== null} onClick={() => void approveExpense(expense)}>{expenseActingId === expense.id && <Loader2 className="animate-spin" />} Approve step</Button><Button variant="destructive" disabled={expenseActingId !== null} onClick={() => { setRejectingExpense(expense); setExpenseReason('') }}>Reject</Button></div> : <p className="text-xs text-muted-foreground">The current step is assigned to another reviewer.</p>}
           </CardContent></Card>)}
     </section>
     <h2 className="text-xl font-bold text-foreground">Share purchase approvals</h2>

@@ -1,13 +1,12 @@
 "use client";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { useEffect, useMemo, useState, FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, PlusCircle, Search, Eye, Landmark, X } from "lucide-react";
-import { memberService, type Member } from "@/lib/api/services";
-import { useLoans, type Loan, type LoanProduct } from "@/hooks/useLoans";
+import { Loader2, PlusCircle, Search, Eye } from "lucide-react";
+import { memberService } from "@/lib/api/services";
+import { useLoans, type Loan } from "@/hooks/useLoans";
 const fmt = (v: number, c: string) =>
     new Intl.NumberFormat("en-TZ", {
         style: "currency",
@@ -19,18 +18,9 @@ export default function LoansDashboard() {
     const [groupId, setGroupId] = useState("");
     const [currency, setCurrency] = useState("TZS");
     const [loans, setLoans] = useState<Loan[]>([]);
-    const [products, setProducts] = useState<LoanProduct[]>([]);
-    const [members, setMembers] = useState<Member[]>([]);
-    const [open, setOpen] = useState(false);
+    const [myMemberId, setMyMemberId] = useState(0);
     const [search, setSearch] = useState("");
     const [message, setMessage] = useState<string | null>(null);
-    const [f, setF] = useState({
-        memberId: "",
-        productId: "",
-        amount: "",
-        duration: "",
-        purpose: "",
-    });
     useEffect(() => {
         const raw = localStorage.getItem("v360_currentGroup") || "{}";
         try {
@@ -51,14 +41,9 @@ export default function LoansDashboard() {
     const refresh = async () => {
         if (!groupId) return;
         try {
-            const [a, b, c] = await Promise.all([
-                api.list(groupId),
-                api.products(groupId),
-                memberService.list(groupId),
-            ]);
-            setLoans(a);
-            setProducts(b);
-            setMembers(((c as { data?: Member[] }).data ?? c) as Member[]);
+            setLoans(await api.list(groupId));
+            const access = await memberService.getMyAccess(groupId);
+            setMyMemberId(Number(access.data?.id || 0));
         } catch { }
     };
     useEffect(() => {
@@ -79,28 +64,6 @@ export default function LoansDashboard() {
     const pending = loans.filter(
         (l) => l.status === "PENDING" || l.status === "UNDER_REVIEW",
     ).length;
-    const submit = async (e: FormEvent) => {
-        e.preventDefault();
-        try {
-            await api.apply(groupId, {
-                groupMemberId: Number(f.memberId),
-                loanProductId: f.productId ? Number(f.productId) : undefined,
-                principalAmount: Number(f.amount),
-                durationMonths: f.duration ? Number(f.duration) : undefined,
-                purpose: f.purpose,
-            });
-            setMessage("Loan application submitted for review.");
-            setOpen(false);
-            setF({
-                memberId: "",
-                productId: "",
-                amount: "",
-                duration: "",
-                purpose: "",
-            });
-            refresh();
-        } catch { }
-    };
     return (
         <main className="mx-auto max-w-7xl px-6 py-8">
             <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -123,13 +86,13 @@ export default function LoansDashboard() {
                     >
                         Review applications ({pending})
                     </Link>
-                    <Button
-                        onClick={() => setOpen(true)}
+                    <ButtonLink
+                        href="/app/loans/apply"
                         className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white"
                     >
                         <PlusCircle size={14} />
                         Apply for loan
-                    </Button>
+                    </ButtonLink>
                 </div>
             </header>
             {(message || api.error) && (
@@ -160,6 +123,7 @@ export default function LoansDashboard() {
                     </div>
                 ))}
             </section>
+            <section className="mb-8 space-y-3"><div className="flex items-center justify-between"><h2 className="text-lg font-bold text-foreground">My loan applications</h2><Link href="/app/loans/apply" className="text-sm font-semibold text-primary hover:underline">View application</Link></div>{loans.filter(loan => loan.groupMemberId === myMemberId && ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'].includes(loan.status)).map(loan => <div key={loan.id} className="rounded-xl border bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold text-foreground">{loan.loanNumber}</p><p className="text-sm text-muted-foreground">{loan.purpose} · {loan.status === 'PENDING' ? 'Awaiting guarantors' : loan.status.replaceAll('_', ' ')}</p></div><p className="font-bold text-primary">{fmt(loan.principalAmount, currency)}</p></div>{loan.guarantors?.length ? <p className="mt-3 text-xs text-muted-foreground">Guarantors: {loan.guarantors.map(person => `${person.name} (${person.status})`).join(' · ')}</p> : null}{loan.guarantors?.some(person => person.status === 'REJECTED') && <Link href="/app/loans/apply" className="mt-3 inline-block text-sm font-semibold text-amber-800 underline">Choose a replacement guarantor</Link>}</div>)}{!loans.some(loan => loan.groupMemberId === myMemberId && ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'].includes(loan.status)) && <p className="rounded-xl border bg-white p-5 text-sm text-muted-foreground">No current applications.</p>}</section>
             <section className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b p-4">
                     <h2 className="text-sm font-extrabold">Active loan book</h2>
@@ -253,95 +217,6 @@ export default function LoansDashboard() {
                     </Table>
                 </div>
             </section>
-            {open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-                    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-                        <div className="mb-5 flex justify-between border-b pb-3">
-                            <h2 className="text-sm font-extrabold">Loan application</h2>
-                            <Button onClick={() => setOpen(false)}>
-                                <X size={18} />
-                            </Button>
-                        </div>
-                        <form onSubmit={submit} className="space-y-4">
-                            <label className="block text-xs font-bold">
-                                Applicant
-                                <NativeSelect
-                                    required
-                                    value={f.memberId}
-                                    onChange={(e) => setF({ ...f, memberId: e.target.value })}
-                                    className="mt-1 w-full rounded-lg border p-2.5"
-                                >
-                                    <option value="">Select member</option>
-                                    {members.map((m) => (
-                                        <option key={m.id} value={m.id}>
-                                            {m.fullName ||
-                                                m.name ||
-                                                `${m.firstName || ""} ${m.lastName || ""}`}{" "}
-                                            ({m.membershipNumber || m.memberNo})
-                                        </option>
-                                    ))}
-                                </NativeSelect>
-                            </label>
-                            <div className="grid grid-cols-2 gap-4">
-                                <label className="text-xs font-bold">
-                                    Product
-                                    <NativeSelect
-                                        value={f.productId}
-                                        onChange={(e) => setF({ ...f, productId: e.target.value })}
-                                        className="mt-1 w-full rounded-lg border p-2.5"
-                                    >
-                                        <option value="">Group default</option>
-                                        {products.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.name} ({p.interestRate}%)
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
-                                </label>
-                                <label className="text-xs font-bold">
-                                    Amount
-                                    <Input
-                                        type="number"
-                                        required
-                                        min="1"
-                                        value={f.amount}
-                                        onChange={(e) => setF({ ...f, amount: e.target.value })}
-                                        className="mt-1 w-full rounded-lg border p-2.5"
-                                    />
-                                </label>
-                            </div>
-                            <label className="block text-xs font-bold">
-                                Repayment period (months)
-                                <Input
-                                    type="number"
-                                    min="1"
-                                    value={f.duration}
-                                    onChange={(e) => setF({ ...f, duration: e.target.value })}
-                                    placeholder="Uses group default if empty"
-                                    className="mt-1 w-full rounded-lg border p-2.5"
-                                />
-                            </label>
-                            <label className="block text-xs font-bold">
-                                Purpose
-                                <Input
-                                    required
-                                    value={f.purpose}
-                                    onChange={(e) => setF({ ...f, purpose: e.target.value })}
-                                    className="mt-1 w-full rounded-lg border p-2.5"
-                                />
-                            </label>
-                            <Button
-                                type="submit"
-                                disabled={api.loading}
-                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] p-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                                {api.loading && <Loader2 size={14} className="animate-spin" />}
-                                {api.loading ? "Submitting application..." : "Submit application"}
-                            </Button>
-                        </form>
-                    </div>
-                </div>
-            )}
         </main>
     );
 }

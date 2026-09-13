@@ -270,6 +270,7 @@ export default function SharesPage() {
                 const successMessage = response.message || "Your share purchase proof was submitted for approval.";
                 setMessage(successMessage);
                 toast.success(successMessage);
+                window.dispatchEvent(new Event("vikoba:approval-updated"));
             } else if (action === "redeem") {
                 if (!currentGroupMemberId) throw new Error("Your active membership could not be resolved.");
                 await redeem(groupId, {

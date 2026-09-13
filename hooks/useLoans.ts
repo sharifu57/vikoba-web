@@ -25,7 +25,12 @@ export type Loan = {
   totalPaid: number;
   remainingBalance: number;
   progress: number;
+  consentAcceptedAt?: string;
+  guarantors?: LoanGuarantorOption[];
 };
+export type LoanGuarantorOption = { id: number; name: string; phone?: string; address?: string; membershipNumber?: string; status?: string; available: boolean; reason?: string };
+export type LoanApplicationContext = { groupMemberId: number; name: string; nationalId?: string; phone?: string; address?: string; membershipNumber: string; sharesValue: number; loanMultiplier: number; maximumLoan: number; requiredGuarantors: number; defaultDurationMonths: number; maxDurationMonths: number; groupEndDate?: string | null; interestRate: number; guarantors: LoanGuarantorOption[] };
+export type LoanGuaranteeRequest = { id: number; loanId: number; loanNumber: string; applicantName: string; guaranteedAmount: number; purpose: string; status: string };
 export type LoanProduct = {
   id: number;
   code: string;
@@ -101,6 +106,10 @@ export function useLoans() {
           }),
         ),
       ),
+    applicationContext: (g: string) => run(async () => unbox(await apiGet<Envelope<LoanApplicationContext>>(`${base(g)}/application-context`, undefined, { auth: true }))),
+    guaranteesMine: (g: string) => run(async () => unbox(await apiGet<Envelope<LoanGuaranteeRequest[]>>(`${base(g)}/guarantees/mine`, undefined, { auth: true })) ?? []),
+    decideGuarantee: (g: string, id: number, decision: "accept" | "reject") => run(async () => unbox(await apiPost<Envelope<Loan>>(`${base(g)}/guarantees/${id}/${decision}`, {}, { auth: true }))),
+    replaceGuarantor: (g: string, loanId: number, guaranteeId: number, replacementId: number) => run(async () => unbox(await apiPost<Envelope<Loan>>(`${base(g)}/${loanId}/guarantors/${guaranteeId}/replace`, { replacementId }, { auth: true }))),
     approve: (g: string, id: number) =>
       run(async () =>
         unbox(
