@@ -557,7 +557,7 @@ export const memberService = {
   updateMembershipStatus: (groupId: string, groupMemberId: string | number, status: "ACTIVE" | "SUSPENDED" | "EXITED") =>
     apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/status`, { status }, { auth: true }),
   updateAccess: (groupId: string, groupMemberId: string | number, payload: { roles: string[]; permissions: string[] }) =>
-    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/access`, payload, { auth: true }),
+    apiPut<ApiResponse<Member>>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/access`, payload, { auth: true }),
   remove: (id: string) =>
     apiDelete(`${API_ENDPOINTS.members}/${id}`, { auth: true }),
   get360: (groupMemberId: string) =>

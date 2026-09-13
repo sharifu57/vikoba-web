@@ -186,7 +186,10 @@ export async function refreshSessionIfNeeded(): Promise<string | null> {
   const token = getAccessToken();
   const expiresAt = getAccessTokenExpiryMs(token);
   if (token && (expiresAt === null || expiresAt - Date.now() > 2 * 60 * 1000)) return token;
-  return (await refreshAccessToken()) || token;
+  const refreshed = await refreshAccessToken();
+  if (refreshed) return refreshed;
+  // Never send a known-expired access token when refresh fails.
+  return expiresAt === null || expiresAt > Date.now() ? token : null;
 }
 
 async function isSessionRejected(token: string): Promise<boolean> {
