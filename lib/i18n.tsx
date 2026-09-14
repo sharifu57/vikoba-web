@@ -79,6 +79,13 @@ export const dictionaries = {
             featuresHeading: 'Vipengele Vya Nguvu Vilivyotengenezwa kwa Vikundi vya Kisasa.',
             featuresText: 'Kutoka kwa ukusanyaji wa kila siku hadi ukaguzi wa akaunti na kufuatilia mikopo, VIKOBA360 hutoa kifurushi kamili cha kuwezesha usimamizi wa kundi lako la akiba.'
         },
+        auth: {
+            backHome: 'Rudi mwanzo', step: 'Hatua', of: 'ya', footer: 'Mfumo salama wa vikundi vya fedha za jamii',
+            story: { badge: 'Ufikiaji salama', title: 'Uwazi huanza na kumbukumbu moja.', description: 'VIKOBA360 huleta watu, michango na maamuzi ya kikundi chako pamoja katika nafasi inayoweza kuaminika.', pointOne: 'Imejengwa kwa VICOBA', pointTwo: 'Rahisi kwa kila mwanachama', pointThree: 'Taarifa zilizo wazi', footer: 'Salama · Rahisi · Pamoja' },
+            login: { eyebrow: 'Karibu tena', title: 'Ingia kwenye kikundi chako.', description: 'Tumia namba yako ya simu kuendelea kwenye dashibodi yako.', phone: 'Namba ya simu', placeholder: '255712345678', submit: 'Tuma msimbo wa kuingia', loading: 'Inakagua namba...', noAccount: 'Huna akaunti?', register: 'Unda akaunti', invalidPhone: 'Weka namba sahihi ya simu inayoanza na 255 na yenye tarakimu 9 baada yake.', error: 'Namba hii haijasajiliwa kwa kuingia.' },
+            register: { eyebrow: 'Anza pamoja', title: 'Unda nafasi ya kikundi chako.', description: 'Fungua akaunti yako kisha tuanze kujenga rekodi iliyo wazi ya VICOBA yako.', name: 'Jina kamili', namePlaceholder: 'Asha Mwakalinga', email: 'Barua pepe', emailPlaceholder: 'asha@example.com', phone: 'Namba ya simu', submit: 'Endelea na usajili', loading: 'Inaunda akaunti...', haveAccount: 'Tayari una akaunti?', login: 'Ingia', agree: 'Nakubali Masharti na Sera ya Faragha.', requiredName: 'Weka jina lako kamili.', requiredEmail: 'Weka barua pepe yako.', requiredPhone: 'Weka namba sahihi ya simu.', requiredAgree: 'Kubali masharti na sera ya faragha ili kuendelea.' },
+            otp: { eyebrow: 'Thibitisha utambulisho', titleLogin: 'Thibitisha kuingia kwako.', titleRegister: 'Thibitisha namba yako.', titleReset: 'Thibitisha msimbo wa kurejesha.', description: 'Weka msimbo wa tarakimu sita tuliotuma kwenye', secure: 'Uthibitisho salama', verify: 'Thibitisha msimbo', verifying: 'Inathibitisha...', resend: 'Tuma tena msimbo', sending: 'Inatuma...', backLogin: 'Rudi kuingia', invalid: 'Weka msimbo kamili wa tarakimu 6.', failed: 'Uthibitisho wa msimbo umeshindikana.', sent: 'Msimbo mpya umetumwa.' }
+        },
         contributions: {
             title: 'Michango',
             subtitle: 'Fuatilia na udhibiti michango ya kila wiki, mwezi na ya dharura.',
@@ -180,6 +187,13 @@ export const dictionaries = {
             },
             featuresHeading: 'Powerful Features built for Modern Groups.',
             featuresText: 'From daily collections to auditing accounts and tracking loans, VIKOBA360 provides the ultimate suite to automate your savings group.'
+        },
+        auth: {
+            backHome: 'Back to home', step: 'Step', of: 'of', footer: 'Secure tools for community finance groups',
+            story: { badge: 'Secure access', title: 'Transparency starts with one shared record.', description: 'VIKOBA360 brings your people, contributions and group decisions into a place everyone can trust.', pointOne: 'Built for VICOBA groups', pointTwo: 'Simple for every member', pointThree: 'Clear financial records', footer: 'Secure · Simple · Together' },
+            login: { eyebrow: 'Welcome back', title: 'Sign in to your group.', description: 'Use your phone number to continue to your group dashboard.', phone: 'Phone number', placeholder: '255712345678', submit: 'Send sign-in code', loading: 'Checking number...', noAccount: "Don't have an account?", register: 'Create an account', invalidPhone: 'Enter a valid phone number starting with 255 and followed by 9 digits.', error: 'This phone number is not registered for login.' },
+            register: { eyebrow: 'Start together', title: 'Create your group space.', description: 'Create your account, then build a clear shared record for your VICOBA.', name: 'Full name', namePlaceholder: 'Asha Mwakalinga', email: 'Email address', emailPlaceholder: 'asha@example.com', phone: 'Phone number', submit: 'Continue registration', loading: 'Creating account...', haveAccount: 'Already have an account?', login: 'Sign in', agree: 'I agree to the Terms and Privacy Policy.', requiredName: 'Please enter your full name.', requiredEmail: 'Please enter your email address.', requiredPhone: 'Please enter a valid phone number.', requiredAgree: 'Please accept the terms and privacy policy to continue.' },
+            otp: { eyebrow: 'Confirm your identity', titleLogin: 'Confirm your sign in.', titleRegister: 'Confirm your number.', titleReset: 'Confirm your reset code.', description: 'Enter the six-digit code sent to', secure: 'Secure verification', verify: 'Verify code', verifying: 'Verifying...', resend: 'Resend code', sending: 'Sending...', backLogin: 'Back to sign in', invalid: 'Please enter the full 6-digit code.', failed: 'OTP verification failed.', sent: 'A new code has been sent.' }
         },
         contributions: {
             title: 'Contributions',
