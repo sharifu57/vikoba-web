@@ -1,5 +1,7 @@
-'use client'
+import type { Metadata } from "next";
+import { PublicPage } from "@/components/public/public-pages";
 
+<<<<<<< HEAD
 import Link from 'next/link'
 import {
   ArrowRight, Users, WalletCards, BarChart3, HandCoins, AlertCircle,
@@ -79,3 +81,7 @@ export default function FeaturesPage() {
     </div>
   )
 }
+=======
+export const metadata: Metadata = { title: "VIKOBA360 Features", description: "Explore the tools VIKOBA360 gives VICOBA groups for members, contributions, shares, loans and reports." };
+export default function FeaturesPage() { return <PublicPage kind="features" />; }
+>>>>>>> refs/remotes/origin/dev

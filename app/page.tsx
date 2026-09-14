@@ -1,32 +1,13 @@
-"use client";
+import type { Metadata } from "next";
+import { PublicHome } from "@/components/public/public-home";
 
-import Link from "next/link";
-import { useState } from "react";
-import {
-  ArrowRight,
-  Check,
-  BarChart3,
-  Users,
-  WalletCards,
-  HandCoins,
-  Sparkles,
-  FileText,
-  ShieldCheck,
-  CalendarDays,
-  AlertCircle,
-  Menu,
-  X,
-  ArrowUpRight,
-  Smartphone,
-  Download,
-  QrCode,
-} from "lucide-react";
-import { LanguageSwitcher, ThemeToggle, VikobaLogo } from "@/components/brand";
-import { AnimatedCounter } from "@/components/animated-counter";
-import { Card, CardContent } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
-import { useLanguage } from "@/lib/i18n";
+export const metadata: Metadata = {
+    title: "VIKOBA360 | Digital VICOBA Management Platform",
+    description: "Manage members, contributions, shares, loans, meetings and financial records for your VICOBA in one secure digital platform.",
+    openGraph: { title: "VIKOBA360 | Manage your VICOBA. Grow together.", description: "Digital tools for transparent, growing community finance groups." },
+};
 
+<<<<<<< HEAD
 // Features list
 const features = [
   {
@@ -833,4 +814,8 @@ export default function Page() {
       </footer>
     </div>
   );
+=======
+export default function HomePage() {
+    return <PublicHome />;
+>>>>>>> refs/remotes/origin/dev
 }

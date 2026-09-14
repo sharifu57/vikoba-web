@@ -1,5 +1,7 @@
-"use client";
+import type { Metadata } from "next";
+import { ContactPage } from "@/components/public/public-pages";
 
+<<<<<<< HEAD
 import Link from "next/link";
 import { useState } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle2 } from "lucide-react";
@@ -227,3 +229,7 @@ export default function ContactPage() {
     </div>
   );
 }
+=======
+export const metadata: Metadata = { title: "Contact VIKOBA360", description: "Contact the VIKOBA360 team about bringing your community finance group online." };
+export default function ContactRoute() { return <ContactPage />; }
+>>>>>>> refs/remotes/origin/dev
