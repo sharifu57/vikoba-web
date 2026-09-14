@@ -15,11 +15,14 @@ export function VikobaLogo({
     <span
       className={`inline-flex items-center gap-2 font-black tracking-tight ${light ? "text-white" : "text-foreground"} ${compact ? "text-base" : "text-xl"}`}
     >
-      <span className="grid place-items-center rounded-lg bg-primary text-primary-foreground font-black h-8 w-8">
-        V
-      </span>
+      <img
+        src="/logo.png"
+        alt=""
+        aria-hidden="true"
+        className={`${compact ? "h-7" : "h-8"} w-auto object-contain`}
+      />
       <span>
-        VIKOBA<span className="text-primary">360</span>
+        VIKOBA<span className={light ? "text-[#F4E5C5]" : "text-primary"}>360</span>
       </span>
     </span>
   );

@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from "./endpoints";
-import { apiDelete, apiGet, apiPost, apiPut, setAuthTokens } from "./client";
+import { apiDelete, apiGet, apiPost, apiPut, apiRequest, setAuthTokens } from "./client";
 
 export type UserSession = {
   id?: string | number | null;
@@ -17,6 +17,33 @@ export type ApiResponse<T> = {
   refreshToken?: string | null;
   expired?: string | null;
   data?: T;
+};
+
+export type SharePurchaseRequestRecord = {
+  id: number;
+  groupMemberId: number;
+  memberName: string;
+  membershipNumber?: string;
+  quantity: number;
+  amount: number;
+  jamiiAmount: number;
+  paymentMethod: string;
+  paymentReference?: string;
+  proofText?: string;
+  proofFileName?: string;
+  proofContentType?: string;
+  hasProofFile: boolean;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reviewReason?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  accountantApprovedAt?: string;
+  chairApprovedAt?: string;
+  approvalSteps?: Array<{ role: string; label: string; approvedAt?: string | null; approvedBy?: number | null; skipped: boolean }>;
+  currentStepRole?: string | null;
+  currentStepLabel?: string | null;
+  canApprove?: boolean;
+  canReject?: boolean;
 };
 
 export const authService = {
@@ -131,17 +158,31 @@ export const authService = {
               const grp = (primary as any)?.group ?? primary;
               const settings = (primary as any)?.settings ?? null;
               const groupRole = String((primary as any)?.role || "MEMBER");
+              const groupRoles = Array.isArray((primary as any)?.roles)
+                ? (primary as any).roles.map(String)
+                : [groupRole];
               const groupPermissions = Array.isArray(
                 (primary as any)?.permissions,
               )
                 ? (primary as any).permissions.map(String)
                 : [];
+              const groupMemberId = (primary as any)?.groupMemberId;
 
               localStorage.setItem("v360_currentGroupRole", groupRole);
+              localStorage.setItem(
+                "v360_currentGroupRoles",
+                JSON.stringify(groupRoles),
+              );
               localStorage.setItem(
                 "v360_currentGroupPermissions",
                 JSON.stringify(groupPermissions),
               );
+              if (groupMemberId !== undefined && groupMemberId !== null) {
+                localStorage.setItem(
+                  "v360_currentGroupMemberId",
+                  String(groupMemberId),
+                );
+              }
 
               if (grp && (grp.groupId || grp.id)) {
                 localStorage.setItem("v360_currentGroup", JSON.stringify(grp));
@@ -239,6 +280,7 @@ export type GroupProfileSettingsPayload = {
   startDate?: string | null;
   endDate?: string | null;
   settings?: GroupSettingsPayload;
+  shareApprovalSteps?: Array<{ role: string; label: string }>;
 };
 
 export type VikobaGroupCreateResponse = {
@@ -255,6 +297,7 @@ export type VikobaGroupCreateResponse = {
 export type GroupWithSettingsResponse = {
   group?: VikobaGroupCreateResponse | null;
   settings?: GroupSettingsPayload | null;
+  shareApprovalSteps?: Array<{ role: string; label: string }>;
 };
 
 export type Member = {
@@ -326,6 +369,25 @@ export type Meeting = {
   date: string;
   venue?: string;
   status?: string;
+};
+
+export type CreateMeetingPayload = {
+  title: string;
+  meetingDate: string;
+  startTime: string;
+  endTime?: string;
+  meetingMode: "ONLINE" | "PHYSICAL";
+  location?: string;
+  meetingLink?: string;
+  agenda?: string;
+};
+
+export type MeetingMinutes = {
+  id: string | number;
+  meetingId: string | number;
+  content: string;
+  approvedAt?: string | null;
+  updatedAt?: string | null;
 };
 
 export type Payment = {
@@ -457,10 +519,16 @@ export const groupService = {
       },
     );
   },
+  updateProfileAndSettings: (id: string, payload: GroupProfileSettingsPayload) =>
+    apiPut<ApiResponse<GroupWithSettingsResponse>>(
+      `${API_ENDPOINTS.groups}/${id}/settings`, payload, { auth: true },
+    ),
   remove: (id: string) => apiDelete(`${API_ENDPOINTS.groups}/${id}`),
 };
 
 export const memberService = {
+  getMyAccess: (groupId: string) =>
+    apiGet<ApiResponse<Member>>(`${API_ENDPOINTS.members}/group/${groupId}/my-access`, undefined, { auth: true }),
   list: (groupId?: string) => {
     if (!groupId) {
       return apiGet<Member[]>(API_ENDPOINTS.members, undefined, { auth: true });
@@ -488,8 +556,12 @@ export const memberService = {
     }),
   update: (id: string, payload: Partial<Member>) =>
     apiPut<Member>(`${API_ENDPOINTS.members}/${id}`, payload, { auth: true }),
+  updateProfile: (groupId: string, groupMemberId: string | number, payload: Partial<Member>) =>
+    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}`, payload, { auth: true }),
+  updateMembershipStatus: (groupId: string, groupMemberId: string | number, status: "ACTIVE" | "SUSPENDED" | "EXITED") =>
+    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/status`, { status }, { auth: true }),
   updateAccess: (groupId: string, groupMemberId: string | number, payload: { roles: string[]; permissions: string[] }) =>
-    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/access`, payload, { auth: true }),
+    apiPut<ApiResponse<Member>>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/access`, payload, { auth: true }),
   remove: (id: string) =>
     apiDelete(`${API_ENDPOINTS.members}/${id}`, { auth: true }),
   get360: (groupMemberId: string) =>
@@ -499,6 +571,49 @@ export const memberService = {
       { auth: true },
     ),
 };
+
+export const sharePurchaseRequestService = {
+  listMine: (groupId: string) =>
+    apiGet<ApiResponse<SharePurchaseRequestRecord[]>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}/mine`,
+      undefined,
+      { auth: true },
+    ),
+  list: (groupId: string, status: string | null = "PENDING") =>
+    apiGet<ApiResponse<SharePurchaseRequestRecord[]>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}`,
+      status ? { status } : undefined,
+      { auth: true },
+    ),
+  submit: (groupId: string, formData: FormData) =>
+    apiRequest<ApiResponse<SharePurchaseRequestRecord>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}`,
+      {
+        method: "POST",
+        body: formData,
+        auth: true,
+        skipJsonContentType: true,
+      },
+    ),
+  approve: (groupId: string, requestId: number) =>
+    apiPost<ApiResponse<SharePurchaseRequestRecord>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}/${requestId}/approve`,
+      {},
+      { auth: true },
+    ),
+  reject: (groupId: string, requestId: number, reason: string) =>
+    apiPost<ApiResponse<SharePurchaseRequestRecord>>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}/${requestId}/reject?reason=${encodeURIComponent(reason)}`,
+      {},
+      { auth: true },
+    ),
+  proof: (groupId: string, requestId: number) =>
+    apiGet<Blob>(
+      `${API_ENDPOINTS.sharePurchaseRequests}/group/${groupId}/${requestId}/proof`,
+      undefined,
+      { auth: true, responseType: "blob" },
+    ),
+};
 export type Member360Response = {
   member?: Member | null;
   contributions?: MemberContribution360[];
@@ -506,6 +621,18 @@ export type Member360Response = {
   fines?: MemberFine360[];
   meetingAttendance?: MemberAttendance360[];
   socialFundContributions?: SocialFundContribution360[];
+  sharesOwned?: number;
+  upcomingMeetings?: Array<{
+    id: string | number;
+    title?: string;
+    meetingDate?: string;
+    startTime?: string;
+    endTime?: string;
+    location?: string;
+    meetingMode?: string;
+    status?: string;
+    agenda?: string;
+  }>;
 };
 
 export type MemberContribution360 = {
@@ -609,13 +736,14 @@ export const meetingService = {
     apiGet<Meeting[]>(
       API_ENDPOINTS.meetings,
       groupId ? { groupId } : undefined,
+      { auth: true },
     ),
-  getById: (id: string) => apiGet<Meeting>(`${API_ENDPOINTS.meetings}/${id}`),
+  getById: (id: string) => apiGet<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, undefined, { auth: true }),
   create: (payload: Partial<Meeting>) =>
-    apiPost<Meeting>(API_ENDPOINTS.meetings, payload),
+    apiPost<Meeting>(API_ENDPOINTS.meetings, payload, { auth: true }),
   update: (id: string, payload: Partial<Meeting>) =>
-    apiPut<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, payload),
-  remove: (id: string) => apiDelete(`${API_ENDPOINTS.meetings}/${id}`),
+    apiPut<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, payload, { auth: true }),
+  remove: (id: string) => apiDelete(`${API_ENDPOINTS.meetings}/${id}`, { auth: true }),
   listByGroup: (groupId: string) =>
     apiGet<Meeting[]>(
       `${API_ENDPOINTS.groups}/${groupId}/meetings`,
@@ -624,7 +752,7 @@ export const meetingService = {
         auth: true,
       },
     ),
-  createForGroup: (groupId: string, payload: Partial<Meeting>) =>
+  createForGroup: (groupId: string, payload: CreateMeetingPayload) =>
     apiPost<Meeting>(`${API_ENDPOINTS.groups}/${groupId}/meetings`, payload, {
       auth: true,
     }),
@@ -640,6 +768,18 @@ export const meetingService = {
         auth: true,
       },
     ),
+  getMinutes: (meetingId: string) =>
+    apiGet<{ data?: MeetingMinutes | null }>(
+      `${API_ENDPOINTS.meetings}/${meetingId}/minutes`,
+      undefined,
+      { auth: true },
+    ).then((response) => response?.data ?? null),
+  saveMinutes: (meetingId: string, payload: { content: string; approved: boolean }) =>
+    apiPut<{ data?: MeetingMinutes }>(
+      `${API_ENDPOINTS.meetings}/${meetingId}/minutes`,
+      payload,
+      { auth: true },
+    ).then((response) => response.data as MeetingMinutes),
 };
 
 export const paymentService = {

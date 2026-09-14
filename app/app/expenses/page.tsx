@@ -1,6 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Pencil, PlusCircle, Search, Trash2, X } from "lucide-react";
 import { groupService, type Group } from "@/lib/api/services";
 import {
@@ -42,6 +46,8 @@ export default function ExpensesPage() {
   const [editing, setEditing] = useState<ExpenseRecord | null>(null);
   const [form, setForm] = useState<ExpenseInput>(blankForm());
   const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitInFlight = useRef(false);
 
   useEffect(() => {
     const resolve = async () => {
@@ -95,6 +101,15 @@ export default function ExpensesPage() {
   };
   useEffect(() => {
     refresh();
+    const update = () => { if (document.visibilityState === "visible") void refresh(); };
+    const timer = window.setInterval(update, 30_000);
+    window.addEventListener("focus", update);
+    window.addEventListener("vikoba:approval-updated", update);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", update);
+      window.removeEventListener("vikoba:approval-updated", update);
+    };
   }, [groupId]);
   const money = (amount: number) =>
     new Intl.NumberFormat("en-TZ", {
@@ -117,7 +132,6 @@ export default function ExpensesPage() {
   const approved = expenses.filter(
     (item) => item.status === "APPROVED" || item.status === "PAID",
   );
-  const pending = expenses.filter((item) => item.status === "PENDING");
   const edit = (expense: ExpenseRecord) => {
     setEditing(expense);
     setForm({
@@ -128,29 +142,32 @@ export default function ExpensesPage() {
       amount: expense.amount,
       expenseDate: expense.expenseDate,
       receiptNumber: expense.receiptNumber,
-      status: expense.status,
-      rejectionReason: expense.rejectionReason,
     });
     setModalOpen(true);
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!groupId || !form.categoryId || !form.description || !form.amount || form.amount <= 0)
+    if (submitInFlight.current || !groupId || !form.categoryId || !form.description || !form.amount || form.amount <= 0)
       return;
+    submitInFlight.current = true;
+    setIsSubmitting(true);
     try {
-      if (editing) await update(groupId, editing.id, form);
-      else await create(groupId, form);
+      const saved = editing ? await update(groupId, editing.id, form) : await create(groupId, form);
       setMessage(
         editing
-          ? "Expense updated successfully."
-          : "Expense recorded successfully.",
+          ? `Expense updated. Waiting for ${saved.currentStepLabel || "the assigned reviewer"}.`
+          : `Expense submitted. Waiting for ${saved.currentStepLabel || "the assigned reviewer"}.`,
       );
       setModalOpen(false);
       setEditing(null);
       setForm(blankForm(expenseCategories[0]));
       await refresh();
+      window.dispatchEvent(new Event("vikoba:approval-updated"));
     } catch {
       /* hook error is visible */
+    } finally {
+      submitInFlight.current = false;
+      setIsSubmitting(false);
     }
   };
   const deleteExpense = async (expense: ExpenseRecord) => {
@@ -185,30 +202,25 @@ export default function ExpensesPage() {
             Group Expenses
           </h1>
           <p className="mt-1 text-xs text-neutral-400">
-            Record, update, and retain every group expenditure.
+            Track each expense from submission through approval.
           </p>
         </div>
-        <button
+        <Button
           onClick={openCreate}
           disabled={!groupId}
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#066b4c] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#08503C] disabled:opacity-50"
         >
           <PlusCircle size={14} /> Record Expense
-        </button>
+        </Button>
       </header>
-      <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
         {[
           [
             "Settled expenses",
             money(approved.reduce((sum, item) => sum + item.amount, 0)),
             "text-neutral-800",
           ],
-          [
-            "Pending approval",
-            money(pending.reduce((sum, item) => sum + item.amount, 0)),
-            "text-amber-600",
-          ],
-          ["Awaiting action", `${pending.length} items`, "text-[#087f5b]"],
+          ["Pending approval", `${expenses.filter(item => item.status === "PENDING").length} expenses`, "text-amber-700"],
           [
             "This month",
             money(
@@ -225,7 +237,7 @@ export default function ExpensesPage() {
         ].map(([title, value, color]) => (
           <div
             key={title}
-            className="rounded-xl border border-[#dfe8e2] bg-white p-5 shadow-sm"
+            className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm"
           >
             <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
               {title}
@@ -241,140 +253,145 @@ export default function ExpensesPage() {
           {error || message}
         </div>
       )}
-      <div className="mb-6 rounded-xl border border-[#dfe8e2] bg-white p-4">
+      <div className="mb-6 rounded-xl border border-[#E5E7EB] bg-white p-4">
         <div className="relative w-full sm:w-72">
           <Search
             className="absolute left-3 top-3 text-neutral-400"
             size={14}
           />
-          <input
+          <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search category, reference or description..."
-            className="w-full rounded-lg border border-[#dfe8e2] p-2.5 pl-9 text-xs outline-none focus:border-[#087f5b]"
+            className="w-full rounded-lg border border-[#E5E7EB] p-2.5 pl-9 text-xs outline-none focus:border-[#0B6B50]"
           />
         </div>
       </div>
-      <section className="overflow-hidden rounded-xl border border-[#dfe8e2] bg-white shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
-                <th className="p-4">Reference</th>
-                <th className="p-4">Category</th>
-                <th className="p-4">Description</th>
-                <th className="p-4 text-right">Amount</th>
-                <th className="p-4">Expense date</th>
-                <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-50">
+          <Table className="w-full text-left text-xs">
+            <TableHeader>
+              <TableRow className="border-b border-neutral-100 bg-neutral-50/70 text-[9px] uppercase tracking-wider text-neutral-400">
+                <TableHead className="p-4">Reference</TableHead>
+                <TableHead className="p-4">Category</TableHead>
+                <TableHead className="p-4">Description</TableHead>
+                <TableHead className="p-4 text-right">Amount</TableHead>
+                <TableHead className="p-4">Expense date</TableHead>
+                <TableHead className="p-4 text-center">Status</TableHead>
+                <TableHead className="p-4 text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-neutral-50">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="p-10 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                     <Loader2 className="mr-2 inline animate-spin" size={16} />{" "}
                     Loading expenses…
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 visible.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-neutral-50/50">
-                    <td className="p-4 font-bold text-[#087f5b]">
+                  <TableRow key={expense.id} className="hover:bg-neutral-50/50">
+                    <TableCell className="p-4 font-bold text-[#0B6B50]">
                       {expense.reference}
                       <span className="mt-0.5 block text-[10px] font-medium text-neutral-400">
                         {expense.receiptNumber || "No receipt"}
                       </span>
-                    </td>
-                    <td className="p-4">
+                    </TableCell>
+                    <TableCell className="p-4">
                       <span className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] font-bold text-neutral-700">
                         {expense.categoryName}
                       </span>
-                    </td>
-                    <td className="max-w-72 p-4 text-neutral-600">
+                    </TableCell>
+                    <TableCell className="max-w-72 p-4 text-neutral-600">
                       {expense.description}
-                    </td>
-                    <td className="p-4 text-right font-black text-neutral-800">
+                      {expense.status === "REJECTED" && expense.rejectionReason && <p className="mt-1 text-xs text-red-700">Rejected: {expense.rejectionReason}</p>}
+                    </TableCell>
+                    <TableCell className="p-4 text-right font-black text-neutral-800">
                       {money(expense.amount)}
-                    </td>
-                    <td className="p-4 font-semibold text-neutral-500">
+                    </TableCell>
+                    <TableCell className="p-4 font-semibold text-neutral-500">
                       {expense.expenseDate}
-                    </td>
-                    <td className="p-4 text-center">
+                    </TableCell>
+                    <TableCell className="p-4 text-center">
                       <span
                         className={`rounded px-2 py-0.5 text-[9px] font-extrabold ${statusClass(expense.status)}`}
                       >
                         {pretty(expense.status)}
                       </span>
-                    </td>
-                    <td className="p-4">
+                      {expense.status === "PENDING" && <span className="mt-1 block text-[10px] font-medium text-amber-800">Waiting for {expense.currentStepLabel || "reviewer"}</span>}
+                    </TableCell>
+                    <TableCell className="p-4">
                       <div className="flex justify-center gap-1">
-                        <button
+                        <Button
                           onClick={() => edit(expense)}
-                          className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-[#087f5b]"
+                          disabled={expense.status === "APPROVED" || expense.status === "PAID"}
+                          className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-[#0B6B50]"
                           title="Edit expense"
                         >
                           <Pencil size={14} />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => deleteExpense(expense)}
+                          disabled={expense.status === "APPROVED" || expense.status === "PAID"}
                           className="rounded p-1.5 text-neutral-500 hover:bg-red-50 hover:text-red-600"
                           title="Delete expense"
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
               {!loading && !visible.length && (
-                <tr>
-                  <td colSpan={7} className="p-10 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="p-10 text-center text-neutral-400">
                     {groupId
-                      ? "No expense records."
+                      ? "No expenses recorded yet."
                       : "Select a group to view expenses."}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </section>
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#122b1c]/30 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-lg rounded-2xl border border-[#dfe8e2] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/30 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-lg rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between border-b border-neutral-100 pb-3">
               <h2 className="text-sm font-extrabold text-neutral-800">
                 {editing ? "Edit Expense" : "Record Outbound Expense"}
               </h2>
-              <button
+              <Button
+                disabled={isSubmitting}
                 onClick={() => setModalOpen(false)}
                 className="text-neutral-400 hover:text-neutral-700"
               >
                 <X size={18} />
-              </button>
+              </Button>
             </div>
             <form onSubmit={submit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <label className="text-xs font-bold text-neutral-700">
                   Category
-                  <select
+                  <NativeSelect
                     required
                     value={form.categoryId || ""}
                     onChange={(event) => { const selected = expenseCategories.find(category => category.id === Number(event.target.value)); setForm({ ...form, categoryId: selected?.id, categoryName: selected?.name }); }
                     }
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs font-medium outline-none focus:border-[#087f5b]"
+                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs font-medium outline-none focus:border-[#0B6B50]"
                   >
                     <option value="" disabled>{expenseCategories.length ? "Select category" : "No active categories"}</option>
                     {expenseCategories.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </label>
                 <label className="text-xs font-bold text-neutral-700">
                   Amount ({currency})
-                  <input
+                  <Input
                     type="number"
                     required
                     min="1"
@@ -382,78 +399,58 @@ export default function ExpensesPage() {
                     onChange={(event) =>
                       setForm({ ...form, amount: Number(event.target.value) })
                     }
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs font-bold outline-none focus:border-[#087f5b]"
+                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs font-bold outline-none focus:border-[#0B6B50]"
                   />
                 </label>
               </div>
               <label className="block text-xs font-bold text-neutral-700">
                 Description
-                <input
+                <Input
                   required
                   value={form.description || ""}
                   onChange={(event) =>
                     setForm({ ...form, description: event.target.value })
                   }
-                  className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                  className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                 />
               </label>
               <div className="grid grid-cols-2 gap-4">
                 <label className="text-xs font-bold text-neutral-700">
                   Expense date
-                  <input
+                  <Input
                     type="date"
                     required
                     value={form.expenseDate || ""}
                     onChange={(event) =>
                       setForm({ ...form, expenseDate: event.target.value })
                     }
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                   />
                 </label>
                 <label className="text-xs font-bold text-neutral-700">
                   Receipt number
-                  <input
+                  <Input
                     value={form.receiptNumber || ""}
                     onChange={(event) =>
                       setForm({ ...form, receiptNumber: event.target.value })
                     }
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] p-2.5 text-xs outline-none focus:border-[#087f5b]"
+                    className="mt-1.5 w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs outline-none focus:border-[#0B6B50]"
                   />
                 </label>
               </div>
-              {editing && (
-                <label className="block text-xs font-bold text-neutral-700">
-                  Status
-                  <select
-                    value={form.status || "PENDING"}
-                    onChange={(event) =>
-                      setForm({ ...form, status: event.target.value })
-                    }
-                    className="mt-1.5 w-full rounded-lg border border-[#dfe8e2] bg-white p-2.5 text-xs outline-none focus:border-[#087f5b]"
-                  >
-                    {[
-                      "PENDING",
-                      "APPROVED",
-                      "PAID",
-                      "REJECTED",
-                      "CANCELLED",
-                    ].map((status) => (
-                      <option key={status}>{status}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
               <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4">
-                <button
+                <Button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setModalOpen(false)}
-                  className="rounded-lg border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-500"
+                  className="rounded-lg border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-500"
                 >
                   Cancel
-                </button>
-                <button className="rounded-lg bg-[#087f5b] px-4 py-2 text-xs font-bold text-white hover:bg-[#066b4c]">
-                  {editing ? "Save changes" : "Record expense"}
-                </button>
+                </Button>
+                <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting} className="rounded-lg bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white hover:bg-[#08503C]">
+                  {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                  {isSubmitting ? (editing ? "Saving changes..." : "Recording expense...") : (editing ? "Save changes" : "Record expense")}
+                </Button>
               </div>
             </form>
           </div>

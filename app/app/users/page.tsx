@@ -1,4 +1,5 @@
 "use client";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Search, ShieldCheck } from "lucide-react";
@@ -12,10 +13,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { memberService, type Member } from "@/lib/api/services";
 type Env<T> = { data?: T; message?: string };
 const unwrap = <T,>(v: T | Env<T>) =>
   (v && typeof v === "object" && "data" in v ? (v as Env<T>).data : v) as T;
+
+const permissionHint = (permission: string) => {
+  if (permission === "MEETING_MANAGE") return "Schedule meetings and record attendance";
+  if (permission === "MEETING_MINUTES_MANAGE") return "Create and revise meeting minutes";
+  return "Additional group-specific access";
+};
 export default function UsersAdministrationPage() {
   const qc = useQueryClient();
   const [groupId, setGroupId] = useState("");
@@ -61,7 +73,7 @@ export default function UsersAdministrationPage() {
   });
   const updateAccess = useMutation({
     mutationFn: () => memberService.updateAccess(groupId, selectedMember!.id, access),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["members", groupId] }); setAccessOpen(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["members", groupId] }); window.dispatchEvent(new Event("vikoba:access-updated")); setAccessOpen(false); },
   });
   const add = useMutation({
     mutationFn: () =>
@@ -102,51 +114,53 @@ export default function UsersAdministrationPage() {
           <Plus size={15} /> Add user
         </Button>
       </div>
-      <div className="mb-5 flex items-center rounded-xl border bg-white p-3">
+      <div className="mb-5 flex items-center rounded-xl border border-border bg-card p-3 shadow-sm">
         <Search size={15} className="mr-2 text-neutral-400" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search members..."
-          className="h-8 border-0 shadow-none"
+          className="h-10 border-0 bg-transparent shadow-none"
         />
       </div>
-      <div className="overflow-hidden rounded-xl border bg-white">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="bg-neutral-50 text-[10px] uppercase text-neutral-400">
-              <th className="p-4">Member</th>
-              <th className="p-4">Phone</th>
-              <th className="p-4">Email</th>
-              <th className="p-4">Roles</th>
-              <th className="p-4">Status</th>
-              {canManageAccess && <th className="p-4 text-right">Access</th>}
-            </tr>
-          </thead>
-          <tbody>
+      <div className="relative z-10 overflow-hidden rounded-xl border border-border bg-card shadow-[0_12px_36px_rgba(16,36,29,0.12)]">
+        <Table className="w-full text-left text-xs">
+          <TableHeader>
+            <TableRow className="bg-muted/70 text-xs uppercase text-foreground">
+              <TableHead className="p-4">Member</TableHead>
+              <TableHead className="p-4">Phone</TableHead>
+              <TableHead className="p-4">Email</TableHead>
+              <TableHead className="p-4">Roles</TableHead>
+              <TableHead className="p-4">Status</TableHead>
+              {canManageAccess && <TableHead className="p-4 text-right">Access</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {members.isLoading && (
-              <tr>
-                <td colSpan={canManageAccess ? 6 : 5} className="p-10 text-center">
+              <TableRow>
+                <TableCell colSpan={canManageAccess ? 6 : 5} className="p-10 text-center">
                   <Loader2 className="mx-auto animate-spin" />
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
+            {!members.isLoading && members.isError && <TableRow><TableCell colSpan={canManageAccess ? 6 : 5} className="p-8 text-center text-destructive">Unable to load group users. Please retry.</TableCell></TableRow>}
+            {!members.isLoading && !members.isError && visible.length === 0 && <TableRow><TableCell colSpan={canManageAccess ? 6 : 5} className="p-8 text-center text-muted-foreground">{search ? "No users match your search." : "No group users found."}</TableCell></TableRow>}
             {visible.map((m) => (
-              <tr key={m.id} className="border-t">
-                <td className="p-4 font-bold">
+              <TableRow key={m.id} className="border-t">
+                <TableCell className="p-4 font-bold">
                   {m.name ||
                     m.fullName ||
                     `${m.firstName || ""} ${m.lastName || ""}`}
-                </td>
-                <td className="p-4">{m.phone || "—"}</td>
-                <td className="p-4">{m.email || "—"}</td>
-                <td className="p-4 font-bold">{(m.roles || [m.role || "MEMBER"]).join(", ")}</td>
-                <td className="p-4">{m.status || "ACTIVE"}</td>
-                {canManageAccess && <td className="p-4 text-right"><Button variant="outline" size="sm" onClick={() => openAccess(m)}><ShieldCheck size={14} /> Manage</Button></td>}
-              </tr>
+                </TableCell>
+                <TableCell className="p-4">{m.phone || "—"}</TableCell>
+                <TableCell className="p-4">{m.email || "—"}</TableCell>
+                <TableCell className="p-4"><div className="flex flex-wrap gap-1">{(m.roles || [m.role || "MEMBER"]).map(role => <Badge key={role} variant="secondary">{role.replaceAll("_", " ")}</Badge>)}</div></TableCell>
+                <TableCell className="p-4"><Badge variant={(m.status || "ACTIVE") === "ACTIVE" ? "default" : "outline"}>{m.status || "ACTIVE"}</Badge></TableCell>
+                {canManageAccess && <TableCell className="p-4 text-right"><Button variant="default" size="sm" className="min-w-28 font-bold" onClick={() => openAccess(m)}><ShieldCheck size={14} /> Manage</Button></TableCell>}
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -194,7 +208,7 @@ export default function UsersAdministrationPage() {
             </label>
             <label className="text-xs font-bold">
               Role
-              <select
+              <NativeSelect
                 value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
                 className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm"
@@ -204,7 +218,7 @@ export default function UsersAdministrationPage() {
                     {r.label}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <DialogFooter className="col-span-2">
               <Button type="submit" disabled={add.isPending}>
@@ -220,14 +234,44 @@ export default function UsersAdministrationPage() {
         </DialogContent>
       </Dialog>
       <Dialog open={accessOpen} onOpenChange={setAccessOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader><DialogTitle>Manage member access</DialogTitle><DialogDescription>{selectedMember?.fullName || selectedMember?.name} can hold several roles. MEMBER is retained as the base role.</DialogDescription></DialogHeader>
-          <div className="space-y-5 text-sm">
-            <div><p className="mb-2 text-xs font-black uppercase text-neutral-500">Roles</p><div className="grid grid-cols-2 gap-2">{(roles.data || []).map((role: any) => <label key={role.value} className="flex items-center gap-2 rounded border p-2 text-xs"><input type="checkbox" checked={access.roles.includes(role.value)} disabled={role.value === "MEMBER"} onChange={() => toggle("roles", role.value)} />{role.label}</label>)}</div></div>
-            <div><p className="mb-2 text-xs font-black uppercase text-neutral-500">Extra permissions</p><p className="mb-2 text-xs text-neutral-400">These are group-specific grants in addition to the selected roles.</p><div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto">{(permissions.data || []).map((permission: string) => <label key={permission} className="flex items-center gap-2 rounded border p-2 text-xs"><input type="checkbox" checked={access.permissions.includes(permission)} onChange={() => toggle("permissions", permission)} />{permission}</label>)}</div></div>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Manage member access</DialogTitle>
+            <DialogDescription>Choose roles and additional permissions for {selectedMember?.fullName || selectedMember?.name}. The base MEMBER role stays assigned.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="min-w-0 border-border shadow-sm">
+              <CardContent className="space-y-3 p-4 pt-4">
+                <div className="flex items-center justify-between"><h3 className="font-bold text-foreground">Group roles</h3><Badge variant="secondary">{access.roles.length} selected</Badge></div>
+                <p className="text-xs text-muted-foreground">Roles determine what this user can do in the group.</p>
+                <div className="max-h-72 space-y-2 overflow-y-auto pr-1">{(roles.data || []).map((role: any) => {
+                  const selected = access.roles.includes(role.value);
+                  return <Label key={role.value} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors ${selected ? 'border-primary bg-primary-soft text-foreground' : 'border-border bg-card hover:bg-muted'}`}>
+                    <Checkbox checked={selected} disabled={role.value === 'MEMBER'} onChange={() => toggle('roles', role.value)} aria-label={`Assign ${role.label} role`} />
+                    <span className="font-semibold">{role.label}</span>{role.value === 'MEMBER' && <Badge variant="outline" className="ml-auto">Required</Badge>}
+                  </Label>;
+                })}</div>
+              </CardContent>
+            </Card>
+            <Card className="min-w-0 border-border shadow-sm">
+              <CardContent className="space-y-3 p-4 pt-4">
+                <div className="flex items-center justify-between"><h3 className="font-bold text-foreground">Extra permissions</h3><Badge variant="secondary">{access.permissions.length} selected</Badge></div>
+                <p className="text-xs text-muted-foreground">Grant specific actions beyond the selected roles.</p>
+                <div className="max-h-72 space-y-2 overflow-y-auto pr-1">{(permissions.data || []).map((permission: string) => {
+                  const selected = access.permissions.includes(permission);
+                  return <Label key={permission} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${selected ? 'border-primary bg-primary-soft text-foreground' : 'border-border bg-card hover:bg-muted'}`}>
+                    <Checkbox checked={selected} onChange={() => toggle('permissions', permission)} aria-label={`Grant ${permission} permission`} className="mt-0.5" />
+                    <span><span className="block font-semibold">{permission.replaceAll('_', ' ')}</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{permissionHint(permission)}</span></span>
+                  </Label>;
+                })}</div>
+              </CardContent>
+            </Card>
           </div>
-          {updateAccess.isError && <p className="text-xs text-red-600">{(updateAccess.error as Error).message}</p>}
-          <DialogFooter><Button onClick={() => updateAccess.mutate()} disabled={updateAccess.isPending}>{updateAccess.isPending ? "Saving…" : "Save access"}</Button></DialogFooter>
+          {updateAccess.isError && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{(updateAccess.error as Error).message}</p>}
+          <DialogFooter className="gap-2 border-t border-border pt-4">
+            <Button variant="outline" type="button" onClick={() => setAccessOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={() => updateAccess.mutate()} disabled={updateAccess.isPending}>{updateAccess.isPending ? <><Loader2 className="animate-spin" /> Saving…</> : 'Save access'}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </main>

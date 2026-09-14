@@ -1,5 +1,10 @@
 'use client'
 
+import { Textarea } from "@/components/ui/textarea";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useState, useRef } from 'react'
 import { Coins, Plus, Search, X, Check, Landmark, AlertCircle, Upload, Download, TrendingUp, Users, DollarSign, BarChart3 } from 'lucide-react'
 import { useContributions } from '@/hooks/useContributions'
@@ -371,7 +376,7 @@ export default function ContributionsPage() {
             { id: 'single', label: 'Record Single', icon: Plus },
             { id: 'bulk', label: 'Bulk Upload', icon: Upload }
           ].map(tab => (
-            <button
+            <Button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${activeTab === tab.id
@@ -381,7 +386,7 @@ export default function ContributionsPage() {
             >
               {<tab.icon size={16} />}
               {tab.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -395,7 +400,7 @@ export default function ContributionsPage() {
                   <label className="block text-xs font-bold text-neutral-600 mb-2 uppercase tracking-wider">Search</label>
                   <div className="relative">
                     <Search size={16} className="absolute left-3 top-3 text-neutral-400" />
-                    <input
+                    <Input
                       type="text"
                       placeholder="Search by name or member ID..."
                       value={search}
@@ -407,7 +412,7 @@ export default function ContributionsPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-neutral-600 mb-2 uppercase tracking-wider">Status</label>
-                  <select
+                  <NativeSelect
                     value={statusFilter}
                     onChange={e => setStatusFilter(e.target.value)}
                     className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
@@ -416,12 +421,12 @@ export default function ContributionsPage() {
                     <option value="PAID">Paid</option>
                     <option value="PARTIAL">Partial</option>
                     <option value="PENDING">Pending</option>
-                  </select>
+                  </NativeSelect>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-neutral-600 mb-2 uppercase tracking-wider">Period</label>
-                  <select
+                  <NativeSelect
                     value={periodFilter}
                     onChange={e => setPeriodFilter(e.target.value)}
                     className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
@@ -429,7 +434,7 @@ export default function ContributionsPage() {
                     {periods.map(period => (
                       <option key={period.id} value={period.id}>{period.displayText}</option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </div>
               </div>
             </div>
@@ -437,60 +442,60 @@ export default function ContributionsPage() {
             {/* Contributions Table */}
             <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-neutral-50 border-b border-neutral-200">
-                      <th className="px-6 py-4 text-left font-bold text-neutral-700">Member</th>
-                      <th className="px-6 py-4 text-left font-bold text-neutral-700">Phone</th>
-                      <th className="px-6 py-4 text-left font-bold text-neutral-700">Account</th>
-                      <th className="px-6 py-4 text-left font-bold text-neutral-700">Period</th>
-                      <th className="px-6 py-4 text-right font-bold text-neutral-700">Expected</th>
-                      <th className="px-6 py-4 text-right font-bold text-neutral-700">Paid</th>
-                      <th className="px-6 py-4 text-right font-bold text-neutral-700">Balance</th>
-                      <th className="px-6 py-4 text-center font-bold text-neutral-700">Status</th>
-                      <th className="px-6 py-4 text-left font-bold text-neutral-700">Method</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
+                <Table className="w-full text-sm">
+                  <TableHeader>
+                    <TableRow className="bg-neutral-50 border-b border-neutral-200">
+                      <TableHead className="px-6 py-4 text-left font-bold text-neutral-700">Member</TableHead>
+                      <TableHead className="px-6 py-4 text-left font-bold text-neutral-700">Phone</TableHead>
+                      <TableHead className="px-6 py-4 text-left font-bold text-neutral-700">Account</TableHead>
+                      <TableHead className="px-6 py-4 text-left font-bold text-neutral-700">Period</TableHead>
+                      <TableHead className="px-6 py-4 text-right font-bold text-neutral-700">Expected</TableHead>
+                      <TableHead className="px-6 py-4 text-right font-bold text-neutral-700">Paid</TableHead>
+                      <TableHead className="px-6 py-4 text-right font-bold text-neutral-700">Balance</TableHead>
+                      <TableHead className="px-6 py-4 text-center font-bold text-neutral-700">Status</TableHead>
+                      <TableHead className="px-6 py-4 text-left font-bold text-neutral-700">Method</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-neutral-100">
                     {filteredContributions.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="px-6 py-12 text-center text-neutral-500">
+                      <TableRow>
+                        <TableCell colSpan={9} className="px-6 py-12 text-center text-neutral-500">
                           <AlertCircle size={24} className="mx-auto mb-2 opacity-50" />
                           <p className="font-semibold">No contributions found</p>
                           <p className="text-xs mt-1">Try adjusting your filters or add a new contribution</p>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       filteredContributions.map(c => (
-                        <tr key={c.id} className="hover:bg-neutral-50 transition">
-                          <td className="px-6 py-4">
+                        <TableRow key={c.id} className="hover:bg-neutral-50 transition">
+                          <TableCell className="px-6 py-4">
                             <div>
                               <p className="font-bold text-neutral-900">{c.memberName}</p>
                               <p className="text-xs text-neutral-500 mt-1">{c.memberId}</p>
                             </div>
-                          </td>
-                          <td className="px-6 py-4 text-neutral-600">{c.memberPhone || '—'}</td>
-                          <td className="px-6 py-4 text-neutral-600">{c.memberAccountNumber || '—'}</td>
-                          <td className="px-6 py-4 text-neutral-600">
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-neutral-600">{c.memberPhone || '—'}</TableCell>
+                          <TableCell className="px-6 py-4 text-neutral-600">{c.memberAccountNumber || '—'}</TableCell>
+                          <TableCell className="px-6 py-4 text-neutral-600">
                             {c.period || (c.periodStart ? new Date(c.periodStart).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '—')}
-                          </td>
-                          <td className="px-6 py-4 text-right font-semibold text-neutral-900">{fmt(c.expectedAmount)}</td>
-                          <td className="px-6 py-4 text-right font-semibold text-emerald-600">{fmt(c.paidAmount)}</td>
-                          <td className="px-6 py-4 text-right font-bold text-red-600">{fmt(c.balance)}</td>
-                          <td className="px-6 py-4 text-center">
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-right font-semibold text-neutral-900">{fmt(c.expectedAmount)}</TableCell>
+                          <TableCell className="px-6 py-4 text-right font-semibold text-emerald-600">{fmt(c.paidAmount)}</TableCell>
+                          <TableCell className="px-6 py-4 text-right font-bold text-red-600">{fmt(c.balance)}</TableCell>
+                          <TableCell className="px-6 py-4 text-center">
                             <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${c.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' :
                               c.status === 'PARTIAL' ? 'bg-amber-100 text-amber-700' :
                                 'bg-red-100 text-red-700'
                               }`}>
                               {c.status}
                             </span>
-                          </td>
-                          <td className="px-6 py-4 text-xs text-neutral-600">{c.paymentMethod || '—'}</td>
-                        </tr>
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-xs text-neutral-600">{c.paymentMethod || '—'}</TableCell>
+                        </TableRow>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </div>
@@ -511,7 +516,7 @@ export default function ContributionsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-neutral-700 mb-2">Member *</label>
-                      <select
+                      <NativeSelect
                         required
                         value={singleForm.memberId}
                         onChange={e => setSingleForm({ ...singleForm, memberId: e.target.value })}
@@ -521,12 +526,12 @@ export default function ContributionsPage() {
                         {members.map(m => (
                           <option key={m.id} value={m.id}>{m.name} ({m.accountNumber})</option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </div>
 
                     <div>
                       <label className="block text-sm font-bold text-neutral-700 mb-2">Period *</label>
-                      <select
+                      <NativeSelect
                         required
                         value={singleForm.periodId}
                         onChange={e => setSingleForm({ ...singleForm, periodId: e.target.value })}
@@ -536,14 +541,14 @@ export default function ContributionsPage() {
                         {periods.map(p => (
                           <option key={p.id} value={p.id}>{p.displayText}</option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-neutral-700 mb-2">Amount (TZS) *</label>
-                      <input
+                      <Input
                         type="number"
                         required
                         min="0"
@@ -557,7 +562,7 @@ export default function ContributionsPage() {
 
                     <div>
                       <label className="block text-sm font-bold text-neutral-700 mb-2">Payment Method *</label>
-                      <select
+                      <NativeSelect
                         value={singleForm.paymentMethod}
                         onChange={e => setSingleForm({ ...singleForm, paymentMethod: e.target.value })}
                         className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
@@ -566,13 +571,13 @@ export default function ContributionsPage() {
                         <option value="Cash">Cash</option>
                         <option value="Bank Transfer">Bank Transfer</option>
                         <option value="Check">Check</option>
-                      </select>
+                      </NativeSelect>
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-bold text-neutral-700 mb-2">Payment Reference</label>
-                    <input
+                    <Input
                       type="text"
                       value={singleForm.paymentReference}
                       onChange={e => setSingleForm({ ...singleForm, paymentReference: e.target.value })}
@@ -583,7 +588,7 @@ export default function ContributionsPage() {
 
                   <div>
                     <label className="block text-sm font-bold text-neutral-700 mb-2">Remarks</label>
-                    <textarea
+                    <Textarea
                       value={singleForm.remarks}
                       onChange={e => setSingleForm({ ...singleForm, remarks: e.target.value })}
                       className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none"
@@ -593,7 +598,7 @@ export default function ContributionsPage() {
                   </div>
 
                   <div className="flex gap-3 pt-4">
-                    <button
+                    <Button
                       type="submit"
                       disabled={loading}
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-400 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
@@ -609,7 +614,7 @@ export default function ContributionsPage() {
                           Record Contribution
                         </>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>
@@ -672,7 +677,7 @@ export default function ContributionsPage() {
                       }}
                       className="border-2 border-dashed border-neutral-300 rounded-xl p-12 text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition"
                     >
-                      <input
+                      <Input
                         ref={fileInputRef}
                         type="file"
                         accept=".xlsx,.xls,.csv"
@@ -701,7 +706,7 @@ export default function ContributionsPage() {
                     {/* Remarks */}
                     <div>
                       <label className="block text-sm font-bold text-neutral-700 mb-2">Upload Remarks</label>
-                      <textarea
+                      <Textarea
                         value={bulkRemarks}
                         onChange={e => setBulkRemarks(e.target.value)}
                         className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none"
@@ -725,16 +730,16 @@ export default function ContributionsPage() {
 
                     {/* Actions */}
                     <div className="flex gap-3">
-                      <button
+                      <Button
                         type="button"
                         onClick={handleDownloadTemplate}
                         className="flex-1 border-2 border-neutral-300 hover:border-neutral-400 text-neutral-600 font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
                       >
                         <Download size={18} />
                         Download Template
-                      </button>
+                      </Button>
 
-                      <button
+                      <Button
                         type="submit"
                         disabled={!bulkFile || loading}
                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-400 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
@@ -750,7 +755,7 @@ export default function ContributionsPage() {
                             Upload & Process
                           </>
                         )}
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 ) : (
@@ -796,7 +801,7 @@ export default function ContributionsPage() {
 
                     {/* Actions */}
                     <div className="flex gap-3">
-                      <button
+                      <Button
                         onClick={() => {
                           setShowResults(false)
                           setBulkFile(null)
@@ -805,7 +810,7 @@ export default function ContributionsPage() {
                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition"
                       >
                         Upload Another Batch
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}

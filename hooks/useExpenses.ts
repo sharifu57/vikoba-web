@@ -18,6 +18,9 @@ export type ExpenseRecord = {
   rejectionReason?: string;
   createdAt?: string;
   updatedAt?: string;
+  approvalSteps?: { role: string; label: string; approvedAt?: string | null; approvedBy?: number | null }[];
+  currentStepLabel?: string | null;
+  canApprove?: boolean;
 };
 export type ExpenseInput = {
   categoryId?: number;
@@ -109,5 +112,9 @@ export function useExpenses() {
       request(async () =>
         apiDelete(`${base(groupId)}/${expenseId}`, { auth: true }),
       ),
+    approve: (groupId: string, expenseId: number) =>
+      request(() => apiPost(`${base(groupId)}/${expenseId}/approve`, {}, { auth: true })),
+    reject: (groupId: string, expenseId: number, reason: string) =>
+      request(() => apiPost(`${base(groupId)}/${expenseId}/reject`, { reason }, { auth: true })),
   };
 }

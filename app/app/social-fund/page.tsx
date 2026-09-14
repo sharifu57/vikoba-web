@@ -1,5 +1,10 @@
 "use client";
 
+import { Textarea } from "@/components/ui/textarea";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -191,18 +196,18 @@ export default function JamiiFundPage() {
               Requests move from review to approval, then disbursement.
             </p>
           </div>
-          <button
+          <Button
             onClick={() => setOpen(true)}
             disabled={!groupId}
             className="flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-50"
           >
             <Plus size={17} /> Request support
-          </button>
+          </Button>
         </header>
         {message && (
           <div className="flex justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
             <span>{message}</span>
-            <button onClick={() => setMessage(null)}>Dismiss</button>
+            <Button onClick={() => setMessage(null)}>Dismiss</Button>
           </div>
         )}
         {api.error && (
@@ -251,7 +256,7 @@ export default function JamiiFundPage() {
                 size={15}
                 className="absolute left-3 top-2.5 text-neutral-400"
               />
-              <input
+              <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search requests"
@@ -260,48 +265,48 @@ export default function JamiiFundPage() {
             </div>
           </div>
           <div className="mt-5 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-50 text-xs uppercase tracking-wider text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3">Member</th>
-                  <th className="px-4 py-3">Support type</th>
-                  <th className="px-4 py-3 text-right">Requested</th>
-                  <th className="px-4 py-3 text-right">Approved</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
+            <Table className="w-full text-left text-sm">
+              <TableHeader className="bg-neutral-50 text-xs uppercase tracking-wider text-neutral-500">
+                <TableRow>
+                  <TableHead className="px-4 py-3">Member</TableHead>
+                  <TableHead className="px-4 py-3">Support type</TableHead>
+                  <TableHead className="px-4 py-3 text-right">Requested</TableHead>
+                  <TableHead className="px-4 py-3 text-right">Approved</TableHead>
+                  <TableHead className="px-4 py-3">Date</TableHead>
+                  <TableHead className="px-4 py-3">Status</TableHead>
+                  <TableHead className="px-4 py-3">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-neutral-100">
                 {visible.map((r) => (
-                  <tr key={r.id} className="hover:bg-neutral-50">
-                    <td className="px-4 py-4 font-bold text-neutral-800">
+                  <TableRow key={r.id} className="hover:bg-neutral-50">
+                    <TableCell className="px-4 py-4 font-bold text-neutral-800">
                       {r.memberName}
                       <span className="block text-xs font-normal text-neutral-400">
                         {r.membershipNumber}
                       </span>
-                    </td>
-                    <td className="px-4 py-4">{r.fundTypeName}</td>
-                    <td className="px-4 py-4 text-right font-semibold">
+                    </TableCell>
+                    <TableCell className="px-4 py-4">{r.fundTypeName}</TableCell>
+                    <TableCell className="px-4 py-4 text-right font-semibold">
                       {money(r.requestedAmount)}
-                    </td>
-                    <td className="px-4 py-4 text-right font-semibold">
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-right font-semibold">
                       {r.approvedAmount ? money(r.approvedAmount) : "—"}
-                    </td>
-                    <td className="px-4 py-4 text-xs text-neutral-500">
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-xs text-neutral-500">
                       {r.requestedDate}
-                    </td>
-                    <td className="px-4 py-4">
+                    </TableCell>
+                    <TableCell className="px-4 py-4">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass(r.status)}`}
                       >
                         {r.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-4">
+                    </TableCell>
+                    <TableCell className="px-4 py-4">
                       {r.status === "PENDING" && (
                         <div className="flex gap-2">
-                          <button
+                          <Button
                             onClick={() => {
                               const amount = window.prompt(
                                 "Approved amount",
@@ -317,8 +322,8 @@ export default function JamiiFundPage() {
                             className="rounded bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700"
                           >
                             Approve
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             onClick={() =>
                               void act(
                                 () => api.reject(groupId, r.id),
@@ -328,11 +333,11 @@ export default function JamiiFundPage() {
                             className="rounded bg-red-50 px-2 py-1 text-xs font-bold text-red-700"
                           >
                             Reject
-                          </button>
+                          </Button>
                         </div>
                       )}
                       {r.status === "APPROVED" && (
-                        <button
+                        <Button
                           onClick={() =>
                             void act(
                               () => api.pay(groupId, r.id),
@@ -342,23 +347,23 @@ export default function JamiiFundPage() {
                           className="rounded bg-rose-600 px-2 py-1 text-xs font-bold text-white"
                         >
                           Disburse
-                        </button>
+                        </Button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
                 {visible.length === 0 && (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={7}
                       className="px-4 py-14 text-center text-neutral-500"
                     >
                       No Jamii requests found.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </section>
         {open && (
@@ -371,12 +376,12 @@ export default function JamiiFundPage() {
                     Submit a welfare request for review.
                   </p>
                 </div>
-                <button onClick={() => setOpen(false)} aria-label="Close">
+                <Button onClick={() => setOpen(false)} aria-label="Close">
                   <X size={18} />
-                </button>
+                </Button>
               </div>
               <form onSubmit={submit} className="space-y-4">
-                <select
+                <NativeSelect
                   required
                   value={form.memberId}
                   onChange={(e) =>
@@ -390,8 +395,8 @@ export default function JamiiFundPage() {
                       {memberLabel(m)}
                     </option>
                   ))}
-                </select>
-                <select
+                </NativeSelect>
+                <NativeSelect
                   required
                   value={form.fundTypeId}
                   onChange={(e) =>
@@ -405,8 +410,8 @@ export default function JamiiFundPage() {
                       {t.name}
                     </option>
                   ))}
-                </select>
-                <button
+                </NativeSelect>
+                <Button
                   type="button"
                   onClick={() => setAddingType((v) => !v)}
                   className="text-sm font-bold text-rose-700 hover:text-rose-800"
@@ -414,13 +419,13 @@ export default function JamiiFundPage() {
                   {addingType
                     ? "Use an existing type"
                     : "+ Add a support type for this group"}
-                </button>
+                </Button>
                 {addingType && (
                   <div className="rounded-lg border border-rose-100 bg-rose-50 p-3">
                     <p className="mb-2 text-xs font-bold text-rose-800">
                       New group support type
                     </p>
-                    <input
+                    <Input
                       required
                       value={typeForm.name}
                       onChange={(e) =>
@@ -429,7 +434,7 @@ export default function JamiiFundPage() {
                       placeholder="e.g. Medical emergency"
                       className="mb-2 w-full rounded border border-neutral-200 px-3 py-2 text-sm"
                     />
-                    <input
+                    <Input
                       value={typeForm.code}
                       onChange={(e) =>
                         setTypeForm({ ...typeForm, code: e.target.value })
@@ -437,7 +442,7 @@ export default function JamiiFundPage() {
                       placeholder="Optional code, e.g. MEDICAL"
                       className="mb-2 w-full rounded border border-neutral-200 px-3 py-2 text-sm"
                     />
-                    <textarea
+                    <Textarea
                       value={typeForm.description}
                       onChange={(e) =>
                         setTypeForm({
@@ -449,17 +454,17 @@ export default function JamiiFundPage() {
                       rows={2}
                       className="w-full rounded border border-neutral-200 px-3 py-2 text-sm"
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={() => void createType()}
                       disabled={api.loading || !typeForm.name.trim()}
                       className="mt-2 rounded bg-white px-3 py-2 text-xs font-bold text-rose-700 ring-1 ring-rose-200 disabled:opacity-50"
                     >
                       Create and select type
-                    </button>
+                    </Button>
                   </div>
                 )}
-                <input
+                <Input
                   required
                   type="number"
                   min="1"
@@ -468,7 +473,7 @@ export default function JamiiFundPage() {
                   placeholder="Requested amount"
                   className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
                 />
-                <textarea
+                <Textarea
                   required
                   value={form.reason}
                   onChange={(e) => setForm({ ...form, reason: e.target.value })}
@@ -476,7 +481,7 @@ export default function JamiiFundPage() {
                   className="w-full rounded-lg border border-neutral-200 px-3 py-3 text-sm"
                   rows={4}
                 />
-                <button
+                <Button
                   disabled={api.loading || !types.length}
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
                 >
@@ -484,7 +489,7 @@ export default function JamiiFundPage() {
                     <Loader2 size={16} className="animate-spin" />
                   )}{" "}
                   Submit for approval
-                </button>
+                </Button>
               </form>
             </div>
           </div>

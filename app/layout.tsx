@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   description:
     "A modern, secure platform for managing VIKOBA community savings groups across Tanzania and East Africa.",
   generator: "v0.app",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export const viewport: Viewport = {

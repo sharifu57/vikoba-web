@@ -435,7 +435,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
 
       const storedGroupId = localStorage.getItem('v360_currentGroupId')
-      if (storedGroupId) setCurrentGroupId(storedGroupId)
+      if (storedGroupId && /^\d+$/.test(storedGroupId)) setCurrentGroupId(storedGroupId)
 
       const storedMembers = localStorage.getItem('v360_members')
       if (storedMembers) setMembers(JSON.parse(storedMembers))
@@ -476,10 +476,10 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Sync back to local storage on edits
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isHydrated && /^\d+$/.test(currentGroupId)) {
       localStorage.setItem('v360_currentGroupId', currentGroupId)
     }
-  }, [currentGroupId])
+  }, [currentGroupId, isHydrated])
 
   const saveAndSync = (key: string, data: any, updater: Function) => {
     updater(data)

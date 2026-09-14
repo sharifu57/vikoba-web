@@ -17,6 +17,7 @@ export const API_ENDPOINTS = {
   members: "/api/members",
   contributions: "/api/contributions",
   shares: "/api/shares",
+  sharePurchaseRequests: "/api/share-purchase-requests",
   loans: "/api/loans",
   meetings: "/api/meetings",
   payments: "/api/payments",

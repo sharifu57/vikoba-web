@@ -1,4 +1,7 @@
 "use client";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Sparkles } from "lucide-react";
@@ -71,21 +74,21 @@ export default function DividendsPage() {
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     <label className="text-xs font-bold">
                         Financial year
-                        <input
+                        <Input
                             type="number"
                             value={year}
                             onChange={(e) => setYear(Number(e.target.value))}
                             className="mt-1 w-full rounded-lg border p-2.5"
                         />
                     </label>
-                    <button
+                    <Button
                         disabled={generate.isPending}
                         onClick={() => generate.mutate()}
-                        className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#087f5b] px-4 text-xs font-bold text-white disabled:opacity-50"
+                        className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0B6B50] px-4 text-xs font-bold text-white disabled:opacity-50"
                     >
                         <Sparkles size={15} />
                         {generate.isPending ? "Generating…" : "Generate dividends"}
-                    </button>
+                    </Button>
                 </div>
                 {generate.isError && (
                     <p className="mt-3 text-xs text-red-600">
@@ -103,38 +106,38 @@ export default function DividendsPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs">
-                            <thead>
-                                <tr className="bg-neutral-50 text-[10px] uppercase text-neutral-400">
-                                    <th className="p-4">Member</th>
-                                    <th className="p-4 text-right">Contributions</th><th className="p-4 text-right">Shares</th><th className="p-4 text-right">Fine balance</th>
-                                    <th className="p-4 text-right">Dividend</th>
-                                    <th className="p-4">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <Table className="w-full text-left text-xs">
+                            <TableHeader>
+                                <TableRow className="bg-neutral-50 text-[10px] uppercase text-neutral-400">
+                                    <TableHead className="p-4">Member</TableHead>
+                                    <TableHead className="p-4 text-right">Contributions</TableHead><TableHead className="p-4 text-right">Shares</TableHead><TableHead className="p-4 text-right">Fine balance</TableHead>
+                                    <TableHead className="p-4 text-right">Dividend</TableHead>
+                                    <TableHead className="p-4">Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {rows.map((r) => (
-                                    <tr key={r.id} className="border-t">
-                                        <td className="p-4 font-bold">{r.memberName}</td>
-                                        <td className="p-4 text-right">{money(r.contributions || 0)}</td><td className="p-4 text-right">{r.sharesOwned}</td><td className="p-4 text-right text-red-600">{money(r.fineDeduction || 0)}</td>
-                                        <td className="p-4 text-right font-black text-[#087f5b]">
+                                    <TableRow key={r.id} className="border-t">
+                                        <TableCell className="p-4 font-bold">{r.memberName}</TableCell>
+                                        <TableCell className="p-4 text-right">{money(r.contributions || 0)}</TableCell><TableCell className="p-4 text-right">{r.sharesOwned}</TableCell><TableCell className="p-4 text-right text-red-600">{money(r.fineDeduction || 0)}</TableCell>
+                                        <TableCell className="p-4 text-right font-black text-[#0B6B50]">
                                             {money(r.amount)}
-                                        </td>
-                                        <td className="p-4">{r.status}</td>
-                                    </tr>
+                                        </TableCell>
+                                        <TableCell className="p-4">{r.status}</TableCell>
+                                    </TableRow>
                                 ))}
                                 {!rows.length && (
-                                    <tr>
-                                        <td
+                                    <TableRow>
+                                        <TableCell
                                             colSpan={7}
                                             className="p-12 text-center text-neutral-400"
                                         >
                                             No dividends generated for this year.
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
                     </div>
                 )}
             </section>

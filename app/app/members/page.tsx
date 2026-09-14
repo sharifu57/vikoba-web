@@ -1,5 +1,9 @@
 'use client'
 
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -15,9 +19,11 @@ import {
   Loader2,
   Upload,
   PencilLine,
-  Trash2,
   CheckCircle2,
   Plus,
+  MoreHorizontal,
+  UserCheck,
+  UserX,
 } from 'lucide-react'
 import { memberService, type MemberRoleOption } from '@/lib/api/services'
 
@@ -74,6 +80,29 @@ type BulkMemberRow = {
   error?: string
 }
 
+type ManagedMember = {
+  id: string
+  groupId: string
+  name: string
+  memberNo: string
+  phone: string
+  email: string
+  joinedDate: string
+  role: string
+  status: string
+  firstName: string
+  middleName: string
+  lastName: string
+  nationalId: string
+  address: string
+  occupation: string
+  nextOfKinName: string
+  nextOfKinPhone: string
+  nextOfKinRelationship: string
+}
+
+type MemberEditForm = Omit<ManagedMember, 'id' | 'groupId' | 'name' | 'memberNo' | 'joinedDate' | 'role' | 'status'>
+
 export default function MembersPage() {
   const queryClient = useQueryClient()
   const [groupId, setGroupId] = useState('')
@@ -87,6 +116,11 @@ export default function MembersPage() {
   const [bulkRows, setBulkRows] = useState<BulkMemberRow[]>([])
   const [bulkFileName, setBulkFileName] = useState('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [canManageMembers, setCanManageMembers] = useState(false)
+  const [editingMember, setEditingMember] = useState<ManagedMember | null>(null)
+  const [editForm, setEditForm] = useState<MemberEditForm | null>(null)
+  const [statusMember, setStatusMember] = useState<ManagedMember | null>(null)
+  const [statusSubmitting, setStatusSubmitting] = useState(false)
 
   const [newMem, setNewMem] = useState<SingleMemberForm>({
     firstName: '',
@@ -119,10 +153,35 @@ export default function MembersPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!groupId || typeof window === 'undefined') return
+
+    try {
+      const memberships = JSON.parse(localStorage.getItem('v360_groups') || '[]') as Array<Record<string, unknown>>
+      const membership = memberships.find((item) => {
+        const group = (item.group || item) as Record<string, unknown>
+        return String(group.groupId ?? group.id) === groupId
+      })
+      const roles = Array.isArray(membership?.roles)
+        ? membership.roles.map(String).map((role) => role.toUpperCase())
+        : [String(membership?.role || 'MEMBER').toUpperCase()]
+      const permissions = Array.isArray(membership?.permissions)
+        ? membership.permissions.map(String).map((permission) => permission.toUpperCase())
+        : []
+
+      setCanManageMembers(
+        roles.some((role) => ['GROUP_ADMIN', 'GROUP_CHAIRMAN', 'CHAIRPERSON'].includes(role)) ||
+        permissions.includes('MEMBER_MANAGE'),
+      )
+    } catch {
+      setCanManageMembers(false)
+    }
+  }, [groupId])
+
   const { data: roleData, isLoading: loadingRoles } = useQuery({
     queryKey: ['member-roles'],
     queryFn: () => memberService.getRoles(),
-    enabled: true,
+    enabled: canManageMembers,
     staleTime: 30_000,
   })
 
@@ -138,7 +197,7 @@ export default function MembersPage() {
   const members = useMemo(() => {
     const list = unwrapApiData<Array<Record<string, unknown>>>(memberData)
     if (!list) return []
-    return list.map((member) => {
+    return list.map((member): ManagedMember => {
       const fullName =
         String(member.fullName ?? member.name ?? `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim()) ||
         `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim()
@@ -153,6 +212,15 @@ export default function MembersPage() {
         joinedDate: String(member.joinedDate ?? '—'),
         role: formatRoleLabel(String(member.role ?? 'MEMBER')),
         status: String(member.membershipStatus ?? member.status ?? 'ACTIVE').toUpperCase(),
+        firstName: String(member.firstName ?? ''),
+        middleName: String(member.middleName ?? ''),
+        lastName: String(member.lastName ?? ''),
+        nationalId: String(member.nationalId ?? ''),
+        address: String(member.address ?? ''),
+        occupation: String(member.occupation ?? ''),
+        nextOfKinName: String(member.nextOfKinName ?? ''),
+        nextOfKinPhone: String(member.nextOfKinPhone ?? ''),
+        nextOfKinRelationship: String(member.nextOfKinRelationship ?? ''),
       }
     })
   }, [groupId, memberData])
@@ -365,14 +433,70 @@ export default function MembersPage() {
     }
   }
 
-  const handleDeleteMember = async (memberId: string) => {
+  const openEditMember = (member: ManagedMember) => {
+    setEditingMember(member)
+    setEditForm({
+      firstName: member.firstName,
+      middleName: member.middleName,
+      lastName: member.lastName,
+      phone: member.phone,
+      email: member.email,
+      nationalId: member.nationalId,
+      address: member.address,
+      occupation: member.occupation,
+      nextOfKinName: member.nextOfKinName,
+      nextOfKinPhone: member.nextOfKinPhone,
+      nextOfKinRelationship: member.nextOfKinRelationship,
+    })
+  }
+
+  const handleEditMember = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!editingMember || !editForm) return
+
+    const phone = normalizePhone(editForm.phone)
+    if (!editForm.firstName.trim() || !editForm.lastName.trim() || !phone || phone.length !== 12) {
+      toast.error('Please enter a valid first name, last name, and phone number.')
+      return
+    }
+
+    setIsSubmitting(true)
     try {
-      await memberService.remove(memberId)
-      toast.success('Member deleted successfully.')
+      await memberService.updateProfile(groupId, editingMember.id, {
+        ...editForm,
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName.trim(),
+        middleName: editForm.middleName.trim() || undefined,
+        phone,
+        email: editForm.email.trim() || undefined,
+      })
+      toast.success('Member details updated.')
+      setEditingMember(null)
+      setEditForm(null)
       queryClient.invalidateQueries({ queryKey: ['members', groupId] })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Delete is not available for this endpoint yet.'
-      toast.info(message)
+      const message = error instanceof Error ? error.message : 'Unable to update member details.'
+      toast.error(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const confirmStatusChange = async () => {
+    if (!statusMember) return
+    const nextStatus = statusMember.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+
+    setStatusSubmitting(true)
+    try {
+      await memberService.updateMembershipStatus(groupId, statusMember.id, nextStatus)
+      toast.success(nextStatus === 'ACTIVE' ? 'Member reactivated.' : 'Member deactivated and removed from group access.')
+      setStatusMember(null)
+      queryClient.invalidateQueries({ queryKey: ['members', groupId] })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update membership status.'
+      toast.error(message)
+    } finally {
+      setStatusSubmitting(false)
     }
   }
 
@@ -389,29 +513,29 @@ export default function MembersPage() {
           <p className="mt-1 text-sm text-neutral-500">Add one member at a time or upload a bulk spreadsheet in seconds.</p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <button
+        {canManageMembers && <div className="flex flex-wrap gap-3">
+          <Button
             onClick={() => {
               setMemberAddMode(null)
               setModalOpen(true)
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#066b4c]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C]"
           >
             <UserPlus size={14} />
             Add Members
-          </button>
-        </div>
+          </Button>
+        </div>}
       </div>
 
-      <div className="mb-6 rounded-2xl border border-[#dfe8e2] bg-white p-4 shadow-sm">
+      <div className="mb-6 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
-            <input
+            <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, phone or member number"
-              className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] py-2.5 pl-10 pr-3 text-xs text-neutral-700 placeholder:text-neutral-400 outline-none transition focus:border-[#087f5b]"
+              className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] py-2.5 pl-10 pr-3 text-xs text-neutral-700 placeholder:text-neutral-400 outline-none transition focus:border-[#0B6B50]"
             />
           </div>
 
@@ -421,61 +545,62 @@ export default function MembersPage() {
               <span>Filters</span>
             </div>
 
-            <select
+            <NativeSelect
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2 text-xs text-neutral-700 outline-none"
+              className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-xs text-neutral-700 outline-none"
             >
               {roleFilterOptions.map((role) => (
                 <option key={role} value={role}>
                   {role === 'ALL' ? 'All Roles' : role}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
 
-            <select
+            <NativeSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2 text-xs text-neutral-700 outline-none"
+              className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-xs text-neutral-700 outline-none"
             >
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
+              <option value="SUSPENDED">Suspended</option>
+              <option value="EXITED">Exited</option>
+            </NativeSelect>
           </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[#dfe8e2] bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-xs">
-            <thead className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
-              <tr>
-                <th className="px-4 py-3">Member</th>
-                <th className="px-4 py-3">Member No</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">Joined</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
+          <Table className="min-w-full text-left text-xs">
+            <TableHeader className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+              <TableRow>
+                <TableHead className="px-4 py-3">Member</TableHead>
+                <TableHead className="px-4 py-3">Member No</TableHead>
+                <TableHead className="px-4 py-3">Phone</TableHead>
+                <TableHead className="px-4 py-3">Joined</TableHead>
+                <TableHead className="px-4 py-3">Role</TableHead>
+                <TableHead className="px-4 py-3">Status</TableHead>
+                <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
 
-            <tbody className="divide-y divide-neutral-100">
+            <TableBody className="divide-y divide-neutral-100">
               {loadingMembers ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="px-4 py-12 text-center text-neutral-400">
                     <div className="inline-flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" /> Loading members...
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : filteredMembers.length ? (
                 filteredMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-neutral-50/70">
-                    <td className="px-4 py-3">
+                  <TableRow key={member.id} className="hover:bg-neutral-50/70">
+                    <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eaf6ef] text-xs font-black text-[#087f5b]">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E7F2ED] text-xs font-black text-[#0B6B50]">
                           {member.name
                             .split(' ')
                             .slice(0, 2)
@@ -488,16 +613,16 @@ export default function MembersPage() {
                           <p className="text-[10px] text-neutral-400">{member.email || 'No email added'}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-neutral-600">{member.memberNo}</td>
-                    <td className="px-4 py-3 text-neutral-600">{member.phone || '—'}</td>
-                    <td className="px-4 py-3 text-neutral-600">{member.joinedDate || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-[#edf4f1] px-2.5 py-1 text-[10px] font-bold text-[#0b6c57]">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 font-semibold text-neutral-600">{member.memberNo}</TableCell>
+                    <TableCell className="px-4 py-3 text-neutral-600">{member.phone || '—'}</TableCell>
+                    <TableCell className="px-4 py-3 text-neutral-600">{member.joinedDate || '—'}</TableCell>
+                    <TableCell className="px-4 py-3">
+                      <span className="rounded-full bg-[#F2F7F4] px-2.5 py-1 text-[10px] font-bold text-[#0B6B50]">
                         {member.role}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <span
                         className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${member.status === 'ACTIVE'
                           ? 'bg-emerald-50 text-emerald-700'
@@ -506,48 +631,54 @@ export default function MembersPage() {
                       >
                         {member.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/app/members/${member.id}`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-[#dfe8e2] px-2.5 py-1.5 text-[10px] font-bold text-neutral-700 transition hover:border-[#087f5b] hover:text-[#087f5b]"
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#E5E7EB] px-2.5 py-1.5 text-[10px] font-bold text-neutral-700 transition hover:border-[#0B6B50] hover:text-[#0B6B50]"
                         >
                           <Eye size={12} /> View
                         </Link>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-lg border border-[#dfe8e2] px-2.5 py-1.5 text-[10px] font-bold text-neutral-700 transition hover:border-[#087f5b] hover:text-[#087f5b]"
-                          onClick={() => toast.info('Edit member flow can be connected next once the update endpoint is ready.')}
-                        >
-                          <PencilLine size={12} /> Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMember(member.id)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50"
-                        >
-                          <Trash2 size={12} /> Delete
-                        </button>
+                        {canManageMembers && (
+                          <details className="w-7 [&>summary::-webkit-details-marker]:hidden">
+                            <summary
+                              title="Member actions"
+                              aria-label={`Actions for ${member.name}`}
+                              className="grid h-7 w-7 cursor-pointer list-none place-items-center rounded-lg border border-[#E5E7EB] text-neutral-600 transition hover:border-[#0B6B50] hover:text-[#0B6B50]"
+                            >
+                              <MoreHorizontal size={15} />
+                            </summary>
+                            <div className="mt-1 w-40 rounded-lg border border-[#E5E7EB] bg-white p-1 shadow-lg">
+                              <Button type="button" onClick={() => openEditMember(member)} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-semibold text-neutral-700 hover:bg-[#F2F7F4] hover:text-[#0B6B50]">
+                                <PencilLine size={13} /> Edit member
+                              </Button>
+                              <Button type="button" onClick={() => setStatusMember(member)} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[10px] font-semibold ${member.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-[#0B6B50] hover:bg-[#F2F7F4]'}`}>
+                                {member.status === 'ACTIVE' ? <UserX size={13} /> : <UserCheck size={13} />}
+                                {member.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}
+                              </Button>
+                            </div>
+                          </details>
+                        )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="px-4 py-12 text-center text-neutral-400">
                     {groupId ? 'No members match your search and filters yet.' : 'Select a group to start managing members.'}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10281d]/35 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-2xl rounded-2xl border border-[#dfe8e2] bg-white p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/35 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-2xl rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between border-b border-neutral-100 pb-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Member Management</p>
@@ -556,21 +687,21 @@ export default function MembersPage() {
                 </h3> */}
 
                 <div className="flex flex-wrap gap-3">
-                  <button
+                  <Button
                     onClick={() => {
                       setMemberAddMode(null)
                       setModalOpen(true)
                     }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#066b4c]"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C]"
                   >
                     <UserPlus size={14} />
                     Add Members
-                  </button>
+                  </Button>
                 </div>
               </div>
-              <button type="button" onClick={() => setModalOpen(false)} className="rounded-full p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+              <Button type="button" onClick={() => setModalOpen(false)} className="rounded-full p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
                 <X size={18} />
-              </button>
+              </Button>
             </div>
 
             {memberAddMode === null ? (
@@ -586,12 +717,12 @@ export default function MembersPage() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   {/* Single Member */}
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMemberAddMode('single')}
-                    className="group rounded-2xl border border-[#dfe8e2] bg-white p-5 text-left transition hover:border-[#087f5b] hover:bg-[#f6faf8] hover:shadow-sm"
+                    className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 text-left transition hover:border-[#0B6B50] hover:bg-[#F7F7F2] hover:shadow-sm"
                   >
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#eaf6ef] text-[#087f5b] transition group-hover:bg-[#087f5b] group-hover:text-white">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7F2ED] text-[#0B6B50] transition group-hover:bg-[#0B6B50] group-hover:text-white">
                       <UserPlus size={22} />
                     </div>
 
@@ -604,18 +735,18 @@ export default function MembersPage() {
                       phone number, email and role.
                     </p>
 
-                    <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#087f5b]">
+                    <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#0B6B50]">
                       Add member →
                     </span>
-                  </button>
+                  </Button>
 
                   {/* Bulk Import */}
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMemberAddMode('bulk')}
-                    className="group rounded-2xl border border-[#dfe8e2] bg-white p-5 text-left transition hover:border-[#087f5b] hover:bg-[#f6faf8] hover:shadow-sm"
+                    className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 text-left transition hover:border-[#0B6B50] hover:bg-[#F7F7F2] hover:shadow-sm"
                   >
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#eaf6ef] text-[#087f5b] transition group-hover:bg-[#087f5b] group-hover:text-white">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7F2ED] text-[#0B6B50] transition group-hover:bg-[#0B6B50] group-hover:text-white">
                       <FileSpreadsheet size={22} />
                     </div>
 
@@ -628,20 +759,20 @@ export default function MembersPage() {
                       many members at once.
                     </p>
 
-                    <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#087f5b]">
+                    <span className="mt-4 inline-flex items-center text-[11px] font-bold text-[#0B6B50]">
                       Upload spreadsheet →
                     </span>
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="flex justify-end border-t border-neutral-100 pt-4">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                    className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : memberAddMode === 'single' ? (
@@ -651,21 +782,21 @@ export default function MembersPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">First Name *</label>
-                    <input
+                    <Input
                       value={newMem.firstName}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, firstName: e.target.value }))}
                       placeholder="e.g. Juma"
-                      className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
 
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Last Name *</label>
-                    <input
+                    <Input
                       value={newMem.lastName}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, lastName: e.target.value }))}
                       placeholder="e.g. Majid"
-                      className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
                 </div>
@@ -673,20 +804,20 @@ export default function MembersPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone Number *</label>
-                    <input
+                    <Input
                       value={newMem.phone}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, phone: e.target.value }))}
                       placeholder="255712345678"
-                      className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
 
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Role</label>
-                    <select
+                    <NativeSelect
                       value={newMem.role}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, role: e.target.value }))}
-                      className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     >
                       {roleOptions.length ? (
                         roleOptions.map((role) => (
@@ -701,46 +832,46 @@ export default function MembersPage() {
                           <option value="LOAN_OFFICER">Loan Officer</option>
                         </>
                       )}
-                    </select>
+                    </NativeSelect>
                   </div>
                 </div>
 
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-neutral-700">Email Address</label>
-                  <input
+                  <Input
                     value={newMem.email}
                     onChange={(e) => setNewMem((prev) => ({ ...prev, email: e.target.value }))}
                     type="email"
                     placeholder="juma@example.com"
-                    className="w-full rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#087f5b]"
+                    className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                   />
                 </div>
 
                 <div className="flex justify-between gap-3 border-t border-neutral-100 pt-4">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMemberAddMode(null)}
-                    className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                    className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     ← Back
-                  </button>
+                  </Button>
 
                   <div className="flex gap-3">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setModalOpen(false)
                         setMemberAddMode(null)
                       }}
-                      className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                      className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                     >
                       Cancel
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="submit"
                       disabled={isSubmitting}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#066b4c] disabled:cursor-not-allowed disabled:opacity-70"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -748,15 +879,15 @@ export default function MembersPage() {
                         <Plus size={14} />
                       )}
                       Save Member
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </form>
             ) : (
               <div className="space-y-5">
-                <div className="rounded-2xl border border-dashed border-[#cfe0d9] bg-[#f6faf8] p-4">
-                  <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#bfd8ce] bg-white px-4 py-5 text-center">
-                    <Upload className="h-7 w-7 text-[#087f5b]" />
+                <div className="rounded-2xl border border-dashed border-[#B5D7C5] bg-[#F7F7F2] p-4">
+                  <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#B5D7C5] bg-white px-4 py-5 text-center">
+                    <Upload className="h-7 w-7 text-[#0B6B50]" />
                     <div>
                       <p className="text-sm font-bold text-neutral-700">Upload CSV or Excel file</p>
                       <p className="mt-1 text-[11px] text-neutral-500">Supported columns: firstName, lastName, phone, email, role</p>
@@ -764,19 +895,19 @@ export default function MembersPage() {
                         href="/members-bulk-upload-template.csv"
                         download
                         onClick={(event) => event.stopPropagation()}
-                        className="mt-2 inline-block text-[11px] font-bold text-[#087f5b] underline underline-offset-2 hover:text-[#066b4c]"
+                        className="mt-2 inline-block text-[11px] font-bold text-[#0B6B50] underline underline-offset-2 hover:text-[#08503C]"
                       >
                         Download sample CSV
                       </a>
                     </div>
-                    <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleBulkFile} className="hidden" />
+                    <Input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleBulkFile} className="hidden" />
                   </label>
                 </div>
 
                 {bulkFileName && (
-                  <div className="flex items-center justify-between rounded-xl border border-[#dfe8e2] bg-[#fafcfb] px-3 py-2 text-xs text-neutral-600">
+                  <div className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2 text-xs text-neutral-600">
                     <span className="inline-flex items-center gap-2">
-                      <FileSpreadsheet className="h-4 w-4 text-[#087f5b]" />
+                      <FileSpreadsheet className="h-4 w-4 text-[#0B6B50]" />
                       {bulkFileName}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-neutral-400">
@@ -786,25 +917,25 @@ export default function MembersPage() {
                 )}
 
                 {bulkRows.length > 0 && (
-                  <div className="max-h-80 overflow-auto rounded-xl border border-[#dfe8e2] bg-[#fafcfb] p-3">
-                    <table className="w-full text-left text-[11px]">
-                      <thead className="text-neutral-400">
-                        <tr>
-                          <th className="pb-2 font-bold">Name</th>
-                          <th className="pb-2 font-bold">Phone</th>
-                          <th className="pb-2 font-bold">Role</th>
-                          <th className="pb-2 font-bold">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <div className="max-h-80 overflow-auto rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] p-3">
+                    <Table className="w-full text-left text-[11px]">
+                      <TableHeader className="text-neutral-400">
+                        <TableRow>
+                          <TableHead className="pb-2 font-bold">Name</TableHead>
+                          <TableHead className="pb-2 font-bold">Phone</TableHead>
+                          <TableHead className="pb-2 font-bold">Role</TableHead>
+                          <TableHead className="pb-2 font-bold">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {bulkRows.map((row, index) => (
-                          <tr key={`${row.phone}-${index}`} className="border-t border-neutral-100">
-                            <td className="py-2 pr-2 font-medium text-neutral-700">
+                          <TableRow key={`${row.phone}-${index}`} className="border-t border-neutral-100">
+                            <TableCell className="py-2 pr-2 font-medium text-neutral-700">
                               {row.firstName} {row.lastName}
-                            </td>
-                            <td className="py-2 pr-2 text-neutral-600">{row.phone || '—'}</td>
-                            <td className="py-2 pr-2 text-neutral-600">{formatRoleLabel(row.role)}</td>
-                            <td className="py-2">
+                            </TableCell>
+                            <TableCell className="py-2 pr-2 text-neutral-600">{row.phone || '—'}</TableCell>
+                            <TableCell className="py-2 pr-2 text-neutral-600">{formatRoleLabel(row.role)}</TableCell>
+                            <TableCell className="py-2">
                               {row.valid ? (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
                                   <CheckCircle2 className="h-3 w-3" /> Valid
@@ -814,25 +945,25 @@ export default function MembersPage() {
                                   {row.error}
                                 </span>
                               )}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
 
                 <div className="flex justify-between gap-3 border-t border-neutral-100 pt-4">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setMemberAddMode(null)}
-                    className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                    className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                   >
                     ← Back
-                  </button>
+                  </Button>
 
                   <div className="flex gap-3">
-                    <button
+                    <Button
                       type="button"
                       onClick={
                         () => {
@@ -841,16 +972,16 @@ export default function MembersPage() {
                         }
 
                       }
-                      className="rounded-xl border border-[#dfe8e2] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
+                      className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
                     >
                       Cancel
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="button"
                       onClick={handleBulkUpload}
                       disabled={isSubmitting || !bulkRows.filter((row) => row.valid).length}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#087f5b] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#066b4c] disabled:cursor-not-allowed disabled:opacity-70"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -858,13 +989,131 @@ export default function MembersPage() {
                         <Upload size={14} />
                       )}
                       Upload Members
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
             )}
 
 
+          </div>
+        </div>
+      )}
+
+      {editingMember && editForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/35 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="edit-member-title">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4 border-b border-neutral-100 pb-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Member management</p>
+                <h2 id="edit-member-title" className="mt-1 text-lg font-black text-neutral-900">Edit {editingMember.name}</h2>
+                <p className="mt-1 text-xs text-neutral-500">Member number: {editingMember.memberNo}</p>
+              </div>
+              <Button
+                type="button"
+                title="Close edit member form"
+                aria-label="Close edit member form"
+                onClick={() => { setEditingMember(null); setEditForm(null) }}
+                className="grid h-8 w-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <X size={18} />
+              </Button>
+            </div>
+
+            <form onSubmit={handleEditMember} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">First name *</label>
+                  <Input value={editForm.firstName} onChange={(event) => setEditForm((current) => current ? { ...current, firstName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Middle name</label>
+                  <Input value={editForm.middleName} onChange={(event) => setEditForm((current) => current ? { ...current, middleName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Last name *</label>
+                  <Input value={editForm.lastName} onChange={(event) => setEditForm((current) => current ? { ...current, lastName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone number *</label>
+                  <Input value={editForm.phone} onChange={(event) => setEditForm((current) => current ? { ...current, phone: event.target.value } : current)} inputMode="tel" placeholder="255712345678" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Email address</label>
+                  <Input value={editForm.email} onChange={(event) => setEditForm((current) => current ? { ...current, email: event.target.value } : current)} type="email" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">National ID</label>
+                  <Input value={editForm.nationalId} onChange={(event) => setEditForm((current) => current ? { ...current, nationalId: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Occupation</label>
+                  <Input value={editForm.occupation} onChange={(event) => setEditForm((current) => current ? { ...current, occupation: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-neutral-700">Address</label>
+                <Input value={editForm.address} onChange={(event) => setEditForm((current) => current ? { ...current, address: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+              </div>
+
+              <div className="border-t border-neutral-100 pt-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Next of kin</p>
+                <div className="mt-3 grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Full name</label>
+                    <Input value={editForm.nextOfKinName} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinName: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone number</label>
+                    <Input value={editForm.nextOfKinPhone} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinPhone: event.target.value } : current)} inputMode="tel" className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Relationship</label>
+                    <Input value={editForm.nextOfKinRelationship} onChange={(event) => setEditForm((current) => current ? { ...current, nextOfKinRelationship: event.target.value } : current)} className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-neutral-100 pt-4">
+                <Button type="button" onClick={() => { setEditingMember(null); setEditForm(null) }} className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50">Cancel</Button>
+                <Button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70">
+                  {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PencilLine size={14} />}
+                  Save changes
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {statusMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/35 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="member-status-title">
+          <div className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-2xl">
+            <div className={`mb-4 grid h-11 w-11 place-items-center rounded-full ${statusMember.status === 'ACTIVE' ? 'bg-red-50 text-red-600' : 'bg-[#E7F2ED] text-[#0B6B50]'}`}>
+              {statusMember.status === 'ACTIVE' ? <UserX size={21} /> : <UserCheck size={21} />}
+            </div>
+            <h2 id="member-status-title" className="text-lg font-black text-neutral-900">
+              {statusMember.status === 'ACTIVE' ? 'Deactivate member?' : 'Reactivate member?'}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-neutral-600">
+              {statusMember.status === 'ACTIVE'
+                ? `${statusMember.name} will no longer be able to select this group at sign-in or access its information. Their member records will be kept.`
+                : `${statusMember.name} will regain access to this group using their existing account.`}
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button type="button" onClick={() => setStatusMember(null)} disabled={statusSubmitting} className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50 disabled:opacity-70">Cancel</Button>
+              <Button type="button" onClick={confirmStatusChange} disabled={statusSubmitting} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${statusMember.status === 'ACTIVE' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0B6B50] hover:bg-[#08503C]'}`}>
+                {statusSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : statusMember.status === 'ACTIVE' ? <UserX size={14} /> : <UserCheck size={14} />}
+                {statusMember.status === 'ACTIVE' ? 'Deactivate member' : 'Reactivate member'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

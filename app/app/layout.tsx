@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { VikobaStoreProvider, useVikobaStore } from '@/lib/mockStore'
@@ -20,8 +22,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { clearVikobaLocalState, SESSION_EXPIRED_EVENT } from '@/lib/api/client'
-import { ThemeToggle } from '@/components/brand'
+import { clearVikobaLocalState, refreshSessionIfNeeded, SESSION_EXPIRED_EVENT, SESSION_IDLE_TIMEOUT_MS } from '@/lib/api/client'
+import { ThemeToggle, VikobaLogo } from '@/components/brand'
+import { memberService, sharePurchaseRequestService, type Member, type SharePurchaseRequestRecord } from '@/lib/api/services'
+import { resolveActiveGroupId } from '@/lib/api/active-group'
+import { apiGet } from '@/lib/api/client'
+import type { ExpenseRecord } from '@/hooks/useExpenses'
+import type { Loan, LoanGuaranteeRequest } from '@/hooks/useLoans'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 
 // Main Layout component wrapped inside Provider
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -33,7 +42,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
-  const IDLE_TIMEOUT_MS = 15 * 60 * 1000
   const IDLE_WARNING_MS = 60 * 1000
   const pathname = usePathname()
   const router = useRouter()
@@ -44,6 +52,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [showIdleWarning, setShowIdleWarning] = useState(false)
   const [idleSecondsLeft, setIdleSecondsLeft] = useState(60)
+  const [groupRoles, setGroupRoles] = useState<string[]>([])
+  const [approvalItems, setApprovalItems] = useState<Array<{ key: string; label: string; kind: 'expense' | 'share' | 'guarantee' | 'replacement' | 'loanapproval' }>>([])
+  const knownApprovals = useRef<{ groupId: string; keys: Set<string> } | null>(null)
   const [user, setUser] = useState({
     id: null,
     name: 'User',
@@ -62,6 +73,69 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     notifications,
     markAllNotificationsRead
   } = useVikobaStore()
+
+  useEffect(() => {
+    const groupId = /^\d+$/.test(currentGroupId) ? currentGroupId : resolveActiveGroupId(localStorage) || ''
+    if (!groupId) { setApprovalItems([]); knownApprovals.current = null; return }
+    let active = true
+    let requesting = false
+    const refreshApprovals = async () => {
+      if (requesting || !document.hasFocus()) return
+      requesting = true
+      try {
+        const [expenseResult, shareResult, guaranteeResult, loanResult] = await Promise.allSettled([
+          apiGet<{ data: ExpenseRecord[] }>(`/api/expenses/group/${groupId}`, undefined, { auth: true }),
+          sharePurchaseRequestService.list(groupId, 'PENDING'),
+          apiGet<{ data: LoanGuaranteeRequest[] }>(`/api/loans/group/${groupId}/guarantees/mine`, undefined, { auth: true }),
+          apiGet<{ data: Loan[] }>(`/api/loans/group/${groupId}`, undefined, { auth: true }),
+        ])
+        if (!active) return
+        const expenseRows = expenseResult.status === 'fulfilled' ? expenseResult.value.data || [] : []
+        const shareResponse = shareResult.status === 'fulfilled' ? shareResult.value : null
+        const shareRows = shareResponse ? ((shareResponse as { data?: SharePurchaseRequestRecord[] }).data || []) : []
+        const guaranteeRows = guaranteeResult.status === 'fulfilled' ? guaranteeResult.value.data || [] : []
+        const loanRows = loanResult.status === 'fulfilled' ? loanResult.value.data || [] : []
+        const myMemberId = Number(localStorage.getItem('v360_currentGroupMemberId') || 0)
+        const items = [
+          ...expenseRows.filter(item => item.status === 'PENDING' && item.canApprove).map(item => ({ key: `expense:${item.id}`, label: `Expense ${item.reference} awaits your approval`, kind: 'expense' as const })),
+          ...shareRows.filter(item => item.status === 'PENDING' && item.canApprove).map(item => ({ key: `share:${item.id}`, label: `${item.memberName}'s share purchase awaits your approval`, kind: 'share' as const })),
+          ...guaranteeRows.map(item => ({ key: `guarantee:${item.id}`, label: `${item.applicantName} asks you to guarantee loan ${item.loanNumber}`, kind: 'guarantee' as const })),
+          ...loanRows.filter(item => item.groupMemberId === myMemberId && item.status === 'PENDING')
+            .flatMap(item => (item.guarantors || []).filter(person => person.status === 'REJECTED')
+              .map(person => ({ key: `replacement:${item.id}:${person.id}`, label: `${person.name} declined loan ${item.loanNumber}. Choose another guarantor.`, kind: 'replacement' as const }))),
+          ...loanRows.filter(item => item.canApprove || item.canDisburse)
+            .map(item => ({ key: `loanapproval:${item.id}`, label: `Loan ${item.loanNumber} awaits your ${item.canDisburse ? 'disbursement' : 'approval'}`, kind: 'loanapproval' as const })),
+        ]
+        setApprovalItems(previous => [
+          ...(expenseResult.status === 'fulfilled' ? items.filter(item => item.kind === 'expense') : previous.filter(item => item.kind === 'expense')),
+          ...(shareResult.status === 'fulfilled' ? items.filter(item => item.kind === 'share') : previous.filter(item => item.kind === 'share')),
+          ...(guaranteeResult.status === 'fulfilled' ? items.filter(item => item.kind === 'guarantee') : previous.filter(item => item.kind === 'guarantee')),
+          ...(loanResult.status === 'fulfilled' ? items.filter(item => item.kind === 'replacement' || item.kind === 'loanapproval') : previous.filter(item => item.kind === 'replacement' || item.kind === 'loanapproval')),
+        ])
+        const previous = knownApprovals.current
+        const nextKeys = new Set([
+          ...items.map(item => item.key),
+          ...(expenseResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('expense:')) : []),
+          ...(shareResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('share:')) : []),
+          ...(guaranteeResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('guarantee:')) : []),
+          ...(loanResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('replacement:')) : []),
+          ...(loanResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('loanapproval:')) : []),
+        ])
+        if (previous?.groupId === groupId) {
+          const newItems = items.filter(item => !previous.keys.has(item.key))
+          if (newItems.length) toast.info(`${newItems.length} new loan or approval ${newItems.length === 1 ? 'request' : 'requests'} need your attention`, { action: { label: 'View', onClick: () => router.push(newItems[0].kind === 'guarantee' ? '/app/loans/guarantees' : newItems[0].kind === 'replacement' ? '/app/loans/apply' : newItems[0].kind === 'loanapproval' ? '/app/loans/applications' : '/app/workflows') } })
+          if (newItems.length || [...previous.keys].some(key => !nextKeys.has(key))) window.dispatchEvent(new Event('vikoba:approval-inbox-changed'))
+        }
+        knownApprovals.current = { groupId, keys: nextKeys }
+      } finally { requesting = false }
+    }
+    void refreshApprovals()
+    const interval = window.setInterval(() => void refreshApprovals(), 30_000)
+    const handleUpdate = () => void refreshApprovals()
+    window.addEventListener('focus', handleUpdate)
+    window.addEventListener('vikoba:approval-updated', handleUpdate)
+    return () => { active = false; window.clearInterval(interval); window.removeEventListener('focus', handleUpdate); window.removeEventListener('vikoba:approval-updated', handleUpdate) }
+  }, [currentGroupId, router])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -88,7 +162,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       if (storedGroup) {
         try {
           const parsedGroup = JSON.parse(storedGroup)
-          const groupId = String(parsedGroup?.id ?? parsedGroup?.groupId ?? currentGroupId)
+          const groupId = resolveActiveGroupId(localStorage) || ''
           const groupName = parsedGroup?.groupName || parsedGroup?.name || 'My Group'
 
           if (groupId) {
@@ -99,6 +173,10 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             const selectedMembership = Array.isArray(storedGroups)
               ? storedGroups.find((item: any) => String(item?.group?.groupId ?? item?.groupId ?? item?.id) === groupId)
               : null
+            const cachedRoles = Array.isArray(selectedMembership?.roles)
+              ? selectedMembership.roles.map(String)
+              : selectedMembership?.role ? [String(selectedMembership.role)] : []
+            setGroupRoles(cachedRoles)
             if (selectedMembership?.role) {
               setUser((previous) => ({ ...previous, role: String(selectedMembership.role) }))
             }
@@ -119,6 +197,35 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       }
     }
   }, [currentGroupId])
+
+  useEffect(() => {
+    const groupId = resolveActiveGroupId(localStorage) || ''
+    if (!/^\d+$/.test(groupId)) return
+    let active = true
+    const refreshGroupAccess = () => {
+      void memberService.getMyAccess(groupId).then(response => {
+        const access = response.data as Member | undefined
+        if (!active || !access) return
+        const nextRoles = access.roles?.map(String) || [String(access.role || 'MEMBER')]
+        const nextPermissions = access.permissions?.map(String) || []
+        setGroupRoles(nextRoles)
+        setUser(previous => ({ ...previous, role: String(access.role || nextRoles[0] || 'MEMBER') }))
+        localStorage.setItem('v360_currentGroupMemberId', String(access.id))
+        localStorage.setItem('v360_currentGroupRole', String(access.role || nextRoles[0] || 'MEMBER'))
+        localStorage.setItem('v360_currentGroupRoles', JSON.stringify(nextRoles))
+        localStorage.setItem('v360_currentGroupPermissions', JSON.stringify(nextPermissions))
+        try {
+          const groups = JSON.parse(localStorage.getItem('v360_groups') || '[]') as Array<Record<string, unknown>>
+          const updated = groups.map(item => String((item.group as Record<string, unknown> | undefined)?.groupId ?? item.groupId ?? item.id) === groupId
+            ? { ...item, groupMemberId: access.id, role: access.role, roles: nextRoles, permissions: nextPermissions } : item)
+          localStorage.setItem('v360_groups', JSON.stringify(updated))
+        } catch { /* The live response remains authoritative. */ }
+      }).catch(() => { /* Keep cached access until the API is reachable. */ })
+    }
+    refreshGroupAccess()
+    window.addEventListener('vikoba:access-updated', refreshGroupAccess)
+    return () => { active = false; window.removeEventListener('vikoba:access-updated', refreshGroupAccess) }
+  }, [currentGroupId, pathname])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -144,6 +251,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   }, [pathname, router])
 
   const handleGroupSelect = (id: string) => {
+    if (!/^\d+$/.test(id)) return
     setCurrentGroupId(id)
     setGroupDropdownOpen(false)
   }
@@ -163,58 +271,95 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return
 
     let idleTimer: number | undefined
-    let warningTimer: number | undefined
+    let logoutTimer: number | undefined
     let countdownTimer: number | undefined
     let lastPersistedActivity = 0
+    let warningActive = false
 
     const clearIdleTimers = () => {
-      if (idleTimer) window.clearTimeout(idleTimer)
-      if (warningTimer) window.clearTimeout(warningTimer)
-      if (countdownTimer) window.clearInterval(countdownTimer)
+      window.clearTimeout(idleTimer)
+      window.clearTimeout(logoutTimer)
+      window.clearInterval(countdownTimer)
     }
 
-    const beginWarning = () => {
+    const signOutForInactivity = () => {
+      clearIdleTimers()
+      clearVikobaLocalState()
+      localStorage.setItem('v360_session_expired', String(Date.now()))
+      setShowIdleWarning(false)
+      router.replace('/auth/login?reason=session-expired')
+    }
+
+    const beginWarning = (lastActivity: number) => {
+      if (warningActive) return
+      const deadline = lastActivity + SESSION_IDLE_TIMEOUT_MS
+      if (Date.now() >= deadline) {
+        signOutForInactivity()
+        return
+      }
+      warningActive = true
       setShowIdleWarning(true)
-      setIdleSecondsLeft(Math.ceil(IDLE_WARNING_MS / 1000))
+      setIdleSecondsLeft(Math.ceil((deadline - Date.now()) / 1000))
       countdownTimer = window.setInterval(() => {
-        setIdleSecondsLeft((seconds) => Math.max(0, seconds - 1))
+        setIdleSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)))
       }, 1000)
-      warningTimer = window.setTimeout(() => {
-        clearIdleTimers()
-        handleSignOut()
-      }, IDLE_WARNING_MS)
+      logoutTimer = window.setTimeout(signOutForInactivity, deadline - Date.now())
     }
 
     const scheduleIdleLogout = (lastActivity = Date.now()) => {
       clearIdleTimers()
+      warningActive = false
       setShowIdleWarning(false)
       const elapsed = Math.max(0, Date.now() - lastActivity)
-      const remaining = IDLE_TIMEOUT_MS - elapsed
+      const remaining = SESSION_IDLE_TIMEOUT_MS - elapsed
 
       if (remaining <= 0) {
-        beginWarning()
+        signOutForInactivity()
         return
       }
-
-      idleTimer = window.setTimeout(beginWarning, remaining)
+      if (remaining <= IDLE_WARNING_MS) {
+        beginWarning(lastActivity)
+      } else {
+        idleTimer = window.setTimeout(() => beginWarning(lastActivity), remaining - IDLE_WARNING_MS)
+      }
     }
 
     const recordActivity = () => {
-      if (showIdleWarning) return
+      if (warningActive) return
       const now = Date.now()
-      if (now - lastPersistedActivity > 10000) {
-        lastPersistedActivity = now
-        localStorage.setItem('v360_last_activity', String(now))
+      const previous = Number(localStorage.getItem('v360_last_activity'))
+      if (previous > 0 && now - previous >= SESSION_IDLE_TIMEOUT_MS) {
+        signOutForInactivity()
+        return
       }
+      if (now - lastPersistedActivity < 1000) return
+      lastPersistedActivity = now
+      localStorage.setItem('v360_last_activity', String(now))
       scheduleIdleLogout(now)
+    }
+
+    const continueSession = () => {
+      const now = Date.now()
+      const previous = Number(localStorage.getItem('v360_last_activity'))
+      if (previous > 0 && now - previous >= SESSION_IDLE_TIMEOUT_MS) {
+        signOutForInactivity()
+        return
+      }
+      lastPersistedActivity = now
+      localStorage.setItem('v360_last_activity', String(now))
+      scheduleIdleLogout(now)
+      void refreshSessionIfNeeded()
     }
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === 'v360_last_activity' && event.newValue) {
         scheduleIdleLogout(Number(event.newValue))
       }
-      if (event.key === 'v360_session_expired') {
-        handleSignOut()
+      if (event.key === 'v360_session_expired' && event.newValue) {
+        clearIdleTimers()
+        clearVikobaLocalState()
+        setShowIdleWarning(false)
+        router.replace('/auth/login?reason=session-expired')
       }
     }
 
@@ -225,21 +370,42 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       router.replace('/auth/login?reason=session-expired')
     }
 
+    const checkActiveSession = () => {
+      const lastActivity = Number(localStorage.getItem('v360_last_activity'))
+      if (!warningActive && Number.isFinite(lastActivity) && Date.now() - lastActivity < SESSION_IDLE_TIMEOUT_MS) {
+        void refreshSessionIfNeeded()
+      }
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      const lastActivity = Number(localStorage.getItem('v360_last_activity'))
+      scheduleIdleLogout(Number.isFinite(lastActivity) && lastActivity > 0 ? lastActivity : Date.now())
+      checkActiveSession()
+    }
+
     const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
     activityEvents.forEach((event) => window.addEventListener(event, recordActivity, { passive: true }))
     window.addEventListener('storage', handleStorage)
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+    window.addEventListener('vikoba:continue-session', continueSession)
+    document.addEventListener('visibilitychange', handleVisibility)
+    const refreshInterval = window.setInterval(checkActiveSession, 30_000)
 
     const storedActivity = Number(localStorage.getItem('v360_last_activity') || Date.now())
     scheduleIdleLogout(storedActivity)
+    checkActiveSession()
 
     return () => {
       clearIdleTimers()
+      window.clearInterval(refreshInterval)
       activityEvents.forEach((event) => window.removeEventListener(event, recordActivity))
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired)
+      window.removeEventListener('vikoba:continue-session', continueSession)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [router, showIdleWarning])
+  }, [router])
 
   const unreadNotifications = notifications.filter(n => !n.read)
 
@@ -254,6 +420,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
     { label: 'Finance Management', isHeader: true },
     { label: 'Shares (Hisa)', path: '/app/shares', icon: BarChart3 },
+    { label: 'Approval Workflows', path: '/app/workflows', icon: ShieldCheck, badge: 'approvals' },
     { label: 'Payments Received', path: '/app/payments', icon: CreditCard },
     { label: 'Expenses logged', path: '/app/expenses', icon: CreditCard },
     { label: 'Ledger Accounts', path: '/app/finance', icon: WalletCards },
@@ -261,6 +428,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     { label: 'Loans & Repayments', isHeader: true },
     { label: 'Loan Dashboard', path: '/app/loans', icon: HandCoins },
     { label: 'Applications', path: '/app/loans/applications', icon: BookOpen, badge: 'applications' },
+    { label: 'Guarantee requests', path: '/app/loans/guarantees', icon: ShieldCheck, badge: 'guarantees' },
 
     { label: 'Community & Penalties', isHeader: true },
     { label: 'Jamii Fund', path: '/app/social-fund', icon: CircleDollarSign },
@@ -284,32 +452,26 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     return pathname.startsWith(path)
   }
 
-  // Count pending items for badges
-  const pendingLoanApps = useVikobaStore().loans.filter(l => l.status === 'PENDING').length
-
   return (
-    <div className="app-shell flex min-h-screen bg-[#f7f9f7]">
+    <div className="app-shell flex min-h-screen bg-[#F7F7F2]">
       {/* Sidebar container */}
-      <aside className={`sidebar fixed md:sticky top-0 z-50 h-screen w-[260px] bg-white border-r border-[#dfe8e2] px-4 py-5 flex flex-col justify-between shrink-0 transition-all duration-200 ${mobileOpen ? 'left-0 shadow-2xl shadow-emerald-950/20' : '-left-[260px] md:left-0'}`}>
+      <aside className={`sidebar fixed md:sticky top-0 z-50 h-screen w-[260px] bg-white border-r border-[#E5E7EB] px-4 py-5 flex flex-col justify-between shrink-0 transition-all duration-200 ${mobileOpen ? 'left-0 shadow-2xl shadow-emerald-950/20' : '-left-[260px] md:left-0'}`}>
         <div>
           {/* Brand header */}
-          <div className="side-brand flex items-center justify-between pb-5 border-b border-[#dfe8e2]/60 px-2">
-            <Link href="/" className="font-black text-lg flex items-center gap-1">
-              <span className="bg-[#087f5b] text-white rounded-lg w-7 h-7 flex items-center justify-center font-black">V</span>
-              <span>IKOBA<strong className="text-[#087f5b]">360</strong></span>
-            </Link>
-            <button className="md:hidden text-neutral-500 hover:text-neutral-900" onClick={() => setMobileOpen(false)}>
+          <div className="side-brand flex items-center justify-between pb-5 border-b border-[#E5E7EB]/60 px-2">
+            <Link href="/"><VikobaLogo compact /></Link>
+            <Button className="md:hidden text-neutral-500 hover:text-neutral-900" onClick={() => setMobileOpen(false)}>
               <X size={18} />
-            </button>
+            </Button>
           </div>
 
           {/* Group Switcher dropdown */}
           <div className="relative mt-4 px-1">
-            <button
+            <Button
               onClick={() => setGroupDropdownOpen(!groupDropdownOpen)}
-              className="group-switch w-full flex items-center justify-between bg-[#f2f8f3] border border-[#dfece1] hover:border-[#8bc6a7] rounded-xl p-3 text-left transition select-none cursor-pointer"
+              className="group-switch w-full flex items-center justify-between bg-[#F2F7F4] border border-[#E9EFEB] hover:border-[#8FC1A9] rounded-xl p-3 text-left transition select-none cursor-pointer"
             >
-              <div className="group-mark w-7 h-7 rounded-lg bg-[#087f5b] text-white font-extrabold flex items-center justify-center text-xs">
+              <div className="group-mark w-7 h-7 rounded-lg bg-[#0B6B50] text-white font-extrabold flex items-center justify-center text-xs">
                 {currentGroup?.name.substring(0, 1)}
               </div>
               <div className="flex-1 min-width-0 px-2.5">
@@ -317,19 +479,19 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 <span className="text-xs font-bold text-neutral-800 block truncate">{currentGroup?.name}</span>
               </div>
               <ChevronDown size={14} className="text-neutral-500" />
-            </button>
+            </Button>
 
             {groupDropdownOpen && (
-              <div className="absolute left-1 right-1 top-[56px] bg-white border border-[#dfe8e2] rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5">
-                {groups.map(g => (
-                  <button
+              <div className="absolute left-1 right-1 top-[56px] bg-white border border-[#E5E7EB] rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5">
+                {groups.filter(g => /^\d+$/.test(g.id)).map(g => (
+                  <Button
                     key={g.id}
                     onClick={() => handleGroupSelect(g.id)}
-                    className={`w-full text-left p-2.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-[#f3f8f4] ${g.id === currentGroupId ? 'bg-[#eaf6ef] text-[#087f5b]' : 'text-neutral-600'}`}
+                    className={`w-full text-left p-2.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-[#F2F7F4] ${g.id === currentGroupId ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-neutral-600'}`}
                   >
                     <span>{g.name}</span>
                     <span className="text-[10px] opacity-75 font-normal">{g.currency}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -353,19 +515,21 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                   key={idx}
                   href={item.path!}
                   onClick={() => setMobileOpen(false)}
-                  className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition font-semibold ${active ? 'bg-[#e6f5eb] text-[#087f5b]' : 'text-[#697a71] hover:bg-[#f3f8f4]'}`}
+                  className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition font-semibold ${active ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-[#697a71] hover:bg-[#F2F7F4]'}`}
                 >
-                  <ItemIcon size={16} className={active ? 'text-[#087f5b]' : 'text-[#8ba093]'} />
+                  <ItemIcon size={16} className={active ? 'text-[#0B6B50]' : 'text-[#8ba093]'} />
                   <span className="flex-1">{item.label}</span>
-                  {item.badge === 'applications' && pendingLoanApps > 0 && (
-                    <span className="bg-[#e7833c] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingLoanApps}</span>
+                  {item.badge === 'applications' && approvalItems.some(item => item.kind === 'loanapproval') && (
+                    <span className="bg-[#EF6C4D] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{approvalItems.filter(item => item.kind === 'loanapproval').length}</span>
                   )}
+                  {item.badge === 'approvals' && approvalItems.some(item => item.kind === 'expense' || item.kind === 'share') && <Badge className="bg-amber-600 text-white">{approvalItems.filter(item => item.kind === 'expense' || item.kind === 'share').length}</Badge>}
+                  {item.badge === 'guarantees' && approvalItems.some(item => item.kind === 'guarantee') && <Badge className="bg-amber-600 text-white">{approvalItems.filter(item => item.kind === 'guarantee').length}</Badge>}
                 </Link>
               )
             })}
 
             {/* Admin sub-menu if Admin */}
-            {['Administrator', 'GROUP_ADMIN', 'GROUP_CHAIRMAN'].includes(user.role) && (
+            {groupRoles.some(role => ['GROUP_ADMIN', 'GROUP_CHAIRMAN', 'CHAIRPERSON'].includes(role)) && (
               <>
                 {adminItems.map((item, idx) => {
                   if (item.isHeader) {
@@ -383,9 +547,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                       key={idx}
                       href={item.path!}
                       onClick={() => setMobileOpen(false)}
-                      className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition font-semibold ${active ? 'bg-[#e6f5eb] text-[#087f5b]' : 'text-[#697a71] hover:bg-[#f3f8f4]'}`}
+                      className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition font-semibold ${active ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-[#697a71] hover:bg-[#F2F7F4]'}`}
                     >
-                      <ItemIcon size={16} className={active ? 'text-[#087f5b]' : 'text-[#8ba093]'} />
+                      <ItemIcon size={16} className={active ? 'text-[#0B6B50]' : 'text-[#8ba093]'} />
                       <span className="flex-1">{item.label}</span>
                     </Link>
                   )
@@ -396,23 +560,24 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Sidebar Footer settings / logout */}
-        <div className="side-footer pt-3 border-t border-[#dfe8e2]/60 flex flex-col gap-1">
+        <div className="side-footer pt-3 border-t border-[#E5E7EB]/60 flex flex-col gap-1">
           <Link
             href="/app/settings"
             onClick={() => setMobileOpen(false)}
-            className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold ${pathname === '/app/settings' ? 'bg-[#e6f5eb] text-[#087f5b]' : 'text-[#697a71] hover:bg-[#f3f8f4]'}`}
+            className={`nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold ${pathname === '/app/settings' ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-[#697a71] hover:bg-[#F2F7F4]'}`}
           >
             <Settings size={16} />
             <span>Settings</span>
           </Link>
-          <button
+          <Button
             type="button"
             onClick={() => setShowSignOutDialog(true)}
-            className="nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 text-left w-full transition"
+            variant="destructive"
+            className="flex w-full items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-xs font-bold text-red-700 shadow-sm transition hover:bg-red-100"
           >
             <LogOut size={16} />
             <span>Sign Out</span>
-          </button>
+          </Button>
           <Dialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
             <DialogContent>
               <DialogHeader className="space-y-3">
@@ -445,12 +610,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 <Button
                   type="button"
                   onClick={() => {
-                    const now = Date.now()
-                    localStorage.setItem('v360_last_activity', String(now))
-                    setIdleSecondsLeft(60)
-                    setShowIdleWarning(false)
+                    window.dispatchEvent(new Event('vikoba:continue-session'))
                   }}
-                  className="flex-1 bg-[#087f5b] text-white hover:bg-[#066b4d] sm:flex-none"
+                  className="flex-1 bg-[#0B6B50] text-white hover:bg-[#08503C] sm:flex-none"
                 >
                   Stay signed in
                 </Button>
@@ -466,21 +628,21 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       {/* Backdrop for mobile drawer */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-[#122b1c]/30 backdrop-blur-[2px] z-40 md:hidden"
+          className="fixed inset-0 bg-[#10241D]/30 backdrop-blur-[2px] z-40 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Main content viewport */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="app-header bg-white border-b border-[#dfe8e2] h-[68px] px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
+        <header className="app-header bg-white border-b border-[#E5E7EB] h-[68px] px-6 flex items-center justify-between shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            <button className="md:hidden text-[#607169] p-1 hover:bg-[#eaf6ef] rounded" onClick={() => setMobileOpen(true)}>
+            <Button className="md:hidden text-[#607169] p-1 hover:bg-[#E7F2ED] rounded" onClick={() => setMobileOpen(true)}>
               <Menu size={20} />
-            </button>
-            <div className="search-box hidden sm:flex items-center gap-2 px-3 py-1.5 border border-[#dfe8e2] rounded-lg bg-[#fcfdfc] w-64">
+            </Button>
+            <div className="search-box hidden sm:flex items-center gap-2 px-3 py-1.5 border border-[#E5E7EB] rounded-lg bg-[#F7F7F2] w-64">
               <Search size={14} className="text-neutral-400" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search code, member, transaction..."
                 className="bg-transparent border-0 outline-none text-xs w-full text-neutral-700"
@@ -490,9 +652,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
           <div className="header-right flex items-center gap-5 relative">
             <ThemeToggle />
-            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#dfe8e2] bg-[#fcfdfc] px-2 py-1.5">
+            <div className="hidden sm:flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F7F7F2] px-2 py-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{t('common.language')}</span>
-              <select
+              <NativeSelect
                 value={locale}
                 onChange={(e) => setLocale(e.target.value as Locale)}
                 className="bg-transparent text-xs font-semibold text-neutral-700 outline-none cursor-pointer"
@@ -500,34 +662,35 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               >
                 <option value="sw">{t('common.swahili')}</option>
                 <option value="en">{t('common.english')}</option>
-              </select>
+              </NativeSelect>
             </div>
 
             {/* Notifications Hub */}
-            <button
+            <Button
               onClick={() => {
                 setNotificationsOpen(!notificationsOpen)
                 if (!notificationsOpen && unreadNotifications.length > 0) {
                   markAllNotificationsRead()
                 }
               }}
-              className="notification-button p-2 text-[#607169] hover:bg-[#f3f8f4] rounded-lg transition relative cursor-pointer select-none"
+              className="notification-button p-2 text-[#607169] hover:bg-[#F2F7F4] rounded-lg transition relative cursor-pointer select-none"
             >
               <Bell size={18} />
-              {unreadNotifications.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#e7833c] border border-white" />
+              {(unreadNotifications.length > 0 || approvalItems.length > 0) && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#EF6C4D] border border-white" />
               )}
-            </button>
+            </Button>
 
             {notificationsOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
-                <div className="notification-pop absolute right-16 top-11 w-72 bg-white border border-[#dfe8e2] shadow-xl rounded-xl p-4 z-50 flex flex-col gap-2">
+                <div className="notification-pop absolute right-16 top-11 w-72 bg-white border border-[#E5E7EB] shadow-xl rounded-xl p-4 z-50 flex flex-col gap-2">
                   <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
                     <span className="text-xs font-black text-neutral-800">Notifications</span>
-                    <span className="text-[10px] text-neutral-400 font-bold">{notifications.length} Total</span>
+                    <span className="text-[10px] text-neutral-400 font-bold">{approvalItems.length} approvals</span>
                   </div>
                   <div className="max-h-60 overflow-y-auto flex flex-col divide-y divide-neutral-50/80">
+                    {approvalItems.map(item => <Link key={item.key} href={item.kind === 'guarantee' ? '/app/loans/guarantees' : item.kind === 'replacement' ? '/app/loans/apply' : item.kind === 'loanapproval' ? '/app/loans/applications' : '/app/workflows'} onClick={() => setNotificationsOpen(false)} className="py-2.5 text-[11px] font-semibold text-amber-800 hover:underline">{item.label}</Link>)}
                     {notifications.map(n => (
                       <div key={n.id} className="py-2.5 first:pt-1 last:pb-1">
                         <p className={`text-[11px] leading-relaxed ${!n.read ? 'text-neutral-900 font-semibold' : 'text-neutral-500'}`}>
@@ -543,14 +706,15 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
             {/* Profile widget */}
             <div className="profile flex items-center gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowSignOutDialog(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#dfe8e2] bg-[#f8faf8] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-neutral-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                variant="destructive"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 shadow-sm transition hover:bg-red-100"
               >
                 <LogOut size={14} />
                 Logout
-              </button>
+              </Button>
               <Dialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
                 <DialogContent>
                   <DialogHeader className="space-y-3">
@@ -568,12 +732,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <div className="profile-avatar w-8 h-8 rounded-full bg-[#eaf6ef] text-[#087f5b] font-bold text-xs flex items-center justify-center">
+              <div className="profile-avatar w-8 h-8 rounded-full bg-[#E7F2ED] text-[#0B6B50] font-bold text-xs flex items-center justify-center">
                 {user.name.split(' ').map(n => n[0]).join('')}
               </div>
               <div className="hidden lg:flex flex-col">
                 <span className="font-bold text-neutral-800 text-xs">{user.name}</span>
-                <span className="text-[10px] text-neutral-400 font-semibold uppercase">{user.role}</span>
+                <span className="max-w-64 text-[10px] font-semibold text-neutral-600" title={groupRoles.join(', ')}>{(groupRoles.length ? groupRoles : [user.role]).map(role => role.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase())).join(' · ')}</span>
               </div>
             </div>
           </div>
@@ -585,30 +749,30 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Responsive Mobile Bottom Navigation */}
-        <nav className="bottom-nav fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-[#dfe8e2] md:hidden flex justify-around items-center z-30">
-          <Link href="/app/dashboard" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname === '/app/dashboard' ? 'text-[#087f5b]' : 'text-neutral-400'}`}>
+        <nav className="bottom-nav fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-[#E5E7EB] md:hidden flex justify-around items-center z-30">
+          <Link href="/app/dashboard" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname === '/app/dashboard' ? 'text-[#0B6B50]' : 'text-neutral-400'}`}>
             <LayoutDashboard size={18} />
             <span>Home</span>
           </Link>
-          <Link href="/app/members" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/members') ? 'text-[#087f5b]' : 'text-neutral-400'}`}>
+          <Link href="/app/members" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/members') ? 'text-[#0B6B50]' : 'text-neutral-400'}`}>
             <Users size={18} />
             <span>Members</span>
           </Link>
-          <Link href="/app/contributions" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/contributions') ? 'text-[#087f5b]' : 'text-neutral-400'}`}>
+          <Link href="/app/contributions" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/contributions') ? 'text-[#0B6B50]' : 'text-neutral-400'}`}>
             <WalletCards size={18} />
             <span>Finance</span>
           </Link>
-          <Link href="/app/loans" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/loans') ? 'text-[#087f5b]' : 'text-neutral-400'}`}>
+          <Link href="/app/loans" className={`flex flex-col items-center justify-center gap-1 text-[9px] font-bold ${pathname.startsWith('/app/loans') ? 'text-[#0B6B50]' : 'text-neutral-400'}`}>
             <HandCoins size={18} />
             <span>Loans</span>
           </Link>
-          <button
+          <Button
             onClick={() => setMobileOpen(true)}
             className="flex flex-col items-center justify-center gap-1 text-[9px] font-bold text-neutral-400"
           >
             <MoreHorizontal size={18} />
             <span>More</span>
-          </button>
+          </Button>
         </nav>
       </div>
     </div>
