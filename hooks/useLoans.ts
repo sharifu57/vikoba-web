@@ -22,11 +22,15 @@ export type Loan = {
   status: string;
   purpose: string;
   rejectionReason?: string;
+  latePaymentFine?: number;
   totalPaid: number;
   remainingBalance: number;
   progress: number;
   consentAcceptedAt?: string;
   guarantors?: LoanGuarantorOption[];
+  canApprove?: boolean;
+  canCancel?: boolean;
+  canDisburse?: boolean;
   approvalSteps?: { stepOrder: number; role: string; label: string; approvedAt?: string | null; approvedByMemberId?: number | null }[];
   approvalEvents?: { stepOrder: number; action: string; actorMemberId: number; reason?: string | null; actedAt: string }[];
 };

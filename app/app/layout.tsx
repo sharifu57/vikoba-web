@@ -96,13 +96,6 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         const guaranteeRows = guaranteeResult.status === 'fulfilled' ? guaranteeResult.value.data || [] : []
         const loanRows = loanResult.status === 'fulfilled' ? loanResult.value.data || [] : []
         const myMemberId = Number(localStorage.getItem('v360_currentGroupMemberId') || 0)
-        let currentRoles: string[] = []
-        let currentPermissions: string[] = []
-        try {
-          currentRoles = JSON.parse(localStorage.getItem('v360_currentGroupRoles') || '[]') as string[]
-          currentPermissions = JSON.parse(localStorage.getItem('v360_currentGroupPermissions') || '[]') as string[]
-        } catch { /* Live data will refresh after access is resolved. */ }
-        const canReviewLoans = currentRoles.includes('GROUP_ADMIN') || currentPermissions.includes('LOAN_MANAGE')
         const items = [
           ...expenseRows.filter(item => item.status === 'PENDING' && item.canApprove).map(item => ({ key: `expense:${item.id}`, label: `Expense ${item.reference} awaits your approval`, kind: 'expense' as const })),
           ...shareRows.filter(item => item.status === 'PENDING' && item.canApprove).map(item => ({ key: `share:${item.id}`, label: `${item.memberName}'s share purchase awaits your approval`, kind: 'share' as const })),
@@ -110,8 +103,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           ...loanRows.filter(item => item.groupMemberId === myMemberId && item.status === 'PENDING')
             .flatMap(item => (item.guarantors || []).filter(person => person.status === 'REJECTED')
               .map(person => ({ key: `replacement:${item.id}:${person.id}`, label: `${person.name} declined loan ${item.loanNumber}. Choose another guarantor.`, kind: 'replacement' as const }))),
-          ...(canReviewLoans ? loanRows.filter(item => item.status === 'UNDER_REVIEW')
-            .map(item => ({ key: `loanapproval:${item.id}`, label: `Loan ${item.loanNumber} is ready for approval`, kind: 'loanapproval' as const })) : []),
+          ...loanRows.filter(item => item.canApprove || item.canDisburse)
+            .map(item => ({ key: `loanapproval:${item.id}`, label: `Loan ${item.loanNumber} awaits your ${item.canDisburse ? 'disbursement' : 'approval'}`, kind: 'loanapproval' as const })),
         ]
         setApprovalItems(previous => [
           ...(expenseResult.status === 'fulfilled' ? items.filter(item => item.kind === 'expense') : previous.filter(item => item.kind === 'expense')),
