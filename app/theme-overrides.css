@@ -24,8 +24,6 @@
 
 /* Keep the primary action readable in every theme. */
 .bg-primary, .button-primary, [data-slot="button"][data-variant="default"] { color: var(--primary-foreground) !important; }
-<<<<<<< HEAD
-=======
 
 .auth-experience { min-height: 100vh; display: grid; grid-template-columns: minmax(340px, .82fr) minmax(0, 1.18fr); background: var(--background); color: var(--foreground); }
 .auth-story { position: relative; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; padding: 42px clamp(32px, 6vw, 92px); background: #10241d; color: #fff; }
@@ -80,4 +78,3 @@
 .auth-copyright { margin: 25px 0 0; text-align: center; color: var(--muted-foreground); font-size: 10px; }.auth-loading { display: grid; min-height: 100vh; place-items: center; background: var(--background); }.auth-loading-card { padding: 30px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); color: var(--muted-foreground); text-align: center; }.auth-loading-mark { display: grid; place-items: center; width: 42px; height: 42px; margin: 0 auto 12px; border-radius: 10px; background: var(--primary); color: white; font-weight: 900; }
 @media (max-width: 800px) { .auth-experience { display: block; }.auth-story { min-height: 235px; padding: 25px 24px; }.auth-story-copy { margin: 45px 0 0; }.auth-story h1 { max-width: 560px; margin: 15px 0 8px; font-size: clamp(2.2rem, 9vw, 3.6rem); }.auth-story-copy > p, .auth-story-points { display: none; }.auth-story-footer { margin-top: 28px; }.auth-orbit-one { right: -210px; top: -190px; }.auth-orbit-two { right: -100px; top: -125px; }.auth-panel { min-height: calc(100vh - 235px); padding: 20px 20px 25px; }.auth-mobile-logo { display: block; }.auth-panel-inner { margin: 30px auto auto; }.auth-toolbar { justify-content: space-between; } }
 @media (max-width: 430px) { .auth-story { min-height: 205px; }.auth-story-copy { margin-top: 35px; }.auth-story h1 { font-size: 2.15rem; }.auth-panel { min-height: calc(100vh - 205px); }.auth-form-card { padding: 19px 16px; }.auth-otp-grid { gap: 5px; }.auth-otp-input { height: 51px; font-size: 19px; }.auth-otp-actions { align-items: flex-start; flex-direction: column; } }
->>>>>>> refs/remotes/origin/dev

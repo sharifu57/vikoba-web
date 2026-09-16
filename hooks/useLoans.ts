@@ -59,6 +59,21 @@ export type Installment = {
   balance: number;
   status: string;
 };
+export type LoanRepayment = {
+  id: number;
+  loanId: number;
+  loanNumber: string;
+  groupMemberId: number;
+  memberName: string;
+  amount: number;
+  paymentMethod: string;
+  externalReference?: string;
+  status: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  canApprove: boolean;
+};
 type Envelope<T> = { data?: T };
 const unbox = <T>(v: Envelope<T> | T) =>
   v && typeof v === "object" && "data" in v
@@ -159,16 +174,19 @@ export function useLoans() {
             ),
           ) ?? [],
       ),
-    repay: (g: string, id: number, amount: number, paymentMethod: string) =>
+    repay: (g: string, id: number, amount: number, paymentMethod: string, externalReference?: string) =>
       run(async () =>
         unbox(
-          await apiPost<Envelope<Loan>>(
+          await apiPost<Envelope<LoanRepayment>>(
             `${base(g)}/${id}/repayments`,
-            { amount, paymentMethod },
+            { amount, paymentMethod, externalReference },
             { auth: true },
           ),
         ),
       ),
+    repayments: (g: string) => run(async () => unbox(await apiGet<Envelope<LoanRepayment[]>>(`${base(g)}/repayments`, undefined, { auth: true })) ?? []),
+    approveRepayment: (g: string, id: number) => run(async () => unbox(await apiPost<Envelope<LoanRepayment>>(`${base(g)}/repayments/${id}/approve`, {}, { auth: true }))),
+    rejectRepayment: (g: string, id: number, reason: string) => run(async () => unbox(await apiPost<Envelope<LoanRepayment>>(`${base(g)}/repayments/${id}/reject`, { rejectionReason: reason }, { auth: true }))),
     assessOverdue: (g: string) =>
       run(async () =>
         unbox(

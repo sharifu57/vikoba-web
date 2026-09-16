@@ -24,8 +24,14 @@ import {
   MoreHorizontal,
   UserCheck,
   UserX,
+  UserRound,
+  Phone,
+  Mail,
+  ShieldCheck,
+  ArrowLeft,
 } from 'lucide-react'
 import { memberService, type MemberRoleOption } from '@/lib/api/services'
+import { Label } from '@/components/ui/label'
 
 const formatRoleLabel = (value?: string) => {
   if (!value) return 'Member'
@@ -678,31 +684,18 @@ export default function MembersPage() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/35 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-2xl rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between border-b border-neutral-100 pb-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Member Management</p>
-                {/* <h3 className="mt-1 text-lg font-black text-neutral-800">
-                  {importMode === 'single' ? 'Add Single Member' : 'Upload Members in Bulk'}
-                </h3> */}
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => {
-                      setMemberAddMode(null)
-                      setModalOpen(true)
-                    }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C]"
-                  >
-                    <UserPlus size={14} />
-                    Add Members
-                  </Button>
-                </div>
+          <div role="dialog" aria-modal="true" aria-labelledby="add-member-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Member management</p>
+                <h2 id="add-member-title" className="mt-1 text-xl font-bold text-foreground">{memberAddMode === 'single' ? 'Add single member' : memberAddMode === 'bulk' ? 'Import members' : 'Add members'}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Add people to the currently selected VIKOBA group.</p>
               </div>
-              <Button type="button" onClick={() => setModalOpen(false)} className="rounded-full p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
-                <X size={18} />
+              <Button type="button" variant="ghost" size="icon" aria-label="Close add member form" onClick={() => { setModalOpen(false); setMemberAddMode(null) }}>
+                <X className="size-5" />
               </Button>
             </div>
+            <div className="p-5 sm:p-6">
 
             {memberAddMode === null ? (
               <div className="space-y-4">
@@ -720,7 +713,7 @@ export default function MembersPage() {
                   <Button
                     type="button"
                     onClick={() => setMemberAddMode('single')}
-                    className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 text-left transition hover:border-[#0B6B50] hover:bg-[#F7F7F2] hover:shadow-sm"
+                    variant="outline" className="group h-auto min-h-56 w-full flex-col items-start justify-start whitespace-normal rounded-2xl p-5 text-left hover:bg-primary-soft"
                   >
                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7F2ED] text-[#0B6B50] transition group-hover:bg-[#0B6B50] group-hover:text-white">
                       <UserPlus size={22} />
@@ -744,7 +737,7 @@ export default function MembersPage() {
                   <Button
                     type="button"
                     onClick={() => setMemberAddMode('bulk')}
-                    className="group rounded-2xl border border-[#E5E7EB] bg-white p-5 text-left transition hover:border-[#0B6B50] hover:bg-[#F7F7F2] hover:shadow-sm"
+                    variant="outline" className="group h-auto min-h-56 w-full flex-col items-start justify-start whitespace-normal rounded-2xl p-5 text-left hover:bg-primary-soft"
                   >
                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E7F2ED] text-[#0B6B50] transition group-hover:bg-[#0B6B50] group-hover:text-white">
                       <FileSpreadsheet size={22} />
@@ -778,109 +771,20 @@ export default function MembersPage() {
             ) : memberAddMode === 'single' ? (
 
 
-              <form onSubmit={handleSingleMemberSubmit} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">First Name *</label>
-                    <Input
-                      value={newMem.firstName}
-                      onChange={(e) => setNewMem((prev) => ({ ...prev, firstName: e.target.value }))}
-                      placeholder="e.g. Juma"
-                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Last Name *</label>
-                    <Input
-                      value={newMem.lastName}
-                      onChange={(e) => setNewMem((prev) => ({ ...prev, lastName: e.target.value }))}
-                      placeholder="e.g. Majid"
-                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
-                    />
+              <form onSubmit={handleSingleMemberSubmit} className="space-y-6">
+                <div className="rounded-xl border border-border bg-muted/30 p-4 sm:p-5">
+                  <div className="mb-4"><h3 className="font-semibold text-foreground">Personal details</h3><p className="text-sm text-muted-foreground">Fields marked with * are required.</p></div>
+                  <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                    <div className="min-w-0 space-y-2"><Label htmlFor="member-first-name">First name *</Label><div className="relative"><UserRound className="pointer-events-none absolute left-3 top-1/2 z-[1] size-4 -translate-y-1/2 text-muted-foreground" /><Input id="member-first-name" autoComplete="given-name" required value={newMem.firstName} onChange={(e) => setNewMem((prev) => ({ ...prev, firstName: e.target.value }))} placeholder="e.g. Juma" className="h-11 min-w-0 bg-card pl-10" /></div></div>
+                    <div className="min-w-0 space-y-2"><Label htmlFor="member-last-name">Last name *</Label><div className="relative"><UserRound className="pointer-events-none absolute left-3 top-1/2 z-[1] size-4 -translate-y-1/2 text-muted-foreground" /><Input id="member-last-name" autoComplete="family-name" required value={newMem.lastName} onChange={(e) => setNewMem((prev) => ({ ...prev, lastName: e.target.value }))} placeholder="e.g. Majid" className="h-11 min-w-0 bg-card pl-10" /></div></div>
+                    <div className="min-w-0 space-y-2"><Label htmlFor="member-phone">Phone number *</Label><div className="relative"><Phone className="pointer-events-none absolute left-3 top-1/2 z-[1] size-4 -translate-y-1/2 text-muted-foreground" /><Input id="member-phone" type="tel" inputMode="tel" autoComplete="tel" required value={newMem.phone} onChange={(e) => setNewMem((prev) => ({ ...prev, phone: e.target.value }))} placeholder="0712 345 678" className="h-11 min-w-0 bg-card pl-10" /></div><p className="text-xs text-muted-foreground">Tanzanian format; it will be saved as 255…</p></div>
+                    <div className="min-w-0 space-y-2"><Label htmlFor="member-role">Group role</Label><div className="relative"><ShieldCheck className="pointer-events-none absolute left-3 top-1/2 z-[1] size-4 -translate-y-1/2 text-muted-foreground" /><NativeSelect id="member-role" disabled={loadingRoles} value={newMem.role} onChange={(e) => setNewMem((prev) => ({ ...prev, role: e.target.value }))} className="h-11 min-w-0 bg-card pl-10 pr-9">{roleOptions.length ? roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>) : <><option value="MEMBER">Member</option><option value="TREASURER">Treasurer</option><option value="LOAN_OFFICER">Loan Officer</option></>}</NativeSelect></div></div>
+                    <div className="min-w-0 space-y-2 sm:col-span-2"><Label htmlFor="member-email">Email address <span className="font-normal text-muted-foreground">(optional)</span></Label><div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 z-[1] size-4 -translate-y-1/2 text-muted-foreground" /><Input id="member-email" autoComplete="email" value={newMem.email} onChange={(e) => setNewMem((prev) => ({ ...prev, email: e.target.value }))} type="email" placeholder="juma@example.com" className="h-11 min-w-0 bg-card pl-10" /></div></div>
                   </div>
                 </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone Number *</label>
-                    <Input
-                      value={newMem.phone}
-                      onChange={(e) => setNewMem((prev) => ({ ...prev, phone: e.target.value }))}
-                      placeholder="255712345678"
-                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-xs font-bold text-neutral-700">Role</label>
-                    <NativeSelect
-                      value={newMem.role}
-                      onChange={(e) => setNewMem((prev) => ({ ...prev, role: e.target.value }))}
-                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
-                    >
-                      {roleOptions.length ? (
-                        roleOptions.map((role) => (
-                          <option key={role.value} value={role.value}>
-                            {role.label}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="MEMBER">Member</option>
-                          <option value="TREASURER">Treasurer</option>
-                          <option value="LOAN_OFFICER">Loan Officer</option>
-                        </>
-                      )}
-                    </NativeSelect>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-neutral-700">Email Address</label>
-                  <Input
-                    value={newMem.email}
-                    onChange={(e) => setNewMem((prev) => ({ ...prev, email: e.target.value }))}
-                    type="email"
-                    placeholder="juma@example.com"
-                    className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
-                  />
-                </div>
-
-                <div className="flex justify-between gap-3 border-t border-neutral-100 pt-4">
-                  <Button
-                    type="button"
-                    onClick={() => setMemberAddMode(null)}
-                    className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
-                  >
-                    ← Back
-                  </Button>
-
-                  <div className="flex gap-3">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        setModalOpen(false)
-                        setMemberAddMode(null)
-                      }}
-                      className="rounded-xl border border-[#E5E7EB] px-4 py-2 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50"
-                    >
-                      Cancel
-                    </Button>
-
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#08503C] disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Plus size={14} />
-                      )}
-                      Save Member
-                    </Button>
-                  </div>
+                <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+                  <Button type="button" variant="ghost" onClick={() => setMemberAddMode(null)}><ArrowLeft className="size-4" /> Back</Button>
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row"><Button type="button" variant="outline" onClick={() => { setModalOpen(false); setMemberAddMode(null) }}>Cancel</Button><Button type="submit" disabled={isSubmitting} className="min-w-36">{isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}{isSubmitting ? 'Saving member…' : 'Save member'}</Button></div>
                 </div>
               </form>
             ) : (
@@ -994,8 +898,7 @@ export default function MembersPage() {
                 </div>
               </div>
             )}
-
-
+            </div>
           </div>
         </div>
       )}
