@@ -276,6 +276,7 @@ export default function MembersPage() {
 
     if (!groupId) {
       toast.error('No Kikoba group is selected yet. Please create or select a group first.')
+      console.log('No groupId found in localStorage for v360_currentGroup or v360_currentGroupId.')
       return
     }
 
