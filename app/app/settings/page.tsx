@@ -45,6 +45,7 @@ export default function GroupSettingsPage() {
   const [approvalSteps, setApprovalSteps] = useState(defaultApprovalSteps)
   const [expenseApprovalSteps, setExpenseApprovalSteps] = useState([{ role: 'ACCOUNTANT', label: 'Accountant review' }])
   const [loanApprovalSteps, setLoanApprovalSteps] = useState([{ role: 'GROUP_CHAIRMAN', label: 'Chair review' }, { role: 'ACCOUNTANT', label: 'Accountant and disbursement' }])
+  const [jamiiApprovalSteps, setJamiiApprovalSteps] = useState(defaultApprovalSteps)
   const [fineRules, setFineRules] = useState<FineRule[]>(defaultFineRules)
   const [removedFineTypeIds, setRemovedFineTypeIds] = useState<Array<string | number>>([])
 
@@ -101,6 +102,9 @@ export default function GroupSettingsPage() {
     apiGet<{ data: { role: string; label: string }[] }>(`/api/expenses/group/${groupId}/approval-config`, undefined, { auth: true })
       .then(response => { if (response.data?.length) setExpenseApprovalSteps(response.data) })
       .catch(() => toast.error('Unable to load expense approval workflow.'))
+    apiGet<{ data: { role: string; label: string }[] }>(`/api/social-fund/group/${groupId}/approval-config`, undefined, { auth: true })
+      .then(response => { if (response.data?.length) setJamiiApprovalSteps(response.data) })
+      .catch(() => toast.error('Unable to load Jamii approval workflow.'))
   }, [])
 
   const validateCycleDates = (startDate: string, endDate: string) => {
@@ -155,6 +159,10 @@ export default function GroupSettingsPage() {
     }
     if (!expenseApprovalSteps.length || new Set(expenseApprovalSteps.map(step => step.role)).size !== expenseApprovalSteps.length) {
       toast.error('Choose at least one expense approval step and use each role only once.')
+      return
+    }
+    if (!jamiiApprovalSteps.length || new Set(jamiiApprovalSteps.map(step => step.role)).size !== jamiiApprovalSteps.length) {
+      toast.error('Choose at least one Jamii approval step and use each role only once.')
       return
     }
 
@@ -237,6 +245,7 @@ export default function GroupSettingsPage() {
         await Promise.all([
           apiPut(`/api/expenses/group/${groupId}/approval-config`, expenseApprovalSteps, { auth: true }),
           apiPut(`/api/loans/group/${groupId}/approval-config`, loanApprovalSteps, { auth: true }),
+          apiPut(`/api/social-fund/group/${groupId}/approval-config`, jamiiApprovalSteps, { auth: true }),
           ...removedFineTypeIds.map((id) => fineService.deleteType(String(groupId), id)),
           ...fineRules.filter(rule => rule.name.trim()).map((rule) => {
           const payload = { code: rule.code || rule.name, name: rule.name, defaultAmount: Number(rule.defaultAmount || 0), description: rule.description, active: true }
@@ -439,6 +448,18 @@ export default function GroupSettingsPage() {
               <Button type="button" variant="outline" size="sm" disabled={expenseApprovalSteps.length === 1} onClick={() => setExpenseApprovalSteps(current => current.filter((_, i) => i !== index))}><Trash2 size={14} /></Button>
             </div>)}
             <Button type="button" variant="outline" size="sm" disabled={expenseApprovalSteps.length >= 10} onClick={() => setExpenseApprovalSteps(current => [...current, { role: approvalRoles.find(role => !current.some(step => step.role === role)) || 'GROUP_ADMIN', label: 'Expense approval' }])}><Plus size={14} /> Add expense approval step</Button>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
+            <div><h3 className="font-extrabold text-neutral-800">Jamii approval workflow</h3><p className="text-xs text-neutral-600">Members apply for themselves. Reviewers act in this order, and applicants cannot approve their own requests.</p></div>
+            {jamiiApprovalSteps.map((step, index) => <div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2">
+              <span className="w-14 text-xs font-bold text-neutral-500">Step {index + 1}</span>
+              <NativeSelect aria-label={`Jamii reviewer for step ${index + 1}`} value={step.role} onChange={e => setJamiiApprovalSteps(current => current.map((item, i) => i === index ? { ...item, role: e.target.value } : item))}>{approvalRoles.map(role => <option key={role} value={role}>{role.replaceAll('_', ' ')}</option>)}</NativeSelect>
+              <Input aria-label={`Jamii step ${index + 1} label`} value={step.label} onChange={e => setJamiiApprovalSteps(current => current.map((item, i) => i === index ? { ...item, label: e.target.value } : item))} className="min-w-36 flex-1" />
+              <Button type="button" variant="outline" size="sm" disabled={index === 0} onClick={() => setJamiiApprovalSteps(current => { const next = [...current]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; return next })}>Up</Button>
+              <Button type="button" variant="outline" size="sm" disabled={index === jamiiApprovalSteps.length - 1} onClick={() => setJamiiApprovalSteps(current => { const next = [...current]; [next[index], next[index + 1]] = [next[index + 1], next[index]]; return next })}>Down</Button>
+              <Button type="button" variant="outline" size="sm" disabled={jamiiApprovalSteps.length === 1} onClick={() => setJamiiApprovalSteps(current => current.filter((_, i) => i !== index))}><Trash2 size={14} /></Button>
+            </div>)}
+            <Button type="button" variant="outline" size="sm" disabled={jamiiApprovalSteps.length >= 10} onClick={() => setJamiiApprovalSteps(current => [...current, { role: approvalRoles.find(role => !current.some(step => step.role === role)) || 'GROUP_ADMIN', label: 'Jamii approval' }])}><Plus size={14} /> Add Jamii approval step</Button>
           </div>
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
             <div><h3 className="font-extrabold text-neutral-800">Share purchase approval workflow</h3><p className="text-xs text-neutral-600">Reviewers act in this order. A buyer's own role is skipped, and pending requests keep the steps saved when they were submitted.</p></div>

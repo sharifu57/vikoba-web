@@ -30,6 +30,12 @@ export type JamiiRequest = {
   reason?: string;
   status: string;
   requestedDate: string;
+  approvalSteps?: Array<{ role: string; label: string; approvedAt?: string | null; approvedBy?: number | null; skipped: boolean }>;
+  currentStepRole?: string;
+  currentStepLabel?: string;
+  canApprove?: boolean;
+  canReject?: boolean;
+  canDisburse?: boolean;
 };
 export type JamiiSummary = {
   totalContributions: number;
