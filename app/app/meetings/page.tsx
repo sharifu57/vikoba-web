@@ -2,13 +2,16 @@
 
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowUpRight, CalendarDays, ClipboardList, Clock3, Link2, Loader2, MapPin, PlusCircle, ShieldCheck, UsersRound, Video, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BellRing, CalendarDays, ClipboardList, Clock3, Link2, Loader2, MapPin, PlusCircle, ShieldCheck, Sparkles, UsersRound, Video, X } from "lucide-react";
 import { useGroups, useMeetings, useCreateMeeting } from "@/hooks/useVikobaApi";
 import { groupService, type Meeting } from "@/lib/api/services";
+import { resolveActiveGroupId } from "@/lib/api/active-group";
 
 export default function MeetingsDashboard() {
   const [currentGroupId, setCurrentGroupId] = useState("");
@@ -18,8 +21,7 @@ export default function MeetingsDashboard() {
     if (typeof window === "undefined") return;
 
     try {
-      const currentGroup = JSON.parse(localStorage.getItem("v360_currentGroup") || "null") as Record<string, unknown> | null;
-      const selectedGroupId = String(currentGroup?.groupId ?? currentGroup?.id ?? localStorage.getItem("v360_currentGroupId") ?? "");
+      const selectedGroupId = resolveActiveGroupId(localStorage) || "";
       const memberships = JSON.parse(localStorage.getItem("v360_groups") || "[]") as Array<Record<string, unknown>>;
       const membership = memberships.find((item) => {
         const group = (item.group || item) as Record<string, unknown>;
@@ -61,8 +63,9 @@ export default function MeetingsDashboard() {
   }, [currentGroupId, groups]);
   // normalize primary group id (some responses use `groupId`, older code used `id`)
   const primaryGroupId = (primaryGroup as any)?.groupId ?? (primaryGroup as any)?.id ?? null;
+  const activeGroupId = currentGroupId || (primaryGroupId == null ? "" : String(primaryGroupId));
 
-  const meetingsQuery = useMeetings(primaryGroupId);
+  const meetingsQuery = useMeetings(activeGroupId || undefined);
   const rawMeetings = meetingsQuery.data as any;
   const meetings = Array.isArray(rawMeetings)
     ? rawMeetings
@@ -95,6 +98,7 @@ export default function MeetingsDashboard() {
       (String(((b as any).meetingDate ?? b.date) || "")).localeCompare(String(((a as any).meetingDate ?? a.date) || "")) ||
       String(((b as any).startTime ?? "") || "").localeCompare(String(((a as any).startTime ?? "") || ""))
     );
+  const nextMeeting = upcomingMeetings[0] as Meeting | undefined;
 
   const handleSchedule = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,13 +106,13 @@ export default function MeetingsDashboard() {
       toast.error("You need MEETING_MANAGE permission to schedule a meeting.");
       return;
     }
-    if (!primaryGroupId) {
-      toast.error("Select a group before scheduling a meeting.");
+    if (!activeGroupId) {
+      toast.error("Your current group could not be identified. Sign in again and retry.");
       return;
     }
     if (form.date && form.agenda && (form.meetingMode === "ONLINE" ? form.meetingLink : form.location) && createMeetingMutation.status !== 'pending') {
       createMeetingMutation.mutate({
-        groupId: String(primaryGroupId),
+        groupId: activeGroupId,
         data: {
           title: form.title.trim() || `${form.meetingMode === "ONLINE" ? "Online" : "Physical"} group meeting`,
           meetingDate: form.date,
@@ -133,10 +137,10 @@ export default function MeetingsDashboard() {
   };
 
   useEffect(() => {
-    if (!primaryGroupId) return;
+    if (!activeGroupId) return;
     let mounted = true;
     groupService
-      .getWithSettings(String(primaryGroupId))
+      .getWithSettings(activeGroupId)
       .then((resp) => {
         if (!mounted) return;
         // resp may be an ApiResponse envelope or the payload directly
@@ -150,60 +154,41 @@ export default function MeetingsDashboard() {
     return () => {
       mounted = false;
     };
-  }, [primaryGroupId]);
+  }, [activeGroupId]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6 lg:px-8">
       {/* Header and Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <div className="breadcrumb text-xs text-neutral-400 font-bold flex items-center gap-1">
-            <span>VIKOBA</span>
-            <span className="text-neutral-300">/</span>
-            <span className="text-neutral-500">Meetings</span>
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#073D2E] via-[#0B6B50] to-[#11805F] px-6 py-7 text-white shadow-[0_24px_70px_rgba(11,107,80,0.22)] sm:px-8 sm:py-9">
+        <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-[#F2B84B]/20 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <Badge className="mb-4 gap-1.5 bg-white/15 text-white ring-1 ring-white/20"><Sparkles size={12} /> Group calendar</Badge>
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Meetings that keep everyone aligned</h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/75">Schedule sessions, notify every member by SMS, record attendance, and keep decisions together in one clear register.</p>
           </div>
-          <h1 className="mt-2 text-3xl font-black text-neutral-900">Meetings Register</h1>
-          <p className="mt-1 text-sm text-neutral-500">Plan group sessions, keep members informed, and record attendance with confidence.</p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-semibold ring-1 ring-white/15"><BellRing size={15} /> Members notified automatically</div>
+            {canManageMeetings ? <Button onClick={() => setModalOpen(true)} className="h-11 gap-2 rounded-xl border-2 border-[#FFD978] bg-[#F2B84B] px-5 text-xs font-black text-[#2F2100] shadow-[0_10px_24px_rgba(242,184,75,0.35)] ring-2 ring-white/20 hover:border-white hover:bg-[#FFD166] hover:text-[#241900] focus-visible:ring-4 focus-visible:ring-[#FFD978]/50"><PlusCircle size={16} strokeWidth={3} /> Schedule meeting</Button> : <span className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-3 text-xs font-bold ring-1 ring-white/30"><ShieldCheck size={15} /> View-only access</span>}
+          </div>
         </div>
-        {canManageMeetings ? (
-          <Button
-            onClick={() => setModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 self-stretch rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C] sm:self-auto"
-          >
-            <PlusCircle size={15} /> Schedule meeting
-          </Button>
-        ) : (
-          <span className="inline-flex items-center gap-2 self-stretch rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-xs font-bold text-neutral-500 sm:self-auto">
-            <ShieldCheck size={14} className="text-[#0B6B50]" /> View-only access
-          </span>
-        )}
+      </section>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[{ label: 'Upcoming', value: upcomingMeetings.length, icon: CalendarDays, tone: 'bg-emerald-50 text-[#0B6B50]' }, { label: 'Online sessions', value: upcomingMeetings.filter((meeting: any) => meeting.meetingMode === 'ONLINE').length, icon: Video, tone: 'bg-amber-50 text-amber-700' }, { label: 'Recorded sessions', value: pastMeetings.length, icon: UsersRound, tone: 'bg-sky-50 text-sky-700' }].map(({ label, value, icon: Icon, tone }) => <Card key={label} className="rounded-2xl border-neutral-200/80"><CardContent className="flex items-center gap-4 p-5"><div className={`grid size-11 place-items-center rounded-2xl ${tone}`}><Icon size={20} /></div><div><p className="text-2xl font-black text-foreground">{value}</p><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p></div></CardContent></Card>)}
       </div>
 
-      <div className="mb-8 grid gap-3 sm:grid-cols-3">
-        <div className="flex items-center gap-3 border-l-4 border-[#0B6B50] bg-white px-4 py-3 shadow-sm">
-          <CalendarDays className="text-[#0B6B50]" size={20} />
-          <div><p className="text-xl font-black text-neutral-900">{upcomingMeetings.length}</p><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">Upcoming</p></div>
-        </div>
-        <div className="flex items-center gap-3 border-l-4 border-[#F2B84B] bg-white px-4 py-3 shadow-sm">
-          <Video className="text-[#A66A00]" size={20} />
-          <div><p className="text-xl font-black text-neutral-900">{upcomingMeetings.filter((meeting: any) => meeting.meetingMode === "ONLINE").length}</p><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">Online sessions</p></div>
-        </div>
-        <div className="flex items-center gap-3 border-l-4 border-[#4B8BBE] bg-white px-4 py-3 shadow-sm">
-          <UsersRound className="text-[#256A9F]" size={20} />
-          <div><p className="text-xl font-black text-neutral-900">{pastMeetings.length}</p><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">Recorded sessions</p></div>
-        </div>
-      </div>
+      {nextMeeting && <Card className="overflow-hidden rounded-3xl border-emerald-200 bg-gradient-to-r from-emerald-50 to-white"><CardContent className="grid gap-5 p-6 md:grid-cols-[1fr_auto] md:items-center"><div><Badge variant="secondary" className="mb-3">Next meeting</Badge><h2 className="text-xl font-black text-foreground">{(nextMeeting as any).title || 'Group meeting'}</h2><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground"><span className="inline-flex items-center gap-1.5"><CalendarDays size={15} />{String((nextMeeting as any).meetingDate || (nextMeeting as any).date || '')}</span><span className="inline-flex items-center gap-1.5"><Clock3 size={15} />{String((nextMeeting as any).startTime || '')}</span><span className="inline-flex items-center gap-1.5"><MapPin size={15} />{String((nextMeeting as any).location || (nextMeeting as any).meetingLink || 'Venue to be confirmed')}</span></div></div><ButtonLink href={`/app/meetings/${nextMeeting.id}`} className="h-11 gap-2 rounded-xl bg-[#0B6B50] px-5 font-black text-white shadow-lg ring-2 ring-[#0B6B50]/15 hover:bg-[#064A37]">Open meeting <ArrowRight size={16} /></ButtonLink></CardContent></Card>}
 
       {/* Main layout */}
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Left 2 Cols: Schedule cards lists */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Upcoming sessions */}
-          <div className="border border-[#E5E7EB] bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Schedule</p><h3 className="mt-1 text-base font-black text-neutral-900">Upcoming meetings</h3></div>
-              <span className="rounded-full bg-[#E7F2ED] px-2.5 py-1 text-[10px] font-bold text-[#0B6B50]">{upcomingMeetings.length} planned</span>
-            </div>
+          <Card className="rounded-3xl border-neutral-200/80">
+            <CardHeader className="flex-row items-center justify-between p-5 pb-2 sm:p-6 sm:pb-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Schedule</p><CardTitle className="mt-1 text-lg font-black">Upcoming meetings</CardTitle></div><Badge variant="secondary">{upcomingMeetings.length} planned</Badge></CardHeader>
+            <CardContent className="p-5 pt-3 sm:p-6 sm:pt-3">
             <div className="flex flex-col gap-4">
               {upcomingMeetings.map((m) => {
                 const dateVal = (m as any).date ?? (m as any).meetingDate ?? null;
@@ -212,26 +197,27 @@ export default function MeetingsDashboard() {
                 const mode = String((m as any).meetingMode ?? "PHYSICAL").toUpperCase();
                 const venueVal = mode === "ONLINE" ? (m as any).meetingLink ?? "Online session" : (m as any).location ?? (m as any).venue ?? "";
                 return (
-                  <div key={m.id} className="border border-neutral-100 bg-[#FCFDFC] p-4 transition hover:border-[#B5D7C5]">
+                  <div key={m.id} className="group rounded-2xl border border-neutral-200/80 bg-gradient-to-r from-white to-neutral-50/70 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg">
                     <div className="flex items-center gap-4">
                       <div className="bg-[#E7F2ED] text-[#0B6B50] w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0">
                         <span className="text-lg font-black">{dateVal ? new Date(dateVal).getDate() : ""}</span>
                         <span className="text-[7px] font-extrabold uppercase">{dateVal ? new Date(dateVal).toLocaleString(undefined, { month: 'short' }).toUpperCase() : ""}</span>
                       </div>
                       <div>
-                        <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-bold text-neutral-800">{(m as any).title ?? 'Regular VIKOBA Assembly'}</span><span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${mode === "ONLINE" ? "bg-amber-50 text-amber-700" : "bg-sky-50 text-sky-700"}`}>{mode === "ONLINE" ? "Online" : "Physical"}</span></div>
+                        <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-bold text-neutral-800">{(m as any).title ?? 'Regular VIKOBA Assembly'}</span><Badge variant="outline" className={mode === "ONLINE" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-sky-200 bg-sky-50 text-sky-700"}>{mode === "ONLINE" ? "Online" : "Physical"}</Badge></div>
                         <span className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500">{mode === "ONLINE" ? <Video size={12} /> : <MapPin size={12} />} {venueVal}</span>
                         <span className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400"><Clock3 size={12} /> {timeVal || "Time to be confirmed"}</span>
                       </div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2 sm:ml-16">
-                      {mode === "ONLINE" && (m as any).meetingLink && <a href={(m as any).meetingLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-[#B5D7C5] px-3.5 py-2 text-xs font-bold text-[#0B6B50] transition hover:bg-[#F2F7F4]"><Link2 size={13} /> Join online <ArrowUpRight size={13} /></a>}
-                      <Link
+                      {mode === "ONLINE" && (m as any).meetingLink && <a href={(m as any).meetingLink} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl border-2 border-[#0B6B50] bg-white px-4 text-xs font-black text-[#0B6B50] shadow-sm transition hover:bg-emerald-50"><Link2 size={14} /> Join online <ArrowUpRight size={14} /></a>}
+                      <ButtonLink
                         href={`/app/meetings/${m.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B6B50] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C]"
+                        className="h-10 gap-2 rounded-xl bg-[#0B6B50] px-4 text-xs font-black text-white shadow-md hover:bg-[#064A37]"
                       >
                         {canManageMeetings ? "Record attendance" : "View meeting"}
-                      </Link>
+                        <ArrowRight size={14} />
+                      </ButtonLink>
                     </div>
                   </div>
                 )
@@ -239,12 +225,11 @@ export default function MeetingsDashboard() {
               {upcomingMeetings.length === 0 && (
                 <div className="py-6 text-center text-xs text-neutral-400">{canManageMeetings ? "No upcoming sessions. Schedule one when the group is ready." : "No upcoming sessions have been scheduled."}</div>
               )}
-            </div>
-          </div>
+            </div></CardContent>
+          </Card>
 
           {/* Past assemblies minutes */}
-          <div className="border border-[#E5E7EB] bg-white p-5 shadow-sm sm:p-6">
-            <h3 className="font-extrabold text-neutral-800 text-sm mb-4">Past Assemblies & Minutes</h3>
+          <Card className="rounded-3xl border-neutral-200/80"><CardHeader className="p-5 pb-2 sm:p-6 sm:pb-2"><CardTitle className="text-lg font-black">Past assemblies &amp; minutes</CardTitle></CardHeader><CardContent className="p-5 pt-3 sm:p-6 sm:pt-3">
             <div className="flex flex-col gap-4">
               {pastMeetings.map((m) => {
                 const dateVal = (m as any).date ?? (m as any).meetingDate ?? null;
@@ -252,7 +237,7 @@ export default function MeetingsDashboard() {
                 const timeVal = rawTime ? rawTime.split(":").slice(0, 2).join(":") : "";
                 const venueVal = (m as any).location ?? (m as any).venue ?? "";
                 return (
-                  <div key={m.id} className="border-b border-neutral-50 last:border-0 pb-4 last:pb-0">
+                  <Link href={`/app/meetings/${m.id}`} key={m.id} className="block rounded-2xl border border-transparent p-3 transition hover:border-neutral-200 hover:bg-neutral-50">
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="text-xs font-extrabold text-neutral-700">{dateVal ? `${new Date(dateVal).toLocaleDateString()}` : "Assembly"} assembly</span>
@@ -267,18 +252,18 @@ export default function MeetingsDashboard() {
                       {(m as any).minutes && <p><strong>Minutes notes:</strong> {(m as any).minutes}</p>}
                       {(m as any).resolution && <p><strong>Resolutions passed:</strong> {(m as any).resolution}</p>}
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
               {pastMeetings.length === 0 && (
                 <div className="text-center py-6 text-neutral-400 text-xs">No completed assemblies logged yet.</div>
               )}
-            </div>
-          </div>
+            </div></CardContent></Card>
         </div>
 
         {/* Right 1 Col: Checklist details */}
-        <div className="h-fit border border-[#B5D7C5] bg-[#F2F7F4] p-6">
+        <Card className="h-fit rounded-3xl border-emerald-200 bg-gradient-to-b from-emerald-50 to-white">
+          <CardContent className="p-6">
           <div className="flex items-center gap-2">
             <ClipboardList className="text-[#0B6B50]" size={20} />
             <h3 className="font-extrabold text-neutral-800 text-sm">Session Bylaws</h3>
@@ -297,16 +282,18 @@ export default function MeetingsDashboard() {
               </>
             )}
           </p>
-        </div>
+          <div className="mt-5 rounded-2xl border border-emerald-100 bg-white/80 p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Good practice</p><ul className="mt-3 space-y-2 text-xs text-neutral-600"><li>• Share a clear agenda before the session.</li><li>• Record attendance once everyone has arrived.</li><li>• Save decisions in meeting minutes.</li></ul></div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Schedule Meeting Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-[#10241D]/30 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto border border-[#E5E7EB] bg-white p-5 shadow-2xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="schedule-meeting-title">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-2xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="schedule-meeting-title">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
               <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Meeting planner</p><h3 id="schedule-meeting-title" className="mt-1 text-lg font-black text-neutral-900">Schedule a group meeting</h3></div>
-              <Button type="button" title="Close meeting planner" aria-label="Close meeting planner" onClick={() => setModalOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700">
+              <Button type="button" variant="outline" size="icon" title="Close meeting planner" aria-label="Close meeting planner" onClick={() => setModalOpen(false)} className="rounded-xl border-neutral-300 bg-white text-neutral-700 shadow-sm hover:border-red-200 hover:bg-red-50 hover:text-red-700">
                 <X size={18} />
               </Button>
             </div>
@@ -348,11 +335,11 @@ export default function MeetingsDashboard() {
               <div>
                 <label className="mb-2 block text-xs font-bold text-neutral-700">Meeting format *</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <Button type="button" onClick={() => setForm({ ...form, meetingMode: "PHYSICAL", meetingLink: "" })} className={`flex items-start gap-3 border p-3 text-left transition ${form.meetingMode === "PHYSICAL" ? "border-[#0B6B50] bg-[#F2F7F4]" : "border-[#E5E7EB] bg-white hover:border-[#B5D7C5]"}`}>
+                  <Button type="button" variant="outline" onClick={() => setForm({ ...form, meetingMode: "PHYSICAL", meetingLink: "" })} className={`h-auto justify-start rounded-2xl border-2 p-3 text-left shadow-sm transition ${form.meetingMode === "PHYSICAL" ? "border-[#0B6B50] bg-emerald-50 ring-2 ring-[#0B6B50]/10" : "border-neutral-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40"}`}>
                     <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${form.meetingMode === "PHYSICAL" ? "bg-[#0B6B50] text-white" : "bg-neutral-100 text-neutral-500"}`}><MapPin size={17} /></span>
                     <span><span className="block text-xs font-bold text-neutral-800">Physical</span><span className="mt-1 block text-[10px] leading-4 text-neutral-500">Meet at a shared location.</span></span>
                   </Button>
-                  <Button type="button" onClick={() => setForm({ ...form, meetingMode: "ONLINE", location: "" })} className={`flex items-start gap-3 border p-3 text-left transition ${form.meetingMode === "ONLINE" ? "border-[#0B6B50] bg-[#F2F7F4]" : "border-[#E5E7EB] bg-white hover:border-[#B5D7C5]"}`}>
+                  <Button type="button" variant="outline" onClick={() => setForm({ ...form, meetingMode: "ONLINE", location: "" })} className={`h-auto justify-start rounded-2xl border-2 p-3 text-left shadow-sm transition ${form.meetingMode === "ONLINE" ? "border-[#0B6B50] bg-emerald-50 ring-2 ring-[#0B6B50]/10" : "border-neutral-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40"}`}>
                     <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${form.meetingMode === "ONLINE" ? "bg-[#0B6B50] text-white" : "bg-neutral-100 text-neutral-500"}`}><Video size={17} /></span>
                     <span><span className="block text-xs font-bold text-neutral-800">Online</span><span className="mt-1 block text-[10px] leading-4 text-neutral-500">Share a secure meeting link.</span></span>
                   </Button>
@@ -387,15 +374,16 @@ export default function MeetingsDashboard() {
               <div className="flex gap-3 justify-end pt-3 border-t border-neutral-100">
                 <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setModalOpen(false)}
-                  className="rounded-xl border border-[#E5E7EB] px-4 py-2.5 text-xs font-bold text-neutral-500 transition hover:bg-neutral-50"
+                  className="h-11 rounded-xl border-2 border-neutral-300 bg-white px-5 text-xs font-black text-neutral-700 shadow-sm hover:border-neutral-400 hover:bg-neutral-100"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={createMeetingMutation.status === 'pending'}
-                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition ${createMeetingMutation.status === 'pending' ? 'cursor-wait bg-neutral-300' : 'bg-[#0B6B50] hover:bg-[#08503C]'}`}
+                  className="h-11 gap-2 rounded-xl bg-[#0B6B50] px-5 text-xs font-black text-white shadow-lg ring-2 ring-[#0B6B50]/15 hover:bg-[#064A37] disabled:bg-neutral-300 disabled:text-neutral-600 disabled:shadow-none disabled:ring-0"
                 >
                   {createMeetingMutation.status === 'pending' ? <><Loader2 size={14} className="animate-spin" /> Scheduling...</> : <><CalendarDays size={14} /> Schedule meeting</>}
                 </Button>

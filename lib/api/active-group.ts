@@ -5,7 +5,11 @@ export function resolveActiveGroupId(storage: Pick<Storage, 'getItem' | 'setItem
 
   try {
     const current = JSON.parse(storage.getItem('v360_currentGroup') || 'null') as Record<string, unknown> | null
-    const id = [current?.groupId, current?.id].find(value => value != null && /^\d+$/.test(String(value)))
+    const nested = current?.group && typeof current.group === 'object'
+      ? current.group as Record<string, unknown>
+      : null
+    const id = [current?.groupId, current?.id, nested?.groupId, nested?.id]
+      .find(value => value != null && /^\d+$/.test(String(value)))
     if (id != null) {
       storage.setItem('v360_currentGroupId', String(id))
       return String(id)
