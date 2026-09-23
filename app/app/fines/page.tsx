@@ -1,581 +1,135 @@
 "use client";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { NativeSelect } from "@/components/ui/native-select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Plus, Search, X } from "lucide-react";
-import {
-  fineService,
-  memberService,
-  type Fine,
-  type FineTypeOption,
-  type Member,
-} from "@/lib/api/services";
-type Envelope<T> = { data?: T; message?: string };
-const unwrap = <T,>(v: T | Envelope<T>) =>
-  (v && typeof v === "object" && "data" in v
-    ? (v as Envelope<T>).data
-    : v) as T;
+import { AlertTriangle, Banknote, CheckCircle2, CircleDollarSign, Loader2, Plus, Search, Settings2, ShieldAlert } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { fineService, memberService, type Fine, type FineTypeOption, type Member } from "@/lib/api/services";
 
-    ///PUSH
-const money = (n: number, c = "TZS") =>
-  `${c} ${Number(n || 0).toLocaleString()}`;
+type Envelope<T> = { data?: T };
+const unwrap = <T,>(value: T | Envelope<T>) => (value && typeof value === "object" && "data" in value ? (value as Envelope<T>).data : value) as T;
+const money = (value: number, currency = "TZS") => `${currency} ${Number(value || 0).toLocaleString("en-TZ")}`;
+const statusTone: Record<string, string> = {
+  UNPAID: "border-destructive/25 bg-destructive/10 text-destructive",
+  PARTIAL: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  PAID: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  WAIVED: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+};
+
 export default function FinesPage() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const [groupId, setGroupId] = useState("");
   const [currency, setCurrency] = useState("TZS");
   const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [issueOpen, setIssueOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
-  const [form, setForm] = useState({
-    groupMemberId: "",
-    fineTypeId: "",
-    amount: "5000",
-    reason: "",
-  });
-  const [configForm, setConfigForm] = useState({
-    id: "",
-    name: "",
-    code: "",
-    defaultAmount: "",
-    description: "",
-    active: true,
-  });
+  const [paymentFine, setPaymentFine] = useState<Fine | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [form, setForm] = useState({ groupMemberId: "", fineTypeId: "", amount: "", reason: "" });
+  const [configForm, setConfigForm] = useState({ id: "", name: "", code: "", defaultAmount: "", description: "", active: true });
+
   useEffect(() => {
     try {
-      const g = JSON.parse(localStorage.getItem("v360_currentGroup") || "{}");
-      setGroupId(
-        String(
-          g.id ??
-          g.groupId ??
-          localStorage.getItem("v360_currentGroupId") ??
-          "",
-        ),
-      );
-      setCurrency(g.currency || "TZS");
-    } catch { }
+      const group = JSON.parse(localStorage.getItem("v360_currentGroup") || "{}");
+      setGroupId(String(group.id ?? group.groupId ?? localStorage.getItem("v360_currentGroupId") ?? ""));
+      setCurrency(group.currency || "TZS");
+    } catch { /* Group selector will populate storage. */ }
   }, []);
-  const finesQ = useQuery({
-    queryKey: ["fines", groupId],
-    queryFn: () => fineService.list(groupId),
-    enabled: /^\d+$/.test(groupId),
-  });
-  const membersQ = useQuery({
-    queryKey: ["members", groupId],
-    queryFn: async () => unwrap(await memberService.list(groupId)) || [],
-    enabled: /^\d+$/.test(groupId),
-  });
-  const typesQ = useQuery({
-    queryKey: ["fine-types", groupId],
-    queryFn: () => fineService.types(groupId),
-    enabled: /^\d+$/.test(groupId),
-  });
-  const typeList = (typesQ.data || []) as FineTypeOption[];
-  const selectedType = useMemo(
-    () => typeList.find((t) => String(t.id) === String(form.fineTypeId)) || null,
-    [form.fineTypeId, typeList],
-  );
+
+  const finesQuery = useQuery({ queryKey: ["fines", groupId], queryFn: () => fineService.list(groupId), enabled: /^\d+$/.test(groupId) });
+  const membersQuery = useQuery({ queryKey: ["members", groupId], queryFn: async () => unwrap(await memberService.list(groupId)) || [], enabled: /^\d+$/.test(groupId) });
+  const typesQuery = useQuery({ queryKey: ["fine-types", groupId], queryFn: () => fineService.types(groupId), enabled: /^\d+$/.test(groupId) });
+  const fines = (finesQuery.data || []) as Fine[];
+  const members = (membersQuery.data || []) as Member[];
+  const types = (typesQuery.data || []) as FineTypeOption[];
+
   useEffect(() => {
-    if (!selectedType) return;
-    const nextAmount = Number(selectedType.defaultAmount ?? 0);
-    setForm((current) => ({
-      ...current,
-      amount: current.amount && Number(current.amount) > 0 ? current.amount : String(nextAmount || 5000),
-      fineTypeId: String(selectedType.id ?? ""),
-    }));
-  }, [selectedType]);
-  useEffect(() => {
-    if (!typeList.length) return;
-    if (!form.fineTypeId) {
-      setForm((current) => ({
-        ...current,
-        fineTypeId: String(typeList[0].id),
-        amount: String(Number(typeList[0].defaultAmount ?? 0) || 5000),
-      }));
-    }
-  }, [form.fineTypeId, typeList]);
-  const issue = useMutation({
-    mutationFn: () =>
-      fineService.create({
-        groupId,
-        groupMemberId: form.groupMemberId,
-        fineTypeId: form.fineTypeId,
-        amount: Number(form.amount),
-        reason: form.reason,
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fines", groupId] });
-      setOpen(false);
-      setForm({
-        groupMemberId: "",
-        fineTypeId: typeList[0] ? String(typeList[0].id) : "",
-        amount: "5000",
-        reason: "",
-      });
+    if (!types.length || form.fineTypeId) return;
+    setForm((current) => ({ ...current, fineTypeId: String(types[0].id), amount: String(Number(types[0].defaultAmount || 0)) }));
+  }, [types, form.fineTypeId]);
+
+  const issueFine = useMutation({
+    mutationFn: () => fineService.create({ groupId, groupMemberId: form.groupMemberId, fineTypeId: form.fineTypeId, amount: Number(form.amount), reason: form.reason.trim() }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["fines", groupId] });
+      setIssueOpen(false); setForm({ groupMemberId: "", fineTypeId: types[0]?.id ? String(types[0].id) : "", amount: String(Number(types[0]?.defaultAmount || 0)), reason: "" });
     },
   });
   const saveType = useMutation({
     mutationFn: () => {
-      if (!groupId) throw new Error("A group must be selected first.");
-      const payload = {
-        code: configForm.code || configForm.name,
-        name: configForm.name,
-        defaultAmount: Number(configForm.defaultAmount || 0),
-        description: configForm.description,
-        active: configForm.active,
-      };
+      const payload = { code: configForm.code || configForm.name, name: configForm.name, defaultAmount: Number(configForm.defaultAmount || 0), description: configForm.description, active: configForm.active };
+      return configForm.id ? fineService.updateType(groupId, configForm.id, payload) : fineService.createType(groupId, payload);
+    },
+    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["fine-types", groupId] }); setConfigForm({ id: "", name: "", code: "", defaultAmount: "", description: "", active: true }); },
+  });
+  const disableType = useMutation({ mutationFn: (id: string | number) => fineService.deleteType(groupId, id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["fine-types", groupId] }) });
+  const updateFine = useMutation({
+    mutationFn: ({ fine, status, amount }: { fine: Fine; status?: string; amount?: number }) => fineService.update(String(fine.id), { groupId, status, paymentAmount: amount }),
+    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["fines", groupId] }); setPaymentFine(null); setPaymentAmount(""); },
+  });
 
-      if (configForm.id) {
-        return fineService.updateType(groupId, configForm.id, payload);
-      }
-      return fineService.createType(groupId, payload);
-    },
-    onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["fine-types", groupId] });
-      const nextType = data as FineTypeOption;
-      setForm((current) => ({
-        ...current,
-        fineTypeId: nextType?.id ? String(nextType.id) : current.fineTypeId,
-        amount: String(Number(nextType?.defaultAmount ?? (current.amount || 0)) || 5000),
-      }));
-      setConfigForm({
-        id: "",
-        name: "",
-        code: "",
-        defaultAmount: "",
-        description: "",
-        active: true,
-      });
-    },
-  });
-  const deleteType = useMutation({
-    mutationFn: (id: string | number) => fineService.deleteType(groupId, id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["fine-types", groupId] });
-    },
-  });
-  const update = useMutation({
-    mutationFn: ({
-      id,
-      status,
-      paymentAmount,
-    }: {
-      id: string;
-      status?: string;
-      paymentAmount?: number;
-    }) => fineService.update(id, { groupId, status, paymentAmount }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["fines", groupId] }),
-  });
-  const members = (membersQ.data || []) as Member[];
-  const fines = (finesQ.data || []) as Fine[];
-  const visible = useMemo(
-    () =>
-      fines.filter((f) =>
-        `${f.memberName || ""} ${f.fineTypeName || f.type || ""} ${f.reference || ""}`
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      ),
-    [fines, search],
-  );
-  const outstanding = fines.reduce(
-    (n, f) => n + Number(f.balance ?? f.amount ?? 0),
-    0,
-  );
-  const paid = fines.reduce((n, f) => n + Number(f.paidAmount || 0), 0);
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (form.groupMemberId && form.fineTypeId && Number(form.amount) > 0) issue.mutate();
+  const visible = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return fines.filter((fine) => {
+      const status = fine.status || "UNPAID";
+      return (statusFilter === "ALL" || status === statusFilter) && `${fine.memberName || ""} ${fine.fineTypeName || fine.type || ""} ${fine.reference || ""} ${fine.reason || ""}`.toLowerCase().includes(query);
+    });
+  }, [fines, search, statusFilter]);
+
+  const totalAssessed = fines.reduce((sum, fine) => sum + Number(fine.amount || 0), 0);
+  const totalPaid = fines.reduce((sum, fine) => sum + Number(fine.paidAmount || 0), 0);
+  const totalOutstanding = fines.reduce((sum, fine) => sum + Number(fine.balance ?? fine.amount ?? 0), 0);
+  const totalWaived = fines.filter((fine) => fine.status === "WAIVED").reduce((sum, fine) => sum + Number(fine.amount || 0), 0);
+  const collectionRate = totalAssessed > 0 ? Math.min(100, Math.round((totalPaid / totalAssessed) * 100)) : 0;
+  const loading = finesQuery.isLoading || membersQuery.isLoading || typesQuery.isLoading;
+
+  const submitFine = (event: FormEvent) => { event.preventDefault(); if (form.groupMemberId && form.fineTypeId && Number(form.amount) > 0) issueFine.mutate(); };
+  const selectType = (id: string) => {
+    const type = types.find((item) => String(item.id) === id);
+    setForm((current) => ({ ...current, fineTypeId: id, amount: type ? String(Number(type.defaultAmount || 0)) : current.amount }));
   };
-  return (
-    <main className="mx-auto max-w-7xl px-6 py-8">
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <p className="text-xs font-bold text-neutral-400">
-            Community / Fines
-          </p>
-          <h1 className="mt-2 text-2xl font-black">Penalties & Fines</h1>
-          <p className="text-xs text-neutral-400">
-            Record, collect, and reconcile member penalties.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            onClick={() => setConfigOpen((v) => !v)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-xs font-bold text-neutral-700"
-          >
-            Configure types
-          </Button>
-          <Button
-            onClick={() => setOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white"
-          >
-            <Plus size={15} /> Issue fine
-          </Button>
-        </div>
-      </div>
-      {configOpen && (
-        <div className="mb-8 rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-black">Fine types</h2>
-              <p className="text-[10px] text-neutral-400">
-                Configure penalties for this group and assign them when issuing a fine.
-              </p>
-            </div>
-            <Button
-              type="button"
-              onClick={() => setConfigForm({ id: "", name: "", code: "", defaultAmount: "", description: "", active: true })}
-              className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-[10px] font-bold"
-            >
-              New type
-            </Button>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-3">
-              {(typeList || []).length ? (
-                typeList.map((type) => (
-                  <div key={type.id} className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-neutral-50 p-3">
-                    <div>
-                      <p className="text-xs font-bold">{type.name}</p>
-                      <p className="text-[10px] text-neutral-400">{type.code || "—"} • {money(Number(type.defaultAmount ?? 0), currency)}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        onClick={() => setConfigForm({
-                          id: String(type.id ?? ""),
-                          name: type.name || "",
-                          code: type.code || "",
-                          defaultAmount: String(Number(type.defaultAmount ?? 0)),
-                          description: type.description || "",
-                          active: type.active !== false,
-                        })}
-                        className="rounded bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        disabled={deleteType.isPending}
-                        onClick={() => deleteType.mutate(type.id ?? "")}
-                        className="rounded bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-50"
-                      >
-                        Disable
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-neutral-50 p-6 text-center text-xs text-neutral-400">
-                  No fine types configured yet.
-                </div>
-              )}
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveType.mutate();
-              }}
-              className="space-y-3 rounded-xl border border-[#E5E7EB] bg-neutral-50 p-4"
-            >
-              <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Name</label>
-                <Input
-                  value={configForm.name}
-                  onChange={(e) => setConfigForm({ ...configForm, name: e.target.value })}
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
-                  placeholder="Late Meeting"
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Code</label>
-                <Input
-                  value={configForm.code}
-                  onChange={(e) => setConfigForm({ ...configForm, code: e.target.value })}
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
-                  placeholder="LATE_MEETING"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Default amount</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={configForm.defaultAmount}
-                  onChange={(e) => setConfigForm({ ...configForm, defaultAmount: e.target.value })}
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
-                  placeholder="5000"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">Description</label>
-                <Textarea
-                  value={configForm.description}
-                  onChange={(e) => setConfigForm({ ...configForm, description: e.target.value })}
-                  rows={3}
-                  className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2.5 text-xs"
-                  placeholder="Optional note for this fine category"
-                />
-              </div>
-              <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
-                <Checkbox
-                  type="checkbox"
-                  checked={configForm.active}
-                  onChange={(e) => setConfigForm({ ...configForm, active: e.target.checked })}
-                />
-                Active for group
-              </label>
-              <Button
-                type="submit"
-                disabled={saveType.isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
-              >
-                {saveType.isPending && <Loader2 size={14} className="animate-spin" />}
-                {configForm.id ? "Update type" : "Save type"}
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          ["Total logged", `${fines.length} incidents`],
-          ["Collected", money(paid, currency)],
-          ["Outstanding", money(outstanding, currency)],
-          [
-            "Waived",
-            money(
-              fines
-                .filter((f) => f.status === "WAIVED")
-                .reduce((n, f) => n + Number(f.amount || 0), 0),
-              currency,
-            ),
-          ],
-        ].map(([a, b]) => (
-          <div
-            key={a}
-            className="rounded-xl border border-[#E5E7EB] bg-white p-5"
-          >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-              {a}
-            </p>
-            <p className="mt-2 text-lg font-black">{b}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mb-6 flex items-center rounded-xl border border-[#E5E7EB] bg-white p-4">
-        <Search size={15} className="mr-2 text-neutral-400" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search member, type, or reference..."
-          className="w-full text-xs outline-none"
-        />
-      </div>
-      <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <Table className="w-full text-left text-xs">
-            <TableHeader>
-              <TableRow className="border-b bg-neutral-50 text-[9px] uppercase text-neutral-400">
-                <TableHead className="p-4">Member</TableHead>
-                <TableHead className="p-4">Type / reference</TableHead>
-                <TableHead className="p-4 text-right">Amount</TableHead>
-                <TableHead className="p-4 text-right">Balance</TableHead>
-                <TableHead className="p-4">Issued</TableHead>
-                <TableHead className="p-4">Status</TableHead>
-                <TableHead className="p-4 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(finesQ.isLoading || membersQ.isLoading) && (
-                <TableRow>
-                  <TableCell colSpan={7} className="p-12 text-center">
-                    <Loader2 className="mx-auto animate-spin" size={20} />
-                  </TableCell>
-                </TableRow>
-              )}
-              {!finesQ.isLoading &&
-                visible.map((f) => (
-                  <TableRow key={f.id} className="border-b border-neutral-50">
-                    <TableCell className="p-4 font-bold">
-                      {f.memberName ||
-                        members.find(
-                          (m) =>
-                            String(m.id) ===
-                            String(f.groupMemberId || f.memberId),
-                        )?.name ||
-                        "Member"}
-                      <span className="block text-[10px] font-normal text-neutral-400">
-                        {f.membershipNumber || ""}
-                      </span>
-                    </TableCell>
-                    <TableCell className="p-4">
-                      <span className="font-semibold">
-                        {f.fineTypeName || f.type || "Penalty"}
-                      </span>
-                      <span className="block text-[10px] text-neutral-400">
-                        {f.reference || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="p-4 text-right font-bold">
-                      {money(Number(f.amount), currency)}
-                    </TableCell>
-                    <TableCell className="p-4 text-right font-black text-red-600">
-                      {money(Number(f.balance ?? f.amount), currency)}
-                    </TableCell>
-                    <TableCell className="p-4">{f.fineDate || "—"}</TableCell>
-                    <TableCell className="p-4">
-                      <span className="rounded bg-red-50 px-2 py-1 text-[9px] font-extrabold">
-                        {f.status || "UNPAID"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="p-4 text-right">
-                      {["UNPAID", "PARTIAL"].includes(f.status || "UNPAID") && (
-                        <>
-                          <Button
-                            onClick={() => {
-                              const n = window.prompt(
-                                "Payment amount",
-                                String(f.balance ?? f.amount ?? 0),
-                              );
-                              if (n)
-                                update.mutate({
-                                  id: String(f.id),
-                                  paymentAmount: Number(n),
-                                });
-                            }}
-                            className="mr-1 rounded bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"
-                          >
-                            Pay
-                          </Button>
-                          <Button
-                            onClick={() =>
-                              update.mutate({
-                                id: String(f.id),
-                                status: "WAIVED",
-                              })
-                            }
-                            className="rounded border px-2 py-1 text-[10px] font-bold"
-                          >
-                            Waive
-                          </Button>
-                        </>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              {!finesQ.isLoading && !visible.length && (
-                <TableRow>
-                  <TableCell colSpan={7} className="p-12 text-center text-neutral-400">
-                    No fines found for this group.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/30 p-4">
-          <form
-            onSubmit={submit}
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
-          >
-            <div className="mb-5 flex justify-between border-b pb-3">
-              <div>
-                <h2 className="text-sm font-extrabold">Issue a fine</h2>
-                <p className="text-[10px] text-neutral-400">
-                  Saved to the member ledger.
-                </p>
-              </div>
-              <Button type="button" onClick={() => setOpen(false)}>
-                <X size={18} />
-              </Button>
-            </div>
-            <label className="mb-1 block text-xs font-bold">Member</label>
-            <NativeSelect
-              required
-              value={form.groupMemberId}
-              onChange={(e) =>
-                setForm({ ...form, groupMemberId: e.target.value })
-              }
-              className="mb-4 w-full rounded-lg border p-2.5 text-xs"
-            >
-              <option value="">Select member...</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name || m.fullName} (
-                  {m.memberNo || m.membershipNumber || ""})
-                </option>
-              ))}
-            </NativeSelect>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-bold">
-                  Fine type
-                </label>
-                <NativeSelect
-                  value={form.fineTypeId}
-                  onChange={(e) =>
-                    setForm({ ...form, fineTypeId: e.target.value })
-                  }
-                  disabled={!typeList.length}
-                  className="w-full rounded-lg border p-2.5 text-xs"
-                >
-                  {!typeList.length && (
-                    <option value="">No configured types yet</option>
-                  )}
-                  {typeList.map((t) => (
-                    <option key={t.id} value={String(t.id ?? "")}>
-                      {t.name}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-bold">
-                  Amount ({currency})
-                </label>
-                <Input
-                  required
-                  min="1"
-                  type="number"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  className="w-full rounded-lg border p-2.5 text-xs"
-                />
-              </div>
-            </div>
-            <label className="mb-1 mt-4 block text-xs font-bold">Reason</label>
-            <Textarea
-              value={form.reason}
-              onChange={(e) => setForm({ ...form, reason: e.target.value })}
-              rows={3}
-              className="w-full rounded-lg border p-2.5 text-xs"
-            />
-            <Button
-              disabled={issue.isPending}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B6B50] py-3 text-xs font-bold text-white disabled:opacity-50"
-            >
-              {issue.isPending && (
-                <Loader2 size={14} className="animate-spin" />
-              )}
-              <Check size={14} /> Save fine to member ledger
-            </Button>
-            {issue.isError && (
-              <p className="mt-3 text-xs text-red-600">
-                {(issue.error as Error).message}
-              </p>
-            )}
-          </form>
-        </div>
-      )}
-    </main>
-  );
+
+  const metrics = [
+    { label: "Total assessed", value: money(totalAssessed, currency), note: `${fines.length} fine records`, icon: ShieldAlert, tone: "bg-destructive/10 text-destructive" },
+    { label: "Collected", value: money(totalPaid, currency), note: `${collectionRate}% collection rate`, icon: Banknote, tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+    { label: "Outstanding", value: money(totalOutstanding, currency), note: `${fines.filter((fine) => ["UNPAID", "PARTIAL"].includes(fine.status || "UNPAID")).length} open records`, icon: AlertTriangle, tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+    { label: "Waived", value: money(totalWaived, currency), note: "Closed without collection", icon: CheckCircle2, tone: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
+  ];
+
+  return <main className="min-h-full bg-background text-foreground">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-destructive/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"><div className="max-w-2xl"><Badge variant="outline" className="mb-4 border-destructive/20 bg-destructive/10 text-destructive"><ShieldAlert className="mr-1.5 size-3.5" />Accountability ledger</Badge><h1 className="text-3xl font-black tracking-tight sm:text-4xl">Penalties & fines</h1><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Track every penalty from assessment through payment, partial collection, or waiver.</p></div><div className="flex flex-col gap-2 sm:flex-row"><Button variant="outline" size="lg" onClick={() => setConfigOpen(true)}><Settings2 />Configure types</Button><Button size="lg" onClick={() => setIssueOpen(true)} disabled={!groupId}><Plus />Issue fine</Button></div></div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(({ label, value, note, icon: Icon, tone }) => <Card key={label} className="rounded-2xl"><CardContent className="flex items-start justify-between gap-4 p-5"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-3 truncate text-xl font-black">{loading ? "—" : value}</p><p className="mt-1 text-xs text-muted-foreground">{note}</p></div><div className={`rounded-xl p-2.5 ${tone}`}><Icon className="size-5" /></div></CardContent></Card>)}</section>
+
+      <Card className="rounded-2xl"><CardContent className="p-5"><div className="mb-2 flex items-center justify-between text-sm"><span className="font-semibold">Overall collection progress</span><span className="font-black text-primary">{collectionRate}%</span></div><div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${collectionRate}%` }} /></div><div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>{money(totalPaid, currency)} collected</span><span>{money(totalOutstanding, currency)} outstanding</span></div></CardContent></Card>
+
+      <Card className="overflow-hidden rounded-2xl">
+        <CardHeader className="gap-4 border-b border-border p-5 lg:flex-row lg:items-center lg:justify-between"><div><CardTitle>Fine register</CardTitle><p className="mt-1 text-sm text-muted-foreground">All penalties, balances, statuses, and collection progress.</p></div><div className="flex flex-col gap-2 sm:flex-row"><div className="relative sm:w-72"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search member, type or reference" className="pl-9" /></div><NativeSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="sm:w-44"><option value="ALL">All statuses</option><option value="UNPAID">Unpaid</option><option value="PARTIAL">Partial</option><option value="PAID">Paid</option><option value="WAIVED">Waived</option></NativeSelect></div></CardHeader>
+        <CardContent className="p-0">{loading ? <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-5 animate-spin text-primary" />Loading fine register…</div> : <Table className="min-w-[1040px]"><TableHeader><TableRow><TableHead>Member</TableHead><TableHead>Penalty</TableHead><TableHead className="text-right">Assessed</TableHead><TableHead className="text-right">Paid</TableHead><TableHead className="text-right">Balance</TableHead><TableHead>Progress</TableHead><TableHead>Issued</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>
+          {visible.map((fine) => { const amount = Number(fine.amount || 0); const paid = Number(fine.paidAmount || 0); const balance = Number(fine.balance ?? Math.max(0, amount - paid)); const progress = amount > 0 ? Math.min(100, Math.round((paid / amount) * 100)) : 0; const status = fine.status || "UNPAID"; return <TableRow key={fine.id}><TableCell><p className="font-semibold">{fine.memberName || members.find((member) => String(member.id) === String(fine.groupMemberId || fine.memberId))?.name || "Member"}</p><p className="text-xs text-muted-foreground">{fine.membershipNumber || "Group member"}</p></TableCell><TableCell><p className="font-medium">{fine.fineTypeName || fine.type || "Penalty"}</p><p className="font-mono text-xs text-muted-foreground">{fine.reference || "—"}</p>{fine.reason && <p className="mt-1 max-w-52 truncate text-xs text-muted-foreground">{fine.reason}</p>}</TableCell><TableCell className="text-right font-semibold">{money(amount, currency)}</TableCell><TableCell className="text-right text-emerald-600 dark:text-emerald-400">{money(paid, currency)}</TableCell><TableCell className={`text-right font-black ${balance > 0 ? "text-destructive" : "text-foreground"}`}>{money(balance, currency)}</TableCell><TableCell><div className="w-28"><div className="mb-1 flex justify-between text-[10px] text-muted-foreground"><span>Collected</span><span>{progress}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} /></div></div></TableCell><TableCell className="text-muted-foreground">{fine.fineDate || "—"}</TableCell><TableCell><Badge variant="outline" className={statusTone[status] || "bg-muted text-muted-foreground"}>{status}</Badge></TableCell><TableCell><div className="flex justify-end gap-2">{["UNPAID", "PARTIAL"].includes(status) && <><Button size="sm" onClick={() => { setPaymentFine(fine); setPaymentAmount(String(balance)); }}>Record payment</Button><Button size="sm" variant="outline" onClick={() => updateFine.mutate({ fine, status: "WAIVED" })} disabled={updateFine.isPending}>Waive</Button></>}</div></TableCell></TableRow>; })}
+          {!visible.length && <TableRow><TableCell colSpan={9} className="h-64 text-center"><div className="mx-auto flex max-w-sm flex-col items-center"><div className="rounded-2xl bg-muted p-3 text-muted-foreground"><CircleDollarSign className="size-6" /></div><p className="mt-4 font-semibold">No fines found</p><p className="mt-1 text-sm text-muted-foreground">Issue a fine or change the current search and status filter.</p></div></TableCell></TableRow>}
+        </TableBody></Table>}</CardContent>
+      </Card>
+    </div>
+
+    <Dialog open={issueOpen} onOpenChange={(next) => { if (!issueFine.isPending) setIssueOpen(next); }}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Issue a fine</DialogTitle><DialogDescription>Add a penalty to a member ledger. The member will receive the configured notification.</DialogDescription></DialogHeader><form onSubmit={submitFine} className="space-y-5"><div className="space-y-2"><Label htmlFor="fine-member">Member</Label><NativeSelect id="fine-member" required value={form.groupMemberId} onChange={(event) => setForm({ ...form, groupMemberId: event.target.value })}><option value="">Select member</option>{members.map((member) => <option key={member.id} value={String(member.id)}>{member.name || member.fullName} ({member.memberNo || member.membershipNumber || "member"})</option>)}</NativeSelect></div><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="fine-type">Fine type</Label><NativeSelect id="fine-type" required value={form.fineTypeId} onChange={(event) => selectType(event.target.value)} disabled={!types.length}><option value="">Select type</option>{types.map((type) => <option key={type.id} value={String(type.id)}>{type.name}</option>)}</NativeSelect></div><div className="space-y-2"><Label htmlFor="fine-amount">Amount</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">{currency}</span><Input id="fine-amount" required inputMode="decimal" value={form.amount} onChange={(event) => { if (/^\d*(\.\d{0,2})?$/.test(event.target.value)) setForm({ ...form, amount: event.target.value }); }} className="pl-12" /></div></div></div><div className="space-y-2"><Label htmlFor="fine-reason">Reason</Label><Textarea id="fine-reason" value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} rows={3} maxLength={500} placeholder="Explain why this fine was issued" /></div>{issueFine.isError && <p role="alert" className="text-sm text-destructive">{(issueFine.error as Error).message}</p>}<DialogFooter><Button type="button" variant="outline" onClick={() => setIssueOpen(false)} disabled={issueFine.isPending}>Cancel</Button><Button type="submit" disabled={issueFine.isPending || !form.groupMemberId || !form.fineTypeId || Number(form.amount) <= 0}>{issueFine.isPending && <Loader2 className="animate-spin" />}Issue fine</Button></DialogFooter></form></DialogContent></Dialog>
+
+    <Dialog open={paymentFine !== null} onOpenChange={(next) => { if (!next && !updateFine.isPending) setPaymentFine(null); }}><DialogContent><DialogHeader><DialogTitle>Record fine payment</DialogTitle><DialogDescription>Apply a payment to {paymentFine?.memberName || "this member"}&apos;s fine. Partial payments remain open.</DialogDescription></DialogHeader><div className="rounded-xl bg-muted/50 p-4"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Outstanding balance</span><strong>{money(Number(paymentFine?.balance ?? paymentFine?.amount ?? 0), currency)}</strong></div></div><div className="space-y-2"><Label htmlFor="fine-payment">Payment amount</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">{currency}</span><Input id="fine-payment" inputMode="decimal" value={paymentAmount} onChange={(event) => { if (/^\d*(\.\d{0,2})?$/.test(event.target.value)) setPaymentAmount(event.target.value); }} className="pl-12" /></div></div><DialogFooter><Button variant="outline" onClick={() => setPaymentFine(null)} disabled={updateFine.isPending}>Cancel</Button><Button onClick={() => paymentFine && updateFine.mutate({ fine: paymentFine, amount: Number(paymentAmount) })} disabled={updateFine.isPending || Number(paymentAmount) <= 0 || Number(paymentAmount) > Number(paymentFine?.balance ?? paymentFine?.amount ?? 0)}>{updateFine.isPending && <Loader2 className="animate-spin" />}Record payment</Button></DialogFooter></DialogContent></Dialog>
+
+    <Dialog open={configOpen} onOpenChange={(next) => { if (!saveType.isPending && !disableType.isPending) setConfigOpen(next); }}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl"><DialogHeader><DialogTitle>Configure fine types</DialogTitle><DialogDescription>Create the group&apos;s penalty catalogue and default amounts.</DialogDescription></DialogHeader><div className="grid gap-5 lg:grid-cols-2"><div className="space-y-2">{types.map((type) => <div key={type.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-3"><div><p className="font-semibold">{type.name}</p><p className="text-xs text-muted-foreground">{type.code || "—"} · {money(Number(type.defaultAmount || 0), currency)}</p></div><div className="flex gap-1"><Button size="sm" variant="outline" onClick={() => setConfigForm({ id: String(type.id || ""), name: type.name, code: type.code || "", defaultAmount: String(Number(type.defaultAmount || 0)), description: type.description || "", active: type.active !== false })}>Edit</Button><Button size="sm" variant="destructive" onClick={() => disableType.mutate(type.id || "")} disabled={disableType.isPending}>Disable</Button></div></div>)}{!types.length && <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No fine types configured.</div>}</div><form onSubmit={(event) => { event.preventDefault(); saveType.mutate(); }} className="space-y-4 rounded-xl border border-border bg-muted/30 p-4"><div><p className="font-semibold">{configForm.id ? "Edit fine type" : "New fine type"}</p><p className="text-xs text-muted-foreground">Set a clear category and default amount.</p></div><div className="space-y-2"><Label htmlFor="type-name">Name</Label><Input id="type-name" required value={configForm.name} onChange={(event) => setConfigForm({ ...configForm, name: event.target.value })} placeholder="Late meeting" /></div><div className="space-y-2"><Label htmlFor="type-code">Code</Label><Input id="type-code" value={configForm.code} onChange={(event) => setConfigForm({ ...configForm, code: event.target.value })} placeholder="LATE_MEETING" /></div><div className="space-y-2"><Label htmlFor="type-amount">Default amount</Label><Input id="type-amount" inputMode="decimal" value={configForm.defaultAmount} onChange={(event) => { if (/^\d*(\.\d{0,2})?$/.test(event.target.value)) setConfigForm({ ...configForm, defaultAmount: event.target.value }); }} /></div><div className="space-y-2"><Label htmlFor="type-description">Description</Label><Textarea id="type-description" value={configForm.description} onChange={(event) => setConfigForm({ ...configForm, description: event.target.value })} rows={3} /></div><label className="flex items-center gap-2 text-sm"><Checkbox checked={configForm.active} onChange={(event) => setConfigForm({ ...configForm, active: event.target.checked })} />Active for this group</label><div className="flex gap-2"><Button type="submit" disabled={saveType.isPending || !configForm.name.trim()}>{saveType.isPending && <Loader2 className="animate-spin" />}{configForm.id ? "Update type" : "Create type"}</Button>{configForm.id && <Button type="button" variant="outline" onClick={() => setConfigForm({ id: "", name: "", code: "", defaultAmount: "", description: "", active: true })}>New type</Button>}</div></form></div></DialogContent></Dialog>
+  </main>;
 }

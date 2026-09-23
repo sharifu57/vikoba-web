@@ -28,7 +28,7 @@ import { memberService, sharePurchaseRequestService, type Member, type SharePurc
 import { resolveActiveGroupId } from '@/lib/api/active-group'
 import { apiGet } from '@/lib/api/client'
 import type { ExpenseRecord } from '@/hooks/useExpenses'
-import type { Loan, LoanGuaranteeRequest } from '@/hooks/useLoans'
+import type { Loan, LoanGuaranteeRequest, LoanRepayment } from '@/hooks/useLoans'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 
@@ -53,7 +53,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [showIdleWarning, setShowIdleWarning] = useState(false)
   const [idleSecondsLeft, setIdleSecondsLeft] = useState(60)
   const [groupRoles, setGroupRoles] = useState<string[]>([])
-  const [approvalItems, setApprovalItems] = useState<Array<{ key: string; label: string; kind: 'expense' | 'share' | 'guarantee' | 'replacement' | 'loanapproval' }>>([])
+  const [approvalItems, setApprovalItems] = useState<Array<{ key: string; label: string; kind: 'expense' | 'share' | 'guarantee' | 'replacement' | 'loanapproval' | 'repayment' }>>([])
   const knownApprovals = useRef<{ groupId: string; keys: Set<string> } | null>(null)
   const [user, setUser] = useState({
     id: null,
@@ -83,11 +83,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       if (requesting || !document.hasFocus()) return
       requesting = true
       try {
-        const [expenseResult, shareResult, guaranteeResult, loanResult] = await Promise.allSettled([
+        const [expenseResult, shareResult, guaranteeResult, loanResult, repaymentResult] = await Promise.allSettled([
           apiGet<{ data: ExpenseRecord[] }>(`/api/expenses/group/${groupId}`, undefined, { auth: true }),
           sharePurchaseRequestService.list(groupId, 'PENDING'),
           apiGet<{ data: LoanGuaranteeRequest[] }>(`/api/loans/group/${groupId}/guarantees/mine`, undefined, { auth: true }),
           apiGet<{ data: Loan[] }>(`/api/loans/group/${groupId}`, undefined, { auth: true }),
+          apiGet<{ data: LoanRepayment[] }>(`/api/loans/group/${groupId}/repayments`, undefined, { auth: true }),
         ])
         if (!active) return
         const expenseRows = expenseResult.status === 'fulfilled' ? expenseResult.value.data || [] : []
@@ -95,6 +96,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         const shareRows = shareResponse ? ((shareResponse as { data?: SharePurchaseRequestRecord[] }).data || []) : []
         const guaranteeRows = guaranteeResult.status === 'fulfilled' ? guaranteeResult.value.data || [] : []
         const loanRows = loanResult.status === 'fulfilled' ? loanResult.value.data || [] : []
+        const repaymentRows = repaymentResult.status === 'fulfilled' ? repaymentResult.value.data || [] : []
         const myMemberId = Number(localStorage.getItem('v360_currentGroupMemberId') || 0)
         const items = [
           ...expenseRows.filter(item => item.status === 'PENDING' && item.canApprove).map(item => ({ key: `expense:${item.id}`, label: `Expense ${item.reference} awaits your approval`, kind: 'expense' as const })),
@@ -105,12 +107,15 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               .map(person => ({ key: `replacement:${item.id}:${person.id}`, label: `${person.name} declined loan ${item.loanNumber}. Choose another guarantor.`, kind: 'replacement' as const }))),
           ...loanRows.filter(item => item.canApprove || item.canDisburse)
             .map(item => ({ key: `loanapproval:${item.id}`, label: `Loan ${item.loanNumber} awaits your ${item.canDisburse ? 'disbursement' : 'approval'}`, kind: 'loanapproval' as const })),
+          ...repaymentRows.filter(item => item.status === 'PENDING' && item.canApprove)
+            .map(item => ({ key: `repayment:${item.id}`, label: `${item.memberName}'s ${item.loanNumber} repayment awaits verification`, kind: 'repayment' as const })),
         ]
         setApprovalItems(previous => [
           ...(expenseResult.status === 'fulfilled' ? items.filter(item => item.kind === 'expense') : previous.filter(item => item.kind === 'expense')),
           ...(shareResult.status === 'fulfilled' ? items.filter(item => item.kind === 'share') : previous.filter(item => item.kind === 'share')),
           ...(guaranteeResult.status === 'fulfilled' ? items.filter(item => item.kind === 'guarantee') : previous.filter(item => item.kind === 'guarantee')),
           ...(loanResult.status === 'fulfilled' ? items.filter(item => item.kind === 'replacement' || item.kind === 'loanapproval') : previous.filter(item => item.kind === 'replacement' || item.kind === 'loanapproval')),
+          ...(repaymentResult.status === 'fulfilled' ? items.filter(item => item.kind === 'repayment') : previous.filter(item => item.kind === 'repayment')),
         ])
         const previous = knownApprovals.current
         const nextKeys = new Set([
@@ -120,10 +125,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           ...(guaranteeResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('guarantee:')) : []),
           ...(loanResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('replacement:')) : []),
           ...(loanResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('loanapproval:')) : []),
+          ...(repaymentResult.status === 'rejected' ? [...(previous?.keys || [])].filter(key => key.startsWith('repayment:')) : []),
         ])
         if (previous?.groupId === groupId) {
           const newItems = items.filter(item => !previous.keys.has(item.key))
-          if (newItems.length) toast.info(`${newItems.length} new loan or approval ${newItems.length === 1 ? 'request' : 'requests'} need your attention`, { action: { label: 'View', onClick: () => router.push(newItems[0].kind === 'guarantee' ? '/app/loans/guarantees' : newItems[0].kind === 'replacement' ? '/app/loans/apply' : newItems[0].kind === 'loanapproval' ? '/app/loans/applications' : '/app/workflows') } })
+          if (newItems.length) toast.info(`${newItems.length} new loan or approval ${newItems.length === 1 ? 'request' : 'requests'} need your attention`, { action: { label: 'View', onClick: () => router.push(newItems[0].kind === 'guarantee' ? '/app/loans/guarantees' : newItems[0].kind === 'replacement' ? '/app/loans/apply' : newItems[0].kind === 'loanapproval' || newItems[0].kind === 'repayment' ? '/app/loans/applications' : '/app/workflows') } })
           if (newItems.length || [...previous.keys].some(key => !nextKeys.has(key))) window.dispatchEvent(new Event('vikoba:approval-inbox-changed'))
         }
         knownApprovals.current = { groupId, keys: nextKeys }
@@ -519,8 +525,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 >
                   <ItemIcon size={16} className={active ? 'text-[#0B6B50]' : 'text-[#8ba093]'} />
                   <span className="flex-1">{item.label}</span>
-                  {item.badge === 'applications' && approvalItems.some(item => item.kind === 'loanapproval') && (
-                    <span className="bg-[#EF6C4D] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{approvalItems.filter(item => item.kind === 'loanapproval').length}</span>
+                  {item.badge === 'applications' && approvalItems.some(item => item.kind === 'loanapproval' || item.kind === 'repayment') && (
+                    <span className="bg-[#EF6C4D] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{approvalItems.filter(item => item.kind === 'loanapproval' || item.kind === 'repayment').length}</span>
                   )}
                   {item.badge === 'approvals' && approvalItems.some(item => item.kind === 'expense' || item.kind === 'share') && <Badge className="bg-amber-600 text-white">{approvalItems.filter(item => item.kind === 'expense' || item.kind === 'share').length}</Badge>}
                   {item.badge === 'guarantees' && approvalItems.some(item => item.kind === 'guarantee') && <Badge className="bg-amber-600 text-white">{approvalItems.filter(item => item.kind === 'guarantee').length}</Badge>}
@@ -690,7 +696,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                     <span className="text-[10px] text-neutral-400 font-bold">{approvalItems.length} approvals</span>
                   </div>
                   <div className="max-h-60 overflow-y-auto flex flex-col divide-y divide-neutral-50/80">
-                    {approvalItems.map(item => <Link key={item.key} href={item.kind === 'guarantee' ? '/app/loans/guarantees' : item.kind === 'replacement' ? '/app/loans/apply' : item.kind === 'loanapproval' ? '/app/loans/applications' : '/app/workflows'} onClick={() => setNotificationsOpen(false)} className="py-2.5 text-[11px] font-semibold text-amber-800 hover:underline">{item.label}</Link>)}
+                    {approvalItems.map(item => <Link key={item.key} href={item.kind === 'guarantee' ? '/app/loans/guarantees' : item.kind === 'replacement' ? '/app/loans/apply' : item.kind === 'loanapproval' || item.kind === 'repayment' ? '/app/loans/applications' : '/app/workflows'} onClick={() => setNotificationsOpen(false)} className="py-2.5 text-[11px] font-semibold text-amber-800 hover:underline">{item.label}</Link>)}
                     {notifications.map(n => (
                       <div key={n.id} className="py-2.5 first:pt-1 last:pb-1">
                         <p className={`text-[11px] leading-relaxed ${!n.read ? 'text-neutral-900 font-semibold' : 'text-neutral-500'}`}>
