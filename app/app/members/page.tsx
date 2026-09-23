@@ -678,28 +678,16 @@ export default function MembersPage() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10241D]/35 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-2xl rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between border-b border-neutral-100 pb-4">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xl sm:p-6">
+            <div className="mb-6 flex items-start justify-between gap-4 border-b border-neutral-100 pb-5">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Member Management</p>
-                {/* <h3 className="mt-1 text-lg font-black text-neutral-800">
-                  {importMode === 'single' ? 'Add Single Member' : 'Upload Members in Bulk'}
-                </h3> */}
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => {
-                      setMemberAddMode(null)
-                      setModalOpen(true)
-                    }}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#0B6B50] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#08503C]"
-                  >
-                    <UserPlus size={14} />
-                    Add Members
-                  </Button>
-                </div>
+                <h2 className="mt-1 text-xl font-black text-neutral-900">
+                  {memberAddMode === 'single' ? 'Add a member' : memberAddMode === 'bulk' ? 'Import members' : 'Add members'}
+                </h2>
+                <p className="mt-1 text-xs text-neutral-500">Add members to your selected VIKOBA group.</p>
               </div>
-              <Button type="button" onClick={() => setModalOpen(false)} className="rounded-full p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+              <Button type="button" aria-label="Close member form" onClick={() => setModalOpen(false)} className="shrink-0 rounded-full p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
                 <X size={18} />
               </Button>
             </div>
@@ -778,15 +766,15 @@ export default function MembersPage() {
             ) : memberAddMode === 'single' ? (
 
 
-              <form onSubmit={handleSingleMemberSubmit} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+              <form onSubmit={handleSingleMemberSubmit} className="space-y-5">
+                <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">First Name *</label>
                     <Input
                       value={newMem.firstName}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, firstName: e.target.value }))}
                       placeholder="e.g. Juma"
-                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
+                      className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
 
@@ -796,19 +784,19 @@ export default function MembersPage() {
                       value={newMem.lastName}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, lastName: e.target.value }))}
                       placeholder="e.g. Majid"
-                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
+                      className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-neutral-700">Phone Number *</label>
                     <Input
                       value={newMem.phone}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, phone: e.target.value }))}
                       placeholder="255712345678"
-                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
+                      className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     />
                   </div>
 
@@ -817,7 +805,7 @@ export default function MembersPage() {
                     <NativeSelect
                       value={newMem.role}
                       onChange={(e) => setNewMem((prev) => ({ ...prev, role: e.target.value }))}
-                      className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
+                      className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     >
                       {roleOptions.length ? (
                         roleOptions.map((role) => (
@@ -843,11 +831,11 @@ export default function MembersPage() {
                     onChange={(e) => setNewMem((prev) => ({ ...prev, email: e.target.value }))}
                     type="email"
                     placeholder="juma@example.com"
-                    className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
+                    className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                   />
                 </div>
 
-                <div className="flex justify-between gap-3 border-t border-neutral-100 pt-4">
+                <div className="flex flex-col-reverse gap-3 border-t border-neutral-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
                   <Button
                     type="button"
                     onClick={() => setMemberAddMode(null)}
@@ -856,7 +844,7 @@ export default function MembersPage() {
                     ← Back
                   </Button>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row">
                     <Button
                       type="button"
                       onClick={() => {
