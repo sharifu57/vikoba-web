@@ -16,6 +16,8 @@ export interface Group {
   outstandingFines: number
   startDate?: string
   endDate?: string
+  role?: string
+  roles?: string[]
 }
 
 export interface Member {
@@ -410,6 +412,32 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (typeof window !== 'undefined') {
       const storedGroup = localStorage.getItem('v360_currentGroup')
       const parsedStoredGroup = storedGroup ? JSON.parse(storedGroup) : null
+      const storedMemberships = JSON.parse(localStorage.getItem('v360_groups') || '[]')
+      const authenticatedGroups: Group[] = Array.isArray(storedMemberships)
+        ? storedMemberships.flatMap((membership: Record<string, any>) => {
+          const group = membership?.group || membership
+          const id = group?.groupId ?? group?.id
+          if (id == null || !/^\d+$/.test(String(id))) return []
+          return [{
+            id: String(id),
+            name: group.groupName || group.name || 'My Group',
+            currency: group.currency || 'TZS',
+            membersCount: 0,
+            totalContributions: 0,
+            totalShares: 0,
+            outstandingLoans: 0,
+            availableCash: 0,
+            bankBalance: 0,
+            jamiiFund: 0,
+            outstandingFines: 0,
+            startDate: group.startDate || '',
+            endDate: group.endDate || '',
+            role: membership.role || 'MEMBER',
+            roles: Array.isArray(membership.roles) ? membership.roles.map(String) : [String(membership.role || 'MEMBER')],
+          }]
+        })
+        : []
+      if (authenticatedGroups.length) setGroups(authenticatedGroups)
       const persistedGroup = parsedStoredGroup && (parsedStoredGroup.id || parsedStoredGroup.groupId) ? {
         id: String(parsedStoredGroup.id ?? parsedStoredGroup.groupId),
         name: parsedStoredGroup.groupName || parsedStoredGroup.name || 'My Group',
@@ -428,6 +456,7 @@ export const VikobaStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       if (persistedGroup) {
         setGroups((prev) => {
+          if (authenticatedGroups.length) return authenticatedGroups
           const filtered = prev.filter(g => g.id !== persistedGroup.id)
           return [persistedGroup, ...filtered]
         })

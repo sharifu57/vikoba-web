@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { clearVikobaLocalState, refreshSessionIfNeeded, SESSION_EXPIRED_EVENT, SESSION_IDLE_TIMEOUT_MS } from '@/lib/api/client'
 import { ThemeToggle, VikobaLogo } from '@/components/brand'
 import { memberService, sharePurchaseRequestService, type Member, type SharePurchaseRequestRecord } from '@/lib/api/services'
-import { resolveActiveGroupId } from '@/lib/api/active-group'
+import { resolveActiveGroupId, selectActiveGroup, type GroupMembership } from '@/lib/api/active-group'
 import { apiGet } from '@/lib/api/client'
 import type { ExpenseRecord } from '@/hooks/useExpenses'
 import type { Loan, LoanGuaranteeRequest, LoanRepayment } from '@/hooks/useLoans'
@@ -258,8 +258,24 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   const handleGroupSelect = (id: string) => {
     if (!/^\d+$/.test(id)) return
-    setCurrentGroupId(id)
     setGroupDropdownOpen(false)
+    if (id === currentGroupId) return
+    try {
+      const memberships = JSON.parse(localStorage.getItem('v360_groups') || '[]') as GroupMembership[]
+      const membership = memberships.find(item => {
+        const group = item.group ?? item
+        return String(group.groupId ?? group.id ?? '') === id
+      })
+      if (!membership) {
+        toast.error('That group is not linked to your account.')
+        return
+      }
+      selectActiveGroup(localStorage, membership)
+      setCurrentGroupId(id)
+      window.location.reload()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to switch groups.')
+    }
   }
 
   const handleSignOut = () => {
@@ -481,7 +497,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 {currentGroup?.name.substring(0, 1)}
               </div>
               <div className="flex-1 min-width-0 px-2.5">
-                <span className="text-[9px] text-[#789087] font-semibold uppercase block">Active Group</span>
+                <span className="text-[9px] text-[#789087] font-semibold uppercase block">{(currentGroup?.role || 'MEMBER').replaceAll('_', ' ')}</span>
                 <span className="text-xs font-bold text-neutral-800 block truncate">{currentGroup?.name}</span>
               </div>
               <ChevronDown size={14} className="text-neutral-500" />
@@ -495,8 +511,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                     onClick={() => handleGroupSelect(g.id)}
                     className={`w-full text-left p-2.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-[#F2F7F4] ${g.id === currentGroupId ? 'bg-[#E7F2ED] text-[#0B6B50]' : 'text-neutral-600'}`}
                   >
-                    <span>{g.name}</span>
-                    <span className="text-[10px] opacity-75 font-normal">{g.currency}</span>
+                    <span className="min-w-0 flex-1 truncate">{g.name}</span>
+                    <span className="ml-2 text-[9px] font-bold uppercase opacity-65">{(g.role || 'MEMBER').replaceAll('_', ' ')}</span>
+                    <span className="ml-2 text-[10px] opacity-75 font-normal">{g.currency}</span>
                   </Button>
                 ))}
               </div>

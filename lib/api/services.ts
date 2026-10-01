@@ -1,5 +1,13 @@
 import { API_ENDPOINTS } from "./endpoints";
-import { apiDelete, apiGet, apiPost, apiPut, apiRequest, setAuthTokens } from "./client";
+import {
+  apiDelete,
+  apiGet,
+  apiPost,
+  apiPut,
+  apiRequest,
+  setAuthTokens,
+} from "./client";
+import { selectActiveGroup, type GroupMembership } from "./active-group";
 
 export type UserSession = {
   id?: string | number | null;
@@ -39,7 +47,13 @@ export type SharePurchaseRequestRecord = {
   reviewedAt?: string;
   accountantApprovedAt?: string;
   chairApprovedAt?: string;
-  approvalSteps?: Array<{ role: string; label: string; approvedAt?: string | null; approvedBy?: number | null; skipped: boolean }>;
+  approvalSteps?: Array<{
+    role: string;
+    label: string;
+    approvedAt?: string | null;
+    approvedBy?: number | null;
+    skipped: boolean;
+  }>;
   currentStepRole?: string | null;
   currentStepLabel?: string | null;
   canApprove?: boolean;
@@ -148,64 +162,11 @@ export const authService = {
                 | undefined) ?? null;
 
             if (Array.isArray(groupsArray) && groupsArray.length > 0) {
-              // persist full groups list for reference
               localStorage.setItem("v360_groups", JSON.stringify(groupsArray));
-
-              // choose primary group: prefer the first item with settingsConfigured === true
-              let primary =
+              const primary =
                 groupsArray.find((g) => (g as any)?.settingsConfigured) ??
                 groupsArray[0];
-              const grp = (primary as any)?.group ?? primary;
-              const settings = (primary as any)?.settings ?? null;
-              const groupRole = String((primary as any)?.role || "MEMBER");
-              const groupRoles = Array.isArray((primary as any)?.roles)
-                ? (primary as any).roles.map(String)
-                : [groupRole];
-              const groupPermissions = Array.isArray(
-                (primary as any)?.permissions,
-              )
-                ? (primary as any).permissions.map(String)
-                : [];
-              const groupMemberId = (primary as any)?.groupMemberId;
-
-              localStorage.setItem("v360_currentGroupRole", groupRole);
-              localStorage.setItem(
-                "v360_currentGroupRoles",
-                JSON.stringify(groupRoles),
-              );
-              localStorage.setItem(
-                "v360_currentGroupPermissions",
-                JSON.stringify(groupPermissions),
-              );
-              if (groupMemberId !== undefined && groupMemberId !== null) {
-                localStorage.setItem(
-                  "v360_currentGroupMemberId",
-                  String(groupMemberId),
-                );
-              }
-
-              if (grp && (grp.groupId || grp.id)) {
-                localStorage.setItem("v360_currentGroup", JSON.stringify(grp));
-                localStorage.setItem(
-                  "v360_currentGroupId",
-                  String(grp.groupId ?? grp.id),
-                );
-                if (typeof grp.currency === "string") {
-                  localStorage.setItem(
-                    "v360_currentGroupCurrency",
-                    grp.currency as string,
-                  );
-                }
-              }
-
-              if (settings) {
-                localStorage.setItem(
-                  "v360_group_settings",
-                  JSON.stringify(settings),
-                );
-                localStorage.setItem("v360_group_setup_complete", "true");
-                localStorage.setItem("v360_group_setup_done", "true");
-              }
+              selectActiveGroup(localStorage, primary as GroupMembership);
             } else {
               // legacy: single group at top-level
               const group = dataRecord?.group as
@@ -519,16 +480,25 @@ export const groupService = {
       },
     );
   },
-  updateProfileAndSettings: (id: string, payload: GroupProfileSettingsPayload) =>
+  updateProfileAndSettings: (
+    id: string,
+    payload: GroupProfileSettingsPayload,
+  ) =>
     apiPut<ApiResponse<GroupWithSettingsResponse>>(
-      `${API_ENDPOINTS.groups}/${id}/settings`, payload, { auth: true },
+      `${API_ENDPOINTS.groups}/${id}/settings`,
+      payload,
+      { auth: true },
     ),
   remove: (id: string) => apiDelete(`${API_ENDPOINTS.groups}/${id}`),
 };
 
 export const memberService = {
   getMyAccess: (groupId: string) =>
-    apiGet<ApiResponse<Member>>(`${API_ENDPOINTS.members}/group/${groupId}/my-access`, undefined, { auth: true }),
+    apiGet<ApiResponse<Member>>(
+      `${API_ENDPOINTS.members}/group/${groupId}/my-access`,
+      undefined,
+      { auth: true },
+    ),
   list: (groupId?: string) => {
     if (!groupId) {
       return apiGet<Member[]>(API_ENDPOINTS.members, undefined, { auth: true });
@@ -547,7 +517,9 @@ export const memberService = {
       auth: true,
     }),
   getPermissions: () =>
-    apiGet<string[]>(`${API_ENDPOINTS.members}/permissions`, undefined, { auth: true }),
+    apiGet<string[]>(`${API_ENDPOINTS.members}/permissions`, undefined, {
+      auth: true,
+    }),
   getById: (id: string) =>
     apiGet<Member>(`${API_ENDPOINTS.members}/${id}`, undefined, { auth: true }),
   create: (payload: Record<string, unknown>) =>
@@ -556,12 +528,36 @@ export const memberService = {
     }),
   update: (id: string, payload: Partial<Member>) =>
     apiPut<Member>(`${API_ENDPOINTS.members}/${id}`, payload, { auth: true }),
-  updateProfile: (groupId: string, groupMemberId: string | number, payload: Partial<Member>) =>
-    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}`, payload, { auth: true }),
-  updateMembershipStatus: (groupId: string, groupMemberId: string | number, status: "ACTIVE" | "SUSPENDED" | "EXITED") =>
-    apiPut<Member>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/status`, { status }, { auth: true }),
-  updateAccess: (groupId: string, groupMemberId: string | number, payload: { roles: string[]; permissions: string[] }) =>
-    apiPut<ApiResponse<Member>>(`${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/access`, payload, { auth: true }),
+  updateProfile: (
+    groupId: string,
+    groupMemberId: string | number,
+    payload: Partial<Member>,
+  ) =>
+    apiPut<Member>(
+      `${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}`,
+      payload,
+      { auth: true },
+    ),
+  updateMembershipStatus: (
+    groupId: string,
+    groupMemberId: string | number,
+    status: "ACTIVE" | "SUSPENDED" | "EXITED",
+  ) =>
+    apiPut<Member>(
+      `${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/status`,
+      { status },
+      { auth: true },
+    ),
+  updateAccess: (
+    groupId: string,
+    groupMemberId: string | number,
+    payload: { roles: string[]; permissions: string[] },
+  ) =>
+    apiPut<ApiResponse<Member>>(
+      `${API_ENDPOINTS.members}/group/${groupId}/${groupMemberId}/access`,
+      payload,
+      { auth: true },
+    ),
   remove: (id: string) =>
     apiDelete(`${API_ENDPOINTS.members}/${id}`, { auth: true }),
   get360: (groupMemberId: string) =>
@@ -738,12 +734,16 @@ export const meetingService = {
       groupId ? { groupId } : undefined,
       { auth: true },
     ),
-  getById: (id: string) => apiGet<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, undefined, { auth: true }),
+  getById: (id: string) =>
+    apiGet<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, undefined, {
+      auth: true,
+    }),
   create: (payload: Partial<Meeting>) =>
     apiPost<Meeting>(API_ENDPOINTS.meetings, payload, { auth: true }),
   update: (id: string, payload: Partial<Meeting>) =>
     apiPut<Meeting>(`${API_ENDPOINTS.meetings}/${id}`, payload, { auth: true }),
-  remove: (id: string) => apiDelete(`${API_ENDPOINTS.meetings}/${id}`, { auth: true }),
+  remove: (id: string) =>
+    apiDelete(`${API_ENDPOINTS.meetings}/${id}`, { auth: true }),
   listByGroup: (groupId: string) =>
     apiGet<Meeting[]>(
       `${API_ENDPOINTS.groups}/${groupId}/meetings`,
@@ -774,7 +774,10 @@ export const meetingService = {
       undefined,
       { auth: true },
     ).then((response) => response?.data ?? null),
-  saveMinutes: (meetingId: string, payload: { content: string; approved: boolean }) =>
+  saveMinutes: (
+    meetingId: string,
+    payload: { content: string; approved: boolean },
+  ) =>
     apiPut<{ data?: MeetingMinutes }>(
       `${API_ENDPOINTS.meetings}/${meetingId}/minutes`,
       payload,
