@@ -1,6 +1,6 @@
 import { buildApiUrl } from "./endpoints";
 
-export type ApiError = Error & { status?: number };
+export type ApiError = Error & { status?: number; retryAfterSeconds?: number };
 
 export type ApiRequestOptions = RequestInit & {
   auth?: boolean;
@@ -283,11 +283,13 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    const payload = await parseApiResponse<{ message?: string }>(response);
+    const payload = await parseApiResponse<{ message?: string; data?: { retryAfterSeconds?: number } }>(response);
     const message =
       payload?.message || `Request failed with status ${response.status}`;
     const error = new Error(message) as ApiError;
     error.status = response.status;
+    const retryAfter = payload?.data?.retryAfterSeconds ?? Number(response.headers.get("Retry-After"));
+    if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfterSeconds = retryAfter;
 
     if (response.status === 401 && auth && !isAuthRoute(path)
       && await isSessionRejected(requestHeaders.get("Authorization")!.replace(/^Bearer\s+/i, ""))) {

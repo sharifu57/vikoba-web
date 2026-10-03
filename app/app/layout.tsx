@@ -31,6 +31,7 @@ import type { ExpenseRecord } from '@/hooks/useExpenses'
 import type { Loan, LoanGuaranteeRequest, LoanRepayment } from '@/hooks/useLoans'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
+import { systemAdmin } from '@/lib/api/system-admin'
 
 // Main Layout component wrapped inside Provider
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -53,6 +54,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const [showIdleWarning, setShowIdleWarning] = useState(false)
   const [idleSecondsLeft, setIdleSecondsLeft] = useState(60)
   const [groupRoles, setGroupRoles] = useState<string[]>([])
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  useEffect(() => {
+    let active = true
+    systemAdmin.access().then(result => { if (active) setIsSuperAdmin(result.data.superAdmin) }).catch(() => {})
+    return () => { active = false }
+  }, [pathname])
   const [approvalItems, setApprovalItems] = useState<Array<{ key: string; label: string; kind: 'expense' | 'share' | 'guarantee' | 'replacement' | 'loanapproval' | 'repayment' }>>([])
   const knownApprovals = useRef<{ groupId: string; keys: Set<string> } | null>(null)
   const [user, setUser] = useState({
@@ -433,6 +440,10 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   // Navigation schema
   const navItems = [
+    ...(isSuperAdmin ? [
+      { label: 'System administration', isHeader: true },
+      { label: 'System 360', path: '/system', icon: ShieldCheck },
+    ] : []),
     { label: 'Overview', isHeader: true },
     { label: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard },
 

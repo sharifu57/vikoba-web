@@ -828,7 +828,7 @@ export default function MembersPage() {
                       className="w-full rounded-xl border border-[#E5E7EB] bg-[#F7F7F2] px-3 py-2.5 text-xs text-neutral-700 outline-none transition focus:border-[#0B6B50]"
                     >
                       {roleOptions.length ? (
-                        roleOptions.map((role) => (
+                        roleOptions.filter(role => !['GROUP_CHAIRMAN', 'CHAIRPERSON'].includes(role.value)).map((role) => (
                           <option key={role.value} value={role.value}>
                             {role.label}
                           </option>

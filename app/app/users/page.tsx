@@ -213,7 +213,7 @@ export default function UsersAdministrationPage() {
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
                 className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
-                {(roles.data || []).map((r: any) => (
+                {(roles.data || []).filter((r: any) => !['GROUP_CHAIRMAN', 'CHAIRPERSON'].includes(r.value)).map((r: any) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>
@@ -237,7 +237,7 @@ export default function UsersAdministrationPage() {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Manage member access</DialogTitle>
-            <DialogDescription>Choose roles and additional permissions for {selectedMember?.fullName || selectedMember?.name}. The base MEMBER role stays assigned.</DialogDescription>
+            <DialogDescription>Choose roles and additional permissions for {selectedMember?.fullName || selectedMember?.name}. The base MEMBER role stays assigned. Only the system administrator can appoint or replace the chairperson in System 360.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="min-w-0 border-border shadow-sm">
@@ -247,7 +247,7 @@ export default function UsersAdministrationPage() {
                 <div className="max-h-72 space-y-2 overflow-y-auto pr-1">{(roles.data || []).map((role: any) => {
                   const selected = access.roles.includes(role.value);
                   return <Label key={role.value} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors ${selected ? 'border-primary bg-primary-soft text-foreground' : 'border-border bg-card hover:bg-muted'}`}>
-                    <Checkbox checked={selected} disabled={role.value === 'MEMBER'} onChange={() => toggle('roles', role.value)} aria-label={`Assign ${role.label} role`} />
+                    <Checkbox checked={selected} disabled={['MEMBER', 'GROUP_CHAIRMAN', 'CHAIRPERSON'].includes(role.value)} onChange={() => toggle('roles', role.value)} aria-label={`Assign ${role.label} role`} />
                     <span className="font-semibold">{role.label}</span>{role.value === 'MEMBER' && <Badge variant="outline" className="ml-auto">Required</Badge>}
                   </Label>;
                 })}</div>
