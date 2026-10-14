@@ -1,0 +1,49 @@
+.android-section { padding-block: 16px 72px; scroll-margin-top: 100px; }
+.android-download-panel { position: relative; display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; padding: 56px; border-radius: 28px; overflow: hidden; color: #fff; background: radial-gradient(ellipse at 85% 10%, #26785d 0%, transparent 55%), #103e32; }
+.android-copy { position: relative; z-index: 1; }
+.android-eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #f0c676; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.android-copy h2 { font-size: clamp(2.5rem, 4vw, 3.7rem); letter-spacing: -.045em; line-height: 1.05; margin: 20px 0; max-width: 530px; color: white; }
+.android-description { color: #d5e9df; font-size: 16px; line-height: 1.8; max-width: 490px; }
+.android-benefits { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 22px; font-size: 12px; color: #e7f2ed; }
+.android-benefits span { display: flex; align-items: center; gap: 6px; }
+.android-benefits svg { color: #efc477; }
+.android-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; margin-top: 30px; }
+.android-download-button { display: inline-flex; align-items: center; gap: 14px; padding: 15px 20px; border-radius: 12px; background: #fff; color: #103e32; border: 1px solid #fff; text-align: left; box-shadow: 0 8px 24px #0002; transition: background .2s, transform .2s; }
+.android-download-button:not(:disabled):hover { background: #e7f2ed; transform: translateY(-2px); }
+.android-download-button:focus-visible, .android-web-link:focus-visible { outline: 3px solid #f0c676; outline-offset: 5px; }
+.android-download-button:disabled { opacity: .8; cursor: default; }
+.android-download-button small { display: block; font-size: 9px; font-weight: 800; letter-spacing: .09em; margin-bottom: 4px; }
+.android-download-button strong { font-size: 15px; }
+.android-web-link { display: flex; align-items: center; gap: 8px; color: white; font-size: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+.android-download-note { font-size: 11px; color: #c0d8cc; margin-top: 14px; line-height: 1.6; }
+.android-visual { position: relative; min-height: 390px; display: grid; place-items: center; }
+.android-orbit { position: absolute; border: 1px solid #ffffff16; border-radius: 50%; width: 360px; height: 360px; }
+.android-orbit-two { width: 450px; height: 450px; }
+.android-phone { position: relative; width: 245px; padding: 10px; background: #12261f; border: 2px solid #8ba89b; border-radius: 36px; transform: rotate(5deg); box-shadow: 20px 30px 60px #001e2466; }
+.android-phone-camera { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); width: 70px; height: 15px; background: #12261f; border-radius: 20px; }
+.android-phone-screen { background: #f7f7f2; border-radius: 26px; padding: 42px 16px 18px; min-height: 350px; color: #111827; }
+.android-phone-brand { display: flex; align-items: center; gap: 7px; margin-bottom: 25px; font-size: 12px; color: #0b6b50; }
+.android-phone-brand img { height: 25px; width: auto; }
+.android-phone-welcome { font-size: 9px; color: #66786e; }
+.android-phone-screen h3 { font-size: 21px; margin: 5px 0 18px; letter-spacing: -.04em; }
+.android-phone-feature { display: flex; align-items: center; gap: 9px; padding: 13px 9px; border-radius: 12px; background: #fff; border: 1px solid #e0e9e3; margin-bottom: 10px; }
+.android-phone-feature > span { color: #0b6b50; }
+.android-phone-feature > div { flex: 1; }
+.android-phone-feature strong { font-size: 11px; display: block; }
+.android-phone-feature small { font-size: 8px; color: #64736a; display: block; margin-top: 4px; }
+.android-phone-status { background: #e7f2ed; color: #0b6b50; padding: 12px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-size: 9px; margin-top: 18px; }
+.android-preview-label { text-align: center; font-size: 8px; color: #66786e; margin-top: 14px; }
+.android-floating-label { position: absolute; bottom: 30px; left: 0; display: flex; align-items: center; gap: 8px; padding: 12px 18px; background: #f3d79b; color: #103e32; border-radius: 12px; font-size: 12px; font-weight: 800; box-shadow: 0 10px 25px #0002; }
+.android-install-header { margin-top: 30px; display: flex; justify-content: space-between; align-items: baseline; gap: 15px; flex-wrap: wrap; }
+.android-install-header h3 { font-size: 21px; color: var(--foreground); letter-spacing: -.03em; }
+.android-install-header p { color: var(--muted-foreground); font-size: 12px; }
+.android-install-steps { display: grid; grid-template-columns: repeat(3, 1fr); list-style: none; gap: 18px; padding: 0; margin: 18px 0; }
+.android-install-steps li { padding: 20px; display: flex; gap: 13px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.android-step-number { font-size: 12px; font-weight: 800; color: var(--primary); background: var(--primary-soft); height: 32px; min-width: 32px; display: grid; place-items: center; border-radius: 50%; }
+.android-install-steps h4 { font-size: 13px; font-weight: 800; color: var(--foreground); margin: 2px 0 7px; }
+.android-install-steps p, .android-install-help p { font-size: 12px; color: var(--muted-foreground); line-height: 1.8; }
+.android-install-help { padding: 16px 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.android-install-help summary { color: var(--foreground); font-size: 12px; font-weight: 700; cursor: pointer; }
+.android-install-help p { margin-top: 12px; max-width: 850px; }
+@media (max-width: 900px) { .android-download-panel { padding: 35px; gap: 20px; } .android-install-steps { grid-template-columns: 1fr; } .android-floating-label { left: -10px; } }
+@media (max-width: 640px) { .android-section { padding-bottom: 48px; } .android-download-panel { grid-template-columns: 1fr; padding: 28px 24px; border-radius: 20px; } .android-copy h2 { font-size: 38px; } .android-description { font-size: 14px; } .android-visual { min-height: 365px; margin-top: 10px; } .android-phone { transform: rotate(3deg); width: 230px; } .android-floating-label { left: 0; bottom: 15px; } .android-actions { align-items: flex-start; flex-direction: column; gap: 15px; } .android-benefits { gap: 12px; } }

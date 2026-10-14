@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Building2, Users, ShieldCheck, Activity, ArrowLeft, LogOut, Search, RefreshCw, AlertTriangle, Crown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Building2, Users, ShieldCheck, Activity, ArrowLeft, LogOut, Search, RefreshCw, AlertTriangle, Crown, ChevronLeft, ChevronRight, LoaderCircle, LockKeyhole } from 'lucide-react'
 import { VikobaLogo } from '@/components/brand'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { clearVikobaLocalState, getAccessToken, refreshSessionIfNeeded, SESSION_EXPIRED_EVENT, SESSION_IDLE_TIMEOUT_MS } from '@/lib/api/client'
 import { systemAdmin, type SystemOverview, type SystemGroup, type SystemPerson, type SystemAudit, type SystemPage } from '@/lib/api/system-admin'
@@ -96,20 +96,48 @@ export default function SystemPage() {
   const result = tab === 'groups' ? groups : tab === 'members' ? members : audit
   const signOut = () => { clearVikobaLocalState(); router.replace('/auth/login') }
 
-  if (allowed !== true) return <main className="min-h-screen bg-[#f5f7f4] grid place-items-center p-6"><div className="max-w-md rounded-2xl bg-white border p-8 text-center space-y-4"><ShieldCheck className="mx-auto text-emerald-700" size={40} /><h1 className="text-xl font-bold">{allowed === false ? 'System administrator access required' : 'Checking system access'}</h1><p className="text-sm text-neutral-600">{error || (allowed === false ? 'Your account can continue using its assigned groups. System-wide access is reserved for super administrators.' : 'Verifying your account permissions…')}</p>{error && <Button onClick={() => setRevision(v => v + 1)}>Try again</Button>}<Link className="block text-sm text-emerald-700 underline" href="/app/dashboard">Return to my group</Link></div></main>
+  if (allowed !== true) return <main className="relative min-h-screen overflow-hidden bg-[#f3f8f5] px-5 py-10 text-neutral-900">
+    <div className="pointer-events-none absolute -right-24 -top-32 h-96 w-96 rounded-full bg-emerald-200/50 blur-3xl" />
+    <div className="pointer-events-none absolute -bottom-36 -left-24 h-96 w-96 rounded-full bg-amber-100/70 blur-3xl" />
+    <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] max-w-xl flex-col items-center justify-center">
+      <Link href="/" className="mb-8 rounded-xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-black/5"><VikobaLogo compact /></Link>
+      <section className="w-full rounded-3xl border border-white bg-white/90 p-7 text-center shadow-[0_24px_80px_-32px_rgba(16,62,50,0.28)] backdrop-blur md:p-10">
+        <span className={`mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl ${allowed === false ? 'bg-amber-50 text-amber-700' : error ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'}`}>
+          {allowed === false ? <LockKeyhole size={28} /> : error ? <ShieldCheck size={28} /> : <LoaderCircle className="animate-spin" size={28} />}
+        </span>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">Private administrator workspace</p>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight md:text-3xl">{allowed === false ? 'System 360 access is not enabled' : error ? 'We couldn’t verify access' : 'Securing your session'}</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-neutral-600">
+          {error || (allowed === false
+            ? 'This signed-in account needs the SUPER_ADMIN role to open the all-groups panel. Your regular group access is unchanged.'
+            : 'Please wait while we check your administrator permissions.')}
+        </p>
+        {allowed === false && <div className="mt-6 rounded-2xl bg-emerald-50/80 p-4 text-left text-sm leading-6 text-emerald-950">
+          <strong className="block">How to enable your account</strong>
+          <span className="mt-1 block text-emerald-900/80">Grant SUPER_ADMIN to your verified account once, then sign in again with your usual phone OTP. No extra PIN to remember.</span>
+        </div>}
+        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+          {(error || allowed === false) && <Button className="rounded-xl bg-[#103e32] px-5 hover:bg-[#0b3329]" onClick={() => setRevision(v => v + 1)}><RefreshCw size={16} /> Check access again</Button>}
+          <Link href="/app/dashboard" className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"><ArrowLeft size={16} /> Return to my group</Link>
+        </div>
+        <button className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-neutral-500 transition hover:text-neutral-800" onClick={signOut}><LogOut size={14} /> Sign out and switch account</button>
+      </section>
+      <p className="mt-6 text-xs text-neutral-500">Protected with your existing verified sign-in and server-side permissions.</p>
+    </div>
+  </main>
 
-  return <div className="min-h-screen bg-[#f5f7f4] text-neutral-900">
-    <header className="bg-white border-b px-5 md:px-10 py-4 flex flex-wrap items-center justify-between gap-4"><Link href="/"><VikobaLogo compact /></Link><div className="flex items-center gap-4"><span className="rounded-full bg-emerald-50 text-emerald-800 px-3 py-1.5 text-xs font-semibold flex items-center gap-2"><ShieldCheck size={14} /> Super administrator</span><Button variant="ghost" onClick={signOut}><LogOut size={16} /> Sign out</Button></div></header>
+  return <div className="min-h-screen bg-gradient-to-b from-[#f4f8f5] via-[#f7f8f6] to-[#edf4ef] text-neutral-900">
+    <header className="sticky top-0 z-20 border-b border-white/80 bg-white/85 px-5 py-4 shadow-sm backdrop-blur-xl md:px-10"><div className="flex flex-wrap items-center justify-between gap-4"><Link href="/"><VikobaLogo compact /></Link><div className="flex items-center gap-3"><span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 flex items-center gap-2"><ShieldCheck size={14} /> Super administrator</span><Button variant="ghost" onClick={signOut}><LogOut size={16} /> Sign out</Button></div></div></header>
     <div className="max-w-[1440px] mx-auto px-5 md:px-10 py-8">
-      <div className="rounded-2xl bg-[#103e32] text-white p-6 md:p-8 flex flex-wrap justify-between gap-5 items-center mb-7"><div><p className="text-emerald-200 text-xs font-semibold uppercase tracking-widest mb-2">All organizations · All groups</p><h1 className="text-3xl font-bold tracking-tight">System 360</h1><p className="text-emerald-100/80 text-sm mt-2 max-w-xl">See your community across every group. Keep leadership accountable and every membership in view.</p></div><div className="flex gap-2"><Button variant="outline" className="bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white" onClick={() => setRevision(v => v + 1)}><RefreshCw size={16} /> Refresh</Button><Link href="/app/dashboard" className="text-sm flex items-center gap-2 px-3"><ArrowLeft size={16} /> My group</Link></div></div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">{[
+      <div className="relative mb-8 flex flex-wrap items-center justify-between gap-5 overflow-hidden rounded-3xl bg-gradient-to-br from-[#103e32] via-[#115441] to-[#167557] p-7 text-white shadow-[0_22px_60px_-30px_rgba(16,62,50,0.75)] md:p-9"><div className="pointer-events-none absolute -right-10 -top-20 h-64 w-64 rounded-full border-[36px] border-white/5" /><div className="relative"><p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">All organizations · All groups</p><h1 className="text-3xl font-bold tracking-tight md:text-4xl">System 360</h1><p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/80">See your community across every group. Keep leadership accountable and every membership in view.</p></div><div className="relative flex gap-2"><Button variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => setRevision(v => v + 1)}><RefreshCw size={16} /> Refresh</Button><Link href="/app/dashboard" className="flex items-center gap-2 rounded-lg px-3 text-sm font-medium text-white/90 transition hover:bg-white/10"><ArrowLeft size={16} /> My group</Link></div></div>
+      <div className="mb-7 grid grid-cols-2 gap-4 lg:grid-cols-4">{[
         { label: 'Groups', value: overview?.groups, detail: `${overview?.activeGroups ?? '—'} active groups`, icon: Building2 },
         { label: 'Members', value: overview?.members, detail: `${overview?.memberships ?? '—'} group memberships`, icon: Users },
         { label: 'Organizations', value: overview?.organizations, detail: `${overview?.users ?? '—'} registered accounts`, icon: Activity },
         { label: 'Leadership attention', value: overview?.leadershipIssues, detail: 'Groups needing one active chair', icon: Crown },
-      ].map(stat => <div key={stat.label} className="bg-white border border-neutral-200 rounded-xl p-5"><div className="flex items-center justify-between text-neutral-500 text-xs font-medium"><span>{stat.label}</span><stat.icon size={18} /></div><p className="text-3xl font-bold mt-3">{stat.value?.toLocaleString() ?? '—'}</p><p className="text-xs text-neutral-500 mt-2">{stat.detail}</p></div>)}</div>
+      ].map((stat, index) => <div key={stat.label} className="group relative overflow-hidden rounded-2xl border border-white bg-white/90 p-5 shadow-[0_12px_30px_-24px_rgba(16,62,50,0.5)] ring-1 ring-emerald-950/5 transition duration-200 hover:-translate-y-1 hover:shadow-lg"><div className={`mb-5 grid h-11 w-11 place-items-center rounded-xl ${index === 3 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-800'}`}><stat.icon size={20} /></div><p className="text-3xl font-bold tracking-tight text-[#103e32]">{stat.value?.toLocaleString() ?? '—'}</p><div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1"><span className="text-sm font-semibold text-neutral-700">{stat.label}</span><span className="text-xs text-neutral-500">{stat.detail}</span></div><span className="absolute right-0 top-0 h-1 w-full bg-gradient-to-r from-emerald-700/70 via-emerald-300/70 to-amber-300/70" /></div>)}</div>
       {!!overview?.leadershipIssues && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 flex gap-3 text-amber-900"><AlertTriangle size={20} className="shrink-0" /><p className="text-sm"><strong>{overview.leadershipIssues} groups need leadership attention.</strong> Appoint one active chairperson to resolve missing, duplicate, or inactive chairs.</p></div>}
-      <section className="rounded-2xl border bg-white overflow-hidden">
+      <section className="overflow-hidden rounded-2xl border border-white bg-white/95 shadow-[0_18px_50px_-35px_rgba(16,62,50,0.45)] ring-1 ring-emerald-950/5">
         <div className="px-5 py-4 border-b flex flex-wrap justify-between gap-4 items-center"><nav className="flex gap-1" aria-label="System sections">{(['groups', 'members', 'audit'] as Tab[]).map(item => <button key={item} onClick={() => selectTab(item)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === item ? 'bg-emerald-50 text-emerald-800' : 'text-neutral-500 hover:bg-neutral-50'}`} aria-current={tab === item ? 'page' : undefined}>{item === 'groups' ? 'Groups & leadership' : item === 'members' ? 'Member directory' : 'Audit history'}</button>)}</nav>{tab !== 'audit' && <div className="relative w-full sm:w-72"><Search size={16} className="absolute left-3 top-3 text-neutral-400" /><Input aria-label="Search directory" placeholder={tab === 'groups' ? 'Search group name or code' : 'Search name, phone, group…'} className="pl-9" value={search} onChange={event => setSearch(event.target.value)} /></div>}</div>
         {filter && <div className="px-5 py-3 bg-emerald-50 text-sm flex justify-between items-center"><span>Members of <strong>{filter.name}</strong></span><button className="underline text-emerald-800" onClick={() => { setFilter(null); setPage(0) }}>Show all groups</button></div>}
         {error && <div role="alert" className="p-5 text-red-700 bg-red-50">{error} <button className="underline ml-2" onClick={() => setRevision(v => v + 1)}>Retry</button></div>}
@@ -156,13 +184,23 @@ function ChairDialog({ group, close, saved }: { group: SystemGroup; close: () =>
     } catch (err) { setError(message(err)) }
     finally { setSaving(false) }
   }
-  return <Dialog open onOpenChange={open => { if (!open && !saving) close() }}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>Appoint chairperson</DialogTitle><DialogDescription>Choose one active member of {group.name}. The current chair role will end; other roles and memberships remain.</DialogDescription></DialogHeader><div className="space-y-4">
-    <div className="rounded-lg bg-neutral-50 p-3 text-sm"><span className="text-neutral-500">Current chair: </span><strong>{group.chairs.map(chair => chair.name).join(', ') || 'Not assigned'}</strong></div>
-    <div><label htmlFor="chair-search" className="block text-sm font-medium mb-2">Find a member</label><Input id="chair-search" placeholder="Search by name or phone" value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} disabled={saving} /></div>
-    <div className="max-h-48 overflow-y-auto border rounded-lg" aria-label="Chairperson candidates">{loading ? <p className="p-4 text-sm text-neutral-500">Loading members…</p> : candidates.content.map(person => <label key={person.membershipId} className={`flex gap-3 p-3 border-b last:border-0 ${selected?.membershipId === person.membershipId ? 'bg-emerald-50' : ''} ${!person.eligibleForChair ? 'opacity-50' : 'cursor-pointer'}`}><input type="radio" name="new-chair" disabled={saving || !person.eligibleForChair || (group.chairs.length === 1 && group.chairs[0].membershipId === person.membershipId)} checked={selected?.membershipId === person.membershipId} onChange={() => setSelected(person)} /><span className="text-sm"><strong>{person.name}</strong><span className="block text-xs text-neutral-500">{person.phone} · {person.status}</span></span></label>)}{!loading && !candidates.content.length && <p className="p-4 text-sm text-neutral-500">No members match this search.</p>}</div>
-    <div className="flex justify-between items-center text-xs text-neutral-500"><span>{candidates.totalElements} members</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={!page || loading || saving} onClick={() => setPage(v => v - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={page + 1 >= candidates.totalPages || loading || saving} onClick={() => setPage(v => v + 1)}>Next</Button></div></div>
-    {selected && <p className="text-sm text-emerald-800">New chair: <strong>{selected.name}</strong></p>}
-    <div><label htmlFor="chair-reason" className="block text-sm font-medium mb-2">Reason for appointment</label><Textarea id="chair-reason" maxLength={500} placeholder="For example, the group elected a new chairperson." value={reason} onChange={event => setReason(event.target.value)} disabled={saving} /></div>
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-  </div><DialogFooter><Button variant="outline" disabled={saving} onClick={close}>Cancel</Button><Button className="bg-emerald-700 hover:bg-emerald-800" disabled={saving || !selected || reason.trim().length < 5} onClick={submit}>{saving ? 'Saving appointment…' : 'Confirm appointment'}</Button></DialogFooter></DialogContent></Dialog>
+  return <Dialog open onOpenChange={open => { if (!open && !saving) close() }}><DialogContent className="flex max-h-[calc(100vh-1.5rem)] max-h-[calc(100dvh-1.5rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+    <DialogHeader className="shrink-0 border-b border-neutral-100 px-5 py-5 pr-12 sm:px-6">
+      <DialogTitle className="text-lg font-bold text-neutral-900">Appoint chairperson</DialogTitle>
+      <DialogDescription className="leading-5">Choose one active member of {group.name}. The current chair role will end; other roles and memberships remain.</DialogDescription>
+    </DialogHeader>
+    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+      <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-3 text-sm"><span className="text-neutral-500">Current chair: </span><strong>{group.chairs.map(chair => chair.name).join(', ') || 'Not assigned'}</strong></div>
+      <div><label htmlFor="chair-search" className="mb-2 block text-sm font-semibold text-neutral-800">Find a member</label><Input id="chair-search" placeholder="Search by name or phone" value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} disabled={saving} /></div>
+      <div className="max-h-40 overflow-y-auto rounded-xl border border-neutral-200 sm:max-h-48" aria-label="Chairperson candidates">{loading ? <p className="p-4 text-sm text-neutral-500">Loading members…</p> : candidates.content.map(person => <label key={person.membershipId} className={`flex gap-3 border-b border-neutral-100 p-3 last:border-0 ${selected?.membershipId === person.membershipId ? 'bg-emerald-50' : ''} ${!person.eligibleForChair ? 'opacity-50' : 'cursor-pointer hover:bg-emerald-50/60'}`}><input type="radio" name="new-chair" className="mt-1 accent-emerald-700" disabled={saving || !person.eligibleForChair || (group.chairs.length === 1 && group.chairs[0].membershipId === person.membershipId)} checked={selected?.membershipId === person.membershipId} onChange={() => setSelected(person)} /><span className="text-sm"><strong>{person.name}</strong><span className="block text-xs text-neutral-500">{person.phone} · {person.status}</span></span></label>)}{!loading && !candidates.content.length && <p className="p-4 text-sm text-neutral-500">No members match this search.</p>}</div>
+      <div className="flex items-center justify-between gap-3 text-xs text-neutral-500"><span>{candidates.totalElements} members</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={!page || loading || saving} onClick={() => setPage(v => v - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={page + 1 >= candidates.totalPages || loading || saving} onClick={() => setPage(v => v + 1)}>Next</Button></div></div>
+      {selected && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">New chair: <strong>{selected.name}</strong></p>}
+      <div><label htmlFor="chair-reason" className="mb-2 block text-sm font-semibold text-neutral-800">Reason for appointment</label><Textarea id="chair-reason" maxLength={500} placeholder="For example, the group elected a new chairperson." value={reason} onChange={event => setReason(event.target.value)} disabled={saving} /></div>
+      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    </div>
+    <div className="sticky bottom-0 z-10 flex shrink-0 flex-col-reverse gap-2 border-t border-neutral-200 bg-white/95 px-5 py-4 shadow-[0_-8px_20px_rgba(15,23,42,0.05)] backdrop-blur sm:flex-row sm:justify-end sm:px-6">
+      <Button variant="outline" className="h-11 w-full border-neutral-300 bg-white px-5 font-semibold text-neutral-700 hover:bg-neutral-100 sm:w-auto" disabled={saving} onClick={close}>Cancel</Button>
+      <Button className="h-11 w-full bg-emerald-800 px-5 font-semibold text-white shadow-sm hover:bg-emerald-900 disabled:bg-neutral-300 disabled:text-neutral-600 sm:w-auto" disabled={saving || !selected || reason.trim().length < 5} onClick={submit}>{saving ? 'Saving appointment…' : 'Confirm appointment'}</Button>
+    </div>
+  </DialogContent></Dialog>
 }

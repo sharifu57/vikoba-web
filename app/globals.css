@@ -3,6 +3,7 @@
 @import '../vendor/shadcn/tailwind.css';
 @import './theme-overrides.css';
 @import './public-site.css';
+@import './android-download.css';
 
 @theme inline {
   --color-background: var(--background);
