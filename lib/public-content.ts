@@ -12,22 +12,22 @@ export const publicContent = {
       start: "Create a group",
     },
     hero: {
-      eyebrow: "Digital tools for community finance",
-      title: "Manage your VICOBA. Grow together.",
-      body: "One calm, secure place for members, contributions, shares, loans, meetings and the records that keep your group trusted.",
-      primary: "Create your group",
-      secondary: "Explore the platform",
-      note: "Built around the way Tanzanian groups already work.",
+      eyebrow: "For the people who keep the group running",
+      title: "Your VICOBA records, in order.",
+      body: "Keep member details, contributions, shares, loans and meeting decisions together, so the treasurer, secretary and members can work from the same record.",
+      primary: "Set up your group",
+      secondary: "See how it works",
+      note: "Made for VICOBA groups in Tanzania · English and Kiswahili",
     },
     stats: {
-      eyebrow: "A clearer view of collective progress",
-      title: "The numbers that matter, made visible.",
+      eyebrow: "Platform overview",
+      title: "A clear view of group activity.",
       unavailable: "Live platform statistics are temporarily unavailable.",
     },
     features: {
-      eyebrow: "Everything in one rhythm",
-      title: "The daily work of your group, without the paper trail.",
-      body: "VIKOBA360 brings the practical work of a savings group into one shared record, so decisions are easier to make and explain.",
+      eyebrow: "The records groups already keep",
+      title: "Everyday group work, easier to follow.",
+      body: "Keep the familiar work of your savings group together, with a clear record of who contributed, what was approved and what comes next.",
       items: [
         [
           "Members",
@@ -62,8 +62,8 @@ export const publicContent = {
       ],
     },
     process: {
-      eyebrow: "A simple beginning",
-      title: "From first meeting to confident reporting.",
+      eyebrow: "Getting started",
+      title: "Set up once. Keep the routine clear.",
       steps: [
         [
           "01",
@@ -88,9 +88,9 @@ export const publicContent = {
       ],
     },
     trust: {
-      eyebrow: "Trust is a feature",
-      title: "Clear records create stronger groups.",
-      body: "Role-based access, audit trails and member visibility help every decision stand on evidence. VIKOBA360 is designed to support accountability without making everyday work feel heavy.",
+      eyebrow: "Built around accountability",
+      title: "Know what was recorded, approved and paid.",
+      body: "Keep financial activity tied to the group record. Role permissions and an activity history make it easier to review decisions at the next meeting.",
       items: [
         "Role-based permissions",
         "Traceable financial activity",
@@ -124,14 +124,14 @@ export const publicContent = {
       ],
     },
     cta: {
-      title: "Ready to make your group easier to trust?",
-      body: "Bring your VICOBA's everyday work into one clear, secure record.",
-      primary: "Create your group",
+      title: "Start with the records your group needs.",
+      body: "Set your contribution, share and loan rules, then invite the people who keep them.",
+      primary: "Set up your group",
       secondary: "Log in",
     },
     footer: {
       description:
-        "Digital tools for transparent, growing community finance groups.",
+        "VIKOBA360 helps group leaders and members manage contributions, shares, loans and meeting records.",
       platform: "Platform",
       company: "Company",
       support: "Support",
@@ -149,22 +149,22 @@ export const publicContent = {
       start: "Unda kikundi",
     },
     hero: {
-      eyebrow: "Teknolojia kwa fedha za jamii",
-      title: "Simamia VICOBA yako. Kua pamoja.",
-      body: "Mahali pamoja salama pa kusimamia wanachama, michango, hisa, mikopo, mikutano na kumbukumbu zinazoimarisha uaminifu wa kikundi.",
-      primary: "Unda kikundi chako",
-      secondary: "Chunguza mfumo",
-      note: "Umejengwa kulingana na namna vikundi vya Tanzania vinavyofanya kazi.",
+      eyebrow: "Kwa viongozi wanaoendesha shughuli za kikundi",
+      title: "Kumbukumbu za VICOBA yako, kwa mpangilio.",
+      body: "Weka taarifa za wanachama, michango, hisa, mikopo na maamuzi ya mikutano pamoja ili viongozi na wanachama watumie rekodi moja.",
+      primary: "Sanidi kikundi chako",
+      secondary: "Ona inavyofanya kazi",
+      note: "Kwa vikundi vya VICOBA Tanzania · Kiswahili na Kiingereza",
     },
     stats: {
-      eyebrow: "Mwonekano wa maendeleo ya pamoja",
-      title: "Takwimu muhimu, sasa zinaonekana.",
+      eyebrow: "Muhtasari wa mfumo",
+      title: "Mwonekano wa wazi wa shughuli za vikundi.",
       unavailable: "Takwimu za mfumo hazipatikani kwa muda huu.",
     },
     features: {
-      eyebrow: "Kila kitu katika mtiririko mmoja",
-      title: "Kazi za kila siku za kikundi, bila mzigo wa makaratasi.",
-      body: "VIKOBA360 huleta kazi za kikundi cha akiba katika kumbukumbu moja ya pamoja, ili maamuzi yawe rahisi kufanyika na kuelezeka.",
+      eyebrow: "Rekodi ambazo vikundi tayari vinatunza",
+      title: "Shughuli za kila siku, rahisi kufuatilia.",
+      body: "Weka shughuli za kawaida za kikundi chako pamoja, na rekodi iliyo wazi ya michango, maamuzi na hatua zinazofuata.",
       items: [
         ["Wanachama", "Panga taarifa, majukumu na hali za wanachama.", "Users"],
         [
@@ -195,8 +195,8 @@ export const publicContent = {
       ],
     },
     process: {
-      eyebrow: "Mwanzo rahisi",
-      title: "Kutoka mkutano wa kwanza hadi ripoti yenye uhakika.",
+      eyebrow: "Kuanza kutumia",
+      title: "Sanidi mara moja. Endelea na utaratibu wako.",
       steps: [
         [
           "01",
@@ -217,9 +217,9 @@ export const publicContent = {
       ],
     },
     trust: {
-      eyebrow: "Uaminifu ni sehemu ya mfumo",
-      title: "Kumbukumbu zilizo wazi hujenga vikundi imara.",
-      body: "Ruhusa kwa majukumu, historia ya vitendo na mwonekano kwa wanachama husaidia kila uamuzi kusimama juu ya ushahidi. VIKOBA360 imeundwa kwa uwajibikaji bila kufanya kazi za kila siku ziwe nzito.",
+      eyebrow: "Uwajibikaji umezingatiwa",
+      title: "Jua kilichorekodiwa, kuidhinishwa na kulipwa.",
+      body: "Weka shughuli za fedha kwenye kumbukumbu za kikundi. Ruhusa za majukumu na historia ya shughuli hurahisisha kupitia maamuzi kwenye mkutano unaofuata.",
       items: [
         "Ruhusa kulingana na jukumu",
         "Shughuli za fedha zinazofuatilika",
@@ -253,14 +253,14 @@ export const publicContent = {
       ],
     },
     cta: {
-      title: "Uko tayari kufanya kikundi chako kiaminike zaidi?",
-      body: "Leta kazi za kila siku za VICOBA yako katika kumbukumbu moja iliyo wazi na salama.",
-      primary: "Unda kikundi chako",
+      title: "Anza na kumbukumbu muhimu za kikundi chako.",
+      body: "Weka kanuni za michango, hisa na mikopo, kisha waalike viongozi na wanachama.",
+      primary: "Sanidi kikundi chako",
       secondary: "Ingia",
     },
     footer: {
       description:
-        "Teknolojia kwa vikundi vya fedha za jamii vilivyo wazi na vinavyokua.",
+        "VIKOBA360 huwasaidia viongozi na wanachama kusimamia michango, hisa, mikopo na kumbukumbu za mikutano.",
       platform: "Mfumo",
       company: "Kampuni",
       support: "Msaada",

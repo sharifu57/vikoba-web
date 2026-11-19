@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  colorScheme: "light",
-  themeColor: "#F4F4F4",
+  colorScheme: "light dark",
+  themeColor: "#F7F7F2",
   width: "device-width",
   initialScale: 1,
 };
@@ -27,8 +27,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="sw" className="bg-background">
-    <body style={{ fontFamily: "Raleway, Roboto, 'DM Sans', Arial, sans-serif" }}>
+    <html lang="sw" className="bg-background" suppressHydrationWarning>
+    <head>
+      <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('v360_theme');document.documentElement.classList.toggle('dark',t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))}catch(e){}` }} />
+    </head>
+    <body style={{ fontFamily: "Inter, 'DM Sans', system-ui, sans-serif" }}>
         <LanguageProvider>
           <QueryProvider>
             {children}

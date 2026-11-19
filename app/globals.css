@@ -3,6 +3,8 @@
 @import '../vendor/shadcn/tailwind.css';
 @import './theme-overrides.css';
 @import './public-site.css';
+
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 @import './android-download.css';
 
 @theme inline {
