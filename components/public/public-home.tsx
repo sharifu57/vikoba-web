@@ -6,7 +6,7 @@ import { ArrowDownRight, ArrowRight, Banknote, CalendarDays, ChartNoAxesCombined
 import { PublicFooter, PublicShell } from "./public-shell";
 import { useLanguage } from "@/lib/i18n";
 import { getPublicPlatformData, type PublicPlatformData } from "@/lib/api/public";
-import { AndroidDownload } from "./android-download";
+import { FlutterAppLink } from "./android-download";
 
 const featureIcons = [Users, WalletCards, ChartNoAxesCombined, HandCoins, ReceiptText, HeartHandshake, CalendarDays, ClipboardList, Landmark];
 
@@ -44,7 +44,7 @@ export function PublicHome() {
     <section className="public-testimonial public-container"><HeartHandshake size={22}/><span className="public-eyebrow">{sw ? "Hadithi za vikundi" : "From the community"}</span><h2>{sw ? "Maoni ya vikundi yataongezwa kwa idhini yao." : "Group stories belong to the groups who share them."}</h2><p>{sw ? "Tutachapisha maoni halisi pale yatakapopatikana na kuidhinishwa." : "We’ll feature genuine group feedback here when it is available and approved."}</p></section>
     <section className="public-section public-container" id="pricing"><div className="public-section-intro"><span className="public-eyebrow">{sw ? "Mipango" : "Plans"}</span><h2>{sw ? "Mipango inayoweza kusanidiwa kwa mahitaji ya kikundi." : "A plan that fits your group’s needs."}</h2><p>{sw ? "Wasiliana nasi kuthibitisha bei na vipengele vya sasa." : "Contact us to confirm current pricing and what each plan includes."}</p></div><div className="public-pricing-grid">{tiers.map(([name,desc],i)=><article key={name} className={i===1?"featured":""}><span className="public-plan-index">0{i+1}</span><h3>{name}</h3><p>{desc}</p><strong>{sw ? "Bei kwa mawasiliano" : "Contact for current pricing"}</strong><Link href="/contact" className="public-button public-button-outline">{sw ? "Uliza kuhusu mpango" : "Ask about this plan"}<ArrowRight size={16}/></Link></article>)}</div></section>
     <section className="public-section public-container" id="faq"><div className="public-section-intro"><span className="public-eyebrow"><CircleHelp size={14}/>{sw ? "Maswali" : "Questions"}</span><h2>{sw ? "Mambo unayoweza kutaka kujua." : "A few things you may want to know."}</h2></div><div className="public-faq">{faq.map(([q,a])=><details key={q}><summary>{q}<span>+</span></summary><p>{a}</p></details>)}</div></section>
-    <AndroidDownload />
+    <FlutterAppLink />
     <section className="public-cta public-container"><div><span className="public-eyebrow public-eyebrow-light">{sw ? "Hatua inayofuata" : "A better way to work together"}</span><h2>{sw ? "Kikundi chako kinastahili usimamizi bora wa fedha." : "Your Group Deserves Better Financial Management."}</h2><p>{sw ? "Anza kuweka shughuli za kikundi chako kwa uwazi." : "Bring your group’s records together and make every routine easier to follow."}</p></div><div><Link className="public-button public-button-light" href="/auth/register">{sw ? "Unda akaunti" : "Get started"}<ArrowRight size={17}/></Link><Link className="public-cta-login" href="/auth/login">{sw ? "Tayari una akaunti? Ingia" : "Already have an account? Log in"}</Link></div></section>
   </main><PublicFooter/></PublicShell>;
 }

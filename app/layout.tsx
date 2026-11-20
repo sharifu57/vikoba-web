@@ -11,8 +11,8 @@ export const metadata: Metadata = {
     "A modern, secure platform for managing VIKOBA community savings groups across Tanzania and East Africa.",
   generator: "v0.app",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/vikoba-favicon.png",
+    apple: "/apple-icon.png",
   },
 };
 
