@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { QueryProvider } from "@/components/query-provider";
 import { LanguageProvider } from "@/lib/i18n";
+import { SupportCenter } from "@/components/support-center";
 
 export const metadata: Metadata = {
   title: "VIKOBA360 — Manage Your VIKOBA. Grow Together.",
@@ -35,6 +36,7 @@ export default function RootLayout({
         <LanguageProvider>
           <QueryProvider>
             {children}
+            <SupportCenter />
             <Toaster position="top-right" richColors closeButton expand />
             {process.env.NODE_ENV === "production" && <Analytics />}
           </QueryProvider>

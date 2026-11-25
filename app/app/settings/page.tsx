@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Save, CheckCircle2, Plus, Trash2 } from 'lucide-react'
-import { fineService, groupService, type FineTypeOption, type GroupProfileSettingsPayload } from '@/lib/api/services'
+import { fineService, groupService, memberService, type FineTypeOption, type GroupProfileSettingsPayload } from '@/lib/api/services'
+import { selectActiveGroup } from '@/lib/api/active-group'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -32,6 +33,7 @@ const emptyForm = {
   defaultInterestRate: 8,
   defaultLoanDurationMonths: 6,
   latePaymentFine: 5000,
+  lateLoanPaymentFinePercentage: 0,
 }
 
 export default function GroupSettingsPage() {
@@ -84,6 +86,7 @@ export default function GroupSettingsPage() {
         defaultInterestRate: Number(settings?.defaultInterestRate ?? current.defaultInterestRate),
         defaultLoanDurationMonths: Number(settings?.defaultLoanDurationMonths ?? current.defaultLoanDurationMonths),
         latePaymentFine: Number(settings?.latePaymentFine ?? current.latePaymentFine),
+        lateLoanPaymentFinePercentage: Number(settings?.lateLoanPaymentFinePercentage ?? current.lateLoanPaymentFinePercentage),
       }))
       setJamiiAmount(settings?.jamiiContributionPerSharePayment == null
         ? '' : String(settings.jamiiContributionPerSharePayment))
@@ -188,6 +191,7 @@ export default function GroupSettingsPage() {
         defaultInterestRate: Number(form.defaultInterestRate),
         defaultLoanDurationMonths: Number(form.defaultLoanDurationMonths),
         latePaymentFine: Number(form.latePaymentFine),
+        lateLoanPaymentFinePercentage: Number(form.lateLoanPaymentFinePercentage),
         jamiiContributionPerSharePayment: parsedJamii,
       },
     }
@@ -284,6 +288,36 @@ export default function GroupSettingsPage() {
         // best-effort: mark setup complete locally
         localStorage.setItem('v360_group_setup_complete', 'true')
         localStorage.setItem('v360_group_setup_done', 'true')
+      }
+
+      // Group setup creates a membership on the server. Refresh and persist its
+      // ID and permissions before navigating so the dashboard can load at once.
+      try {
+        const accessResponse = await memberService.getMyAccess(String(groupId))
+        const memberAccess = accessResponse.data as any
+        if (memberAccess?.id != null) {
+          const existingMemberships = JSON.parse(localStorage.getItem('v360_groups') || '[]') as Array<Record<string, any>>
+          const settings = (responseData as any)?.settings ?? null
+          const membership = {
+            ...(existingMemberships.find(item => String(item.group?.groupId ?? item.group?.id ?? item.groupId ?? item.id) === String(groupId)) || {}),
+            group: savedGroup,
+            settings,
+            settingsConfigured: true,
+            groupMemberId: memberAccess.id,
+            memberId: memberAccess.memberId,
+            role: memberAccess.role,
+            roles: memberAccess.roles?.map(String) ?? [String(memberAccess.role || 'MEMBER')],
+            permissions: memberAccess.permissions?.map(String) ?? [],
+          }
+          const updatedMemberships = existingMemberships.filter(item =>
+            String(item.group?.groupId ?? item.group?.id ?? item.groupId ?? item.id) !== String(groupId),
+          )
+          updatedMemberships.push(membership)
+          localStorage.setItem('v360_groups', JSON.stringify(updatedMemberships))
+          selectActiveGroup(localStorage, membership)
+        }
+      } catch (accessError) {
+        console.error('Unable to refresh group membership after setup', accessError)
       }
 
       setSuccess(true)
@@ -538,7 +572,7 @@ export default function GroupSettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Late Payment Fine</label>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Meeting Late Arrival Fine (amount)</label>
               <Input
                 type="number"
                 required
@@ -546,6 +580,19 @@ export default function GroupSettingsPage() {
                 onChange={e => setForm({ ...form, latePaymentFine: Number(e.target.value) })}
                 className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-red-500 font-semibold"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">Late Loan Payment Fine (% of total loan interest)</label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                value={form.lateLoanPaymentFinePercentage}
+                onChange={e => setForm({ ...form, lateLoanPaymentFinePercentage: Number(e.target.value) })}
+                className="w-full border border-[#E5E7EB] rounded-lg p-2.5 text-xs outline-none focus:border-red-500 font-semibold"
+              />
+              <p className="mt-1 text-xs text-neutral-500">The configured percentage of the loan&apos;s total interest is divided evenly across its repayment schedule. Each overdue installment is charged its share.</p>
             </div>
           </div>
         </div>

@@ -124,6 +124,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    let active = true;
+    setAccessReady(false);
 
     const userJson = window.localStorage.getItem("v360_user");
     const sessionJson = window.localStorage.getItem("v360_session");
@@ -175,13 +177,13 @@ export default function DashboardPage() {
     const groupMemberId = membership?.groupMemberId ?? membership?.membershipId ??
       window.localStorage.getItem("v360_currentGroupMemberId");
 
-    setAccess({
+    const cachedAccess: DashboardAccess = {
       roles,
       permissions,
       groupMemberId: groupMemberId === null || groupMemberId === undefined ? null : String(groupMemberId),
       canViewGroupDashboard: canAccessGroupDashboard(roles, permissions),
-    });
-    setAccessReady(true);
+    };
+    setAccess(cachedAccess);
 
     if (selectedUser) {
       setCurrentUser({
@@ -191,6 +193,68 @@ export default function DashboardPage() {
         role: primaryRole(roles),
       });
     }
+
+    if (cachedAccess.groupMemberId || !/^\d+$/.test(selectedGroupId)) {
+      setAccessReady(true);
+      return () => { active = false; };
+    }
+
+    // First-time group setup creates the membership after the OTP session was
+    // issued. Recover that membership from the API instead of asking the user
+    // to sign out and sign in again.
+    memberService.getMyAccess(selectedGroupId)
+      .then((response) => {
+        if (!active || !response.data?.id) return;
+        const liveAccess = response.data as {
+          id: string | number;
+          role?: string;
+          roles?: string[];
+          permissions?: string[];
+        };
+        const liveRoles = toAccessList(liveAccess.roles?.length ? liveAccess.roles : [liveAccess.role || "MEMBER"]);
+        const livePermissions = toAccessList(liveAccess.permissions);
+        const memberId = String(liveAccess.id);
+
+        setAccess({
+          groupMemberId: memberId,
+          roles: liveRoles,
+          permissions: livePermissions,
+          canViewGroupDashboard: canAccessGroupDashboard(liveRoles, livePermissions),
+        });
+        setCurrentUser((user) => ({ ...user, role: primaryRole(liveRoles) }));
+        window.localStorage.setItem("v360_currentGroupMemberId", memberId);
+        window.localStorage.setItem("v360_currentGroupRole", String(liveAccess.role || primaryRole(liveRoles)));
+        window.localStorage.setItem("v360_currentGroupRoles", JSON.stringify(liveRoles));
+        window.localStorage.setItem("v360_currentGroupPermissions", JSON.stringify(livePermissions));
+
+        try {
+          const groups = JSON.parse(window.localStorage.getItem("v360_groups") || "[]") as Array<Record<string, any>>;
+          const groupRecord = currentGroupRecord || { id: selectedGroupId, groupId: selectedGroupId };
+          const updated = {
+            ...(membership || {}),
+            group: groupRecord,
+            groupMemberId: liveAccess.id,
+            role: liveAccess.role || primaryRole(liveRoles),
+            roles: liveRoles,
+            permissions: livePermissions,
+          };
+          const remaining = groups.filter((item) =>
+            String(item.group?.groupId ?? item.group?.id ?? item.groupId ?? item.id) !== selectedGroupId,
+          );
+          remaining.push(updated);
+          window.localStorage.setItem("v360_groups", JSON.stringify(remaining));
+        } catch {
+          // The active membership cache above is sufficient for this dashboard.
+        }
+      })
+      .catch((error: Error) => {
+        if (active) console.error("Unable to refresh active group membership", error);
+      })
+      .finally(() => {
+        if (active) setAccessReady(true);
+      });
+
+    return () => { active = false; };
   }, [currentGroup?.id]);
 
   useEffect(() => {
@@ -302,7 +366,7 @@ export default function DashboardPage() {
 
     if (!access.groupMemberId) {
       setMemberOverview(null);
-      setMemberOverviewError("Your membership details are not available in this session. Please sign out and sign in again.");
+      setMemberOverviewError("We couldn’t load your group membership. Refresh this page or contact your group administrator if the problem continues.");
       return;
     }
 

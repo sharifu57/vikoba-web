@@ -230,6 +230,7 @@ export type GroupSettingsPayload = {
   defaultInterestRate?: number;
   defaultLoanDurationMonths?: number;
   latePaymentFine?: number;
+  lateLoanPaymentFinePercentage?: number;
   jamiiContributionPerSharePayment?: number;
 };
 
